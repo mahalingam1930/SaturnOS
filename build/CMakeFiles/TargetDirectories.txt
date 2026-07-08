@@ -1,0 +1,3 @@
+/Users/mahalingamm/SaturnOS/build/CMakeFiles/kernel.dir
+/Users/mahalingamm/SaturnOS/build/CMakeFiles/edit_cache.dir
+/Users/mahalingamm/SaturnOS/build/CMakeFiles/rebuild_cache.dir

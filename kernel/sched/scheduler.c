@@ -1,8 +1,7 @@
 #include "scheduler.h"
+#include "config.h"
 #include "irq.h"
 #include "kprintf.h"
-
-#define SCHED_DEBUG 0
 
 static void idle_task(void);
 static void scheduler_exit_task(int task_id);
@@ -152,7 +151,7 @@ void scheduler_tick(void)
 
     tasks[current_task].state = TASK_RUNNING;
 
-    if (SCHED_DEBUG)
+    if (CONFIG_SCHED_DEBUG)
     {
         kprintf("Scheduler tick %d: task %d -> task %d (%s)\n",
                 (int)scheduler_ticks,
@@ -197,7 +196,7 @@ void scheduler_yield(void)
     tasks[next_task].state = TASK_RUNNING;
     current_task = next_task;
 
-    if (SCHED_DEBUG)
+    if (CONFIG_SCHED_DEBUG)
     {
         kprintf("Switching task %d -> task %d (%s)\n",
                 tasks[previous_task].pid,
@@ -236,7 +235,7 @@ void scheduler_preempt(void)
     tasks[next_task].state = TASK_RUNNING;
     current_task = next_task;
 
-    if (SCHED_DEBUG)
+    if (CONFIG_SCHED_DEBUG)
     {
         kprintf("Preempt tick %d: task %d -> task %d (%s)\n",
                 (int)scheduler_ticks,

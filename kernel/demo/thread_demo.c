@@ -1,9 +1,8 @@
 #include "thread_demo.h"
+#include "config.h"
 #include "kprintf.h"
 #include "scheduler.h"
 #include "timer.h"
-
-#define DEMO_THREADS_LOG 1
 
 static void demo_thread_a(void)
 {
@@ -12,14 +11,14 @@ static void demo_thread_a(void)
     while (counter < 4)
     {
         counter++;
-        if (DEMO_THREADS_LOG)
+        if (CONFIG_THREAD_DEMO_LOG)
         {
             kprintf("Thread A iteration %d\n", counter);
         }
         timer_sleep_ms(250);
     }
 
-    if (DEMO_THREADS_LOG)
+    if (CONFIG_THREAD_DEMO_LOG)
     {
         kprintf("Thread A returning\n");
     }
@@ -32,14 +31,14 @@ static void demo_thread_b(void)
     while (counter < 8)
     {
         counter++;
-        if (DEMO_THREADS_LOG)
+        if (CONFIG_THREAD_DEMO_LOG)
         {
             kprintf("Thread B iteration %d\n", counter);
         }
         timer_sleep_ms(250);
     }
 
-    if (DEMO_THREADS_LOG)
+    if (CONFIG_THREAD_DEMO_LOG)
     {
         kprintf("Thread B returning\n");
     }

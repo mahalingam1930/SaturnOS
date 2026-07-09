@@ -5,9 +5,10 @@ AS = $(CROSS)as
 LD = $(CROSS)ld
 
 CFLAGS = -ffreestanding -O2 -Wall -Wextra \
-	-Ikernel/include \
-	-Ikernel/console \
-	-Idrivers/uart
+    -Ikernel/include \
+    -Ikernel/console \
+    -Idrivers/uart \
+    -Iarch/arm64
 
 BUILD = build
 
@@ -31,12 +32,20 @@ $(BUILD)/kprintf.o: kernel/console/kprintf.c | $(BUILD)
 $(BUILD)/uart.o: drivers/uart/uart.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/exception.o: arch/arm64/exception.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/exception_asm.o: arch/arm64/exception.S | $(BUILD)
+	$(CC) -c $< -o $@
+
 $(BUILD)/saturnos.elf: \
-	$(BUILD)/boot.o \
-	$(BUILD)/kernel.o \
-	$(BUILD)/console.o \
-	$(BUILD)/kprintf.o \
-	$(BUILD)/uart.o
+    $(BUILD)/boot.o \
+    $(BUILD)/kernel.o \
+    $(BUILD)/console.o \
+    $(BUILD)/kprintf.o \
+    $(BUILD)/uart.o \
+    $(BUILD)/exception.o \
+    $(BUILD)/exception_asm.o
 	$(LD) -T boot/linker.ld -o $@ $^
 
 clean:

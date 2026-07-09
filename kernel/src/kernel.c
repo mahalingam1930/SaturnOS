@@ -1,9 +1,12 @@
-#include "console.h"
+#include "uart.h"
 #include "kprintf.h"
+#include "exception.h"
 
 void kernel_main(void)
 {
-    console_init();
+    uart_init();
+
+    exception_init();
 
     kprintf("================================\n");
     kprintf("Welcome to %s\n", "SaturnOS");
@@ -15,6 +18,10 @@ void kernel_main(void)
     kprintf("UART Base: 0x%x\n", 0x09000000);
     kprintf("Magic Number: 0x%x\n", 0xDEADBEEF);
     kprintf("================================\n");
+    
+    kprintf("Triggering test exception...\n");
+
+    exception_test();
 
     while (1)
     {

@@ -1,4 +1,5 @@
 #include "scheduler.h"
+#include "irq.h"
 #include "kprintf.h"
 #include "timer.h"
 
@@ -158,6 +159,43 @@ void scheduler_yield(void)
     cpu_switch_to(&tasks[previous_task].context, &tasks[next_task].context);
 }
 
+void scheduler_preempt(void)
+{
+    int previous_task;
+    int next_task;
+
+    if (!threads_started || task_count < 2)
+    {
+        return;
+    }
+
+    scheduler_ticks++;
+
+    previous_task = current_task;
+    next_task = scheduler_next_runnable_task();
+
+    if (next_task == previous_task)
+    {
+        return;
+    }
+
+    if (tasks[previous_task].state == TASK_RUNNING)
+    {
+        tasks[previous_task].state = TASK_READY;
+    }
+
+    tasks[next_task].state = TASK_RUNNING;
+    current_task = next_task;
+
+    kprintf("Preempt tick %d: task %d -> task %d (%s)\n",
+            (int)scheduler_ticks,
+            tasks[previous_task].pid,
+            tasks[next_task].pid,
+            tasks[next_task].name);
+
+    cpu_switch_to(&tasks[previous_task].context, &tasks[next_task].context);
+}
+
 void scheduler_exit(void)
 {
     kprintf("Task %d (%s) exited\n",
@@ -174,7 +212,7 @@ void scheduler_exit(void)
 
 void scheduler_start_threads(void)
 {
-    kprintf("Starting cooperative kernel threads...\n");
+    kprintf("Starting preemptive kernel threads...\n");
     threads_started = 1;
     scheduler_yield();
 }
@@ -197,6 +235,8 @@ static void thread_trampoline(void)
 {
     void (*entry)(void) = tasks[current_task].entry;
 
+    irq_enable();
+
     if (entry)
     {
         entry();
@@ -214,7 +254,6 @@ static void thread_a(void)
         counter++;
         kprintf("Thread A iteration %d\n", counter);
         timer_sleep_ms(250);
-        scheduler_yield();
     }
 
     kprintf("Thread A returning\n");
@@ -229,7 +268,6 @@ static void thread_b(void)
         counter++;
         kprintf("Thread B iteration %d\n", counter);
         timer_sleep_ms(250);
-        scheduler_yield();
     }
 }
 

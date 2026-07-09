@@ -54,7 +54,5 @@ void timer_handle_irq(void)
 {
     timer_irq_ticks++;
 
-    scheduler_tick();
-
     __asm__ volatile("msr CNTP_TVAL_EL0, %0" : : "r"(timer_interval_ticks));
 }

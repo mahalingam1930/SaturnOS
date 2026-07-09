@@ -32,6 +32,8 @@ void kernel_main(void)
     kprintf("Timer Tick End: 0x%x\n", (unsigned int)timer_get_ticks());
     kprintf("Timer test complete.\n");
 
+    timer_start_periodic(100);
+    irq_enable();
     scheduler_start_threads();
 
     while (1)

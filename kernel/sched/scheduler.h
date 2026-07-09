@@ -26,6 +26,7 @@ struct task
 void scheduler_init(void);
 void scheduler_tick(void);
 void scheduler_yield(void);
+void scheduler_preempt(void);
 void scheduler_exit(void);
 void scheduler_start_threads(void);
 void scheduler_dump_tasks(void);

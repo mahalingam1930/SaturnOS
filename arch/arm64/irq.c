@@ -1,5 +1,6 @@
 #include "irq.h"
 #include "kprintf.h"
+#include "scheduler.h"
 #include "timer.h"
 
 #define GICD_BASE 0x08000000UL
@@ -62,6 +63,9 @@ void irq_handler(void)
     if (irq == TIMER_IRQ)
     {
         timer_handle_irq();
+        mmio_write(GICC_BASE + GICC_EOIR, iar);
+        scheduler_preempt();
+        return;
     }
     else
     {

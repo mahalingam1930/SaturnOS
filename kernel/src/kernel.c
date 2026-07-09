@@ -4,48 +4,7 @@
 #include "timer.h"
 #include "irq.h"
 #include "scheduler.h"
-
-#define DEMO_THREADS_LOG 1
-
-static void demo_thread_a(void)
-{
-    int counter = 0;
-
-    while (counter < 4)
-    {
-        counter++;
-        if (DEMO_THREADS_LOG)
-        {
-            kprintf("Thread A iteration %d\n", counter);
-        }
-        timer_sleep_ms(250);
-    }
-
-    if (DEMO_THREADS_LOG)
-    {
-        kprintf("Thread A returning\n");
-    }
-}
-
-static void demo_thread_b(void)
-{
-    int counter = 0;
-
-    while (counter < 8)
-    {
-        counter++;
-        if (DEMO_THREADS_LOG)
-        {
-            kprintf("Thread B iteration %d\n", counter);
-        }
-        timer_sleep_ms(250);
-    }
-
-    if (DEMO_THREADS_LOG)
-    {
-        kprintf("Thread B returning\n");
-    }
-}
+#include "thread_demo.h"
 
 void kernel_main(void)
 {
@@ -74,8 +33,7 @@ void kernel_main(void)
     kprintf("Timer Tick End: 0x%x\n", (unsigned int)timer_get_ticks());
     kprintf("Timer test complete.\n");
 
-    scheduler_create_kernel_thread("thread-a", demo_thread_a);
-    scheduler_create_kernel_thread("thread-b", demo_thread_b);
+    thread_demo_init();
     scheduler_dump_tasks();
 
     timer_start_periodic(100);

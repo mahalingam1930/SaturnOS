@@ -11,7 +11,8 @@ CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only \
     -Iarch/arm64 \
 	-Ikernel/panic \
 	-Ikernel/exception \
-	-Ikernel/sched
+	-Ikernel/sched \
+	-Ikernel/demo
 
 BUILD = build
 
@@ -53,6 +54,9 @@ $(BUILD)/irq.o: arch/arm64/irq.c | $(BUILD)
 $(BUILD)/scheduler.o: kernel/sched/scheduler.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/thread_demo.o: kernel/demo/thread_demo.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -71,6 +75,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/timer.o \
 	$(BUILD)/irq.o \
 	$(BUILD)/scheduler.o \
+	$(BUILD)/thread_demo.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^

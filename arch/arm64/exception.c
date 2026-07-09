@@ -1,5 +1,6 @@
 #include "exception.h"
-#include "kprintf.h"
+#include "decoder.h"
+#include "panic.h"
 
 void exception_init(void)
 {
@@ -30,17 +31,13 @@ void exception_handler(void)
     __asm__ volatile("mrs %0, FAR_EL1" : "=r"(far));
     __asm__ volatile("mrs %0, SPSR_EL1" : "=r"(spsr));
 
-    kprintf("\n");
-    kprintf("================================\n");
-    kprintf(" SaturnOS Exception Handler\n");
-    kprintf("================================\n");
+    const char *reason = decode_exception_class(esr);
 
-    kprintf("ESR_EL1 : 0x%x\n", (unsigned int)esr);
-    kprintf("ELR_EL1 : 0x%x\n", (unsigned int)elr);
-    kprintf("FAR_EL1 : 0x%x\n", (unsigned int)far);
-    kprintf("SPSR_EL1: 0x%x\n", (unsigned int)spsr);
-
-    while (1)
-    {
-    }
+    kernel_panic(
+        reason,
+        esr,
+        elr,
+        far,
+        spsr
+    );
 }

@@ -1,13 +1,14 @@
 #include "console.h"
+#include "kprintf.h"
 
 void kernel_main(void)
 {
     console_init();
 
-    console_write("================================\n");
-    console_write("      Welcome to SaturnOS\n");
-    console_write("           Version 0.1\n");
-    console_write("================================\n");
+    kprintf("================================\n");
+    kprintf("Welcome to %s\n", "SaturnOS");
+    kprintf("Version %s\n", "0.2");
+    kprintf("================================\n");
 
     while (1)
     {

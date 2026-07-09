@@ -25,6 +25,9 @@ $(BUILD)/kernel.o: kernel/src/kernel.c | $(BUILD)
 $(BUILD)/console.o: kernel/console/console.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/kprintf.o: kernel/console/kprintf.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/uart.o: drivers/uart/uart.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -32,6 +35,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/boot.o \
 	$(BUILD)/kernel.o \
 	$(BUILD)/console.o \
+	$(BUILD)/kprintf.o \
 	$(BUILD)/uart.o
 	$(LD) -T boot/linker.ld -o $@ $^
 

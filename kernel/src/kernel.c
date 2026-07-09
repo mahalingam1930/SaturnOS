@@ -5,6 +5,8 @@
 #include "irq.h"
 #include "scheduler.h"
 
+#define DEMO_THREADS_LOG 1
+
 static void demo_thread_a(void)
 {
     int counter = 0;
@@ -12,11 +14,17 @@ static void demo_thread_a(void)
     while (counter < 4)
     {
         counter++;
-        kprintf("Thread A iteration %d\n", counter);
+        if (DEMO_THREADS_LOG)
+        {
+            kprintf("Thread A iteration %d\n", counter);
+        }
         timer_sleep_ms(250);
     }
 
-    kprintf("Thread A returning\n");
+    if (DEMO_THREADS_LOG)
+    {
+        kprintf("Thread A returning\n");
+    }
 }
 
 static void demo_thread_b(void)
@@ -26,11 +34,17 @@ static void demo_thread_b(void)
     while (counter < 8)
     {
         counter++;
-        kprintf("Thread B iteration %d\n", counter);
+        if (DEMO_THREADS_LOG)
+        {
+            kprintf("Thread B iteration %d\n", counter);
+        }
         timer_sleep_ms(250);
     }
 
-    kprintf("Thread B returning\n");
+    if (DEMO_THREADS_LOG)
+    {
+        kprintf("Thread B returning\n");
+    }
 }
 
 void kernel_main(void)

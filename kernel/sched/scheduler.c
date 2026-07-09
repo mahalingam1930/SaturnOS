@@ -2,9 +2,28 @@
 #include "irq.h"
 #include "kprintf.h"
 
+#define SCHED_DEBUG 0
+
 static void idle_task(void);
 static void scheduler_exit_task(int task_id);
 static void thread_trampoline(void);
+
+static const char *scheduler_state_name(enum task_state state)
+{
+    switch (state)
+    {
+        case TASK_UNUSED:
+            return "unused";
+        case TASK_READY:
+            return "ready";
+        case TASK_RUNNING:
+            return "running";
+        case TASK_ZOMBIE:
+            return "zombie";
+        default:
+            return "unknown";
+    }
+}
 
 static void scheduler_clear_context(struct cpu_context *context)
 {
@@ -133,11 +152,14 @@ void scheduler_tick(void)
 
     tasks[current_task].state = TASK_RUNNING;
 
-    kprintf("Scheduler tick %d: task %d -> task %d (%s)\n",
-            (int)scheduler_ticks,
-            tasks[previous_task].pid,
-            tasks[current_task].pid,
-            tasks[current_task].name);
+    if (SCHED_DEBUG)
+    {
+        kprintf("Scheduler tick %d: task %d -> task %d (%s)\n",
+                (int)scheduler_ticks,
+                tasks[previous_task].pid,
+                tasks[current_task].pid,
+                tasks[current_task].name);
+    }
 }
 
 void scheduler_yield(void)
@@ -175,10 +197,13 @@ void scheduler_yield(void)
     tasks[next_task].state = TASK_RUNNING;
     current_task = next_task;
 
-    kprintf("Switching task %d -> task %d (%s)\n",
-            tasks[previous_task].pid,
-            tasks[next_task].pid,
-            tasks[next_task].name);
+    if (SCHED_DEBUG)
+    {
+        kprintf("Switching task %d -> task %d (%s)\n",
+                tasks[previous_task].pid,
+                tasks[next_task].pid,
+                tasks[next_task].name);
+    }
 
     cpu_switch_to(&tasks[previous_task].context, &tasks[next_task].context);
 }
@@ -211,11 +236,14 @@ void scheduler_preempt(void)
     tasks[next_task].state = TASK_RUNNING;
     current_task = next_task;
 
-    kprintf("Preempt tick %d: task %d -> task %d (%s)\n",
-            (int)scheduler_ticks,
-            tasks[previous_task].pid,
-            tasks[next_task].pid,
-            tasks[next_task].name);
+    if (SCHED_DEBUG)
+    {
+        kprintf("Preempt tick %d: task %d -> task %d (%s)\n",
+                (int)scheduler_ticks,
+                tasks[previous_task].pid,
+                tasks[next_task].pid,
+                tasks[next_task].name);
+    }
 
     cpu_switch_to(&tasks[previous_task].context, &tasks[next_task].context);
 }
@@ -259,13 +287,17 @@ void scheduler_dump_tasks(void)
 {
     int i;
 
+    kprintf("Scheduler state: ticks=%d tasks=%d current=%d\n",
+            (int)scheduler_ticks,
+            task_count,
+            current_task);
+
     for (i = 0; i < task_count; i++)
     {
-        kprintf("Task %d: %s state=%d context_slot=%d\n",
+        kprintf("  task %d: %s state=%s\n",
                 tasks[i].pid,
                 tasks[i].name,
-                tasks[i].state,
-                i);
+                scheduler_state_name(tasks[i].state));
     }
 }
 
@@ -289,7 +321,6 @@ static void idle_task(void)
     while (1)
     {
         __asm__ volatile("wfi");
-        kprintf("Idle task woke\n");
     }
 }
 

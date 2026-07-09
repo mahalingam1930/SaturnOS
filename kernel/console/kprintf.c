@@ -23,6 +23,13 @@ void kprintf(const char *fmt, ...)
 
                 console_write(str);
             }
+            else if (*fmt == 'c')
+            {
+                char ch = (char)va_arg(args, int);
+
+                char str[2] = { ch, '\0' };
+                console_write(str);
+            }
             else
             {
                 console_write("%");

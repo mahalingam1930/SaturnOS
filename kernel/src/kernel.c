@@ -8,6 +8,7 @@ void kernel_main(void)
     kprintf("================================\n");
     kprintf("Welcome to %s\n", "SaturnOS");
     kprintf("Version %s\n", "0.2");
+    kprintf("Drive: %c\n", 'A');
     kprintf("================================\n");
 
     while (1)

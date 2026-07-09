@@ -12,6 +12,8 @@ void kernel_main(void)
     kprintf("CPU: %d\n", 0);
     kprintf("Memory: %d MB\n", 512);
     kprintf("Temperature: %d C\n", -5);
+    kprintf("UART Base: 0x%x\n", 0x09000000);
+    kprintf("Magic Number: 0x%x\n", 0xDEADBEEF);
     kprintf("================================\n");
 
     while (1)

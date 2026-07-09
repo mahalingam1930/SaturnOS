@@ -3,6 +3,30 @@
 
 #include <stdarg.h>
 
+static void print_hex(unsigned int value)
+{
+    char buffer[9];
+    int i;
+
+    if (value == 0)
+    {
+        console_write("0");
+        return;
+    }
+
+    for (i = 28; i >= 0; i -= 4)
+    {
+        int nibble = (value >> i) & 0xF;
+        buffer[(28 - i) / 4] = nibble < 10 ? '0' + nibble : 'a' + nibble - 10;
+    }
+    buffer[8] = '\0';
+
+    /* skip leading zeros */
+    char *p = buffer;
+    while (*p == '0' && *(p + 1) != '\0') p++;
+    console_write(p);
+}
+
 static void print_decimal(int value)
 {
     char buffer[12];
@@ -64,6 +88,11 @@ void kprintf(const char *fmt, ...)
             {
                 int value = va_arg(args, int);
                 print_decimal(value);
+            }
+            else if (*fmt == 'x')
+            {
+                unsigned int value = va_arg(args, unsigned int);
+                print_hex(value);
             }
             else
             {

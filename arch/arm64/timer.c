@@ -1,5 +1,5 @@
 #include "timer.h"
-#include "kprintf.h"
+#include "scheduler.h"
 
 static unsigned long timer_frequency;
 static unsigned long timer_interval_ticks;
@@ -54,7 +54,7 @@ void timer_handle_irq(void)
 {
     timer_irq_ticks++;
 
-    kprintf("Timer IRQ tick: %d\n", (int)timer_irq_ticks);
+    scheduler_tick();
 
     __asm__ volatile("msr CNTP_TVAL_EL0, %0" : : "r"(timer_interval_ticks));
 }

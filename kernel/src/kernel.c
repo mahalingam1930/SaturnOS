@@ -3,6 +3,7 @@
 #include "exception.h"
 #include "timer.h"
 #include "irq.h"
+#include "scheduler.h"
 
 void kernel_main(void)
 {
@@ -11,6 +12,7 @@ void kernel_main(void)
     exception_init();
     timer_init();
     irq_init();
+    scheduler_init();
 
     kprintf("================================\n");
     kprintf("Welcome to %s\n", "SaturnOS");
@@ -29,7 +31,7 @@ void kernel_main(void)
     timer_sleep_ms(100);
     kprintf("Timer Tick End: 0x%x\n", (unsigned int)timer_get_ticks());
     kprintf("Timer test complete.\n");
-    kprintf("Starting timer IRQ test...\n");
+    kprintf("Starting scheduler timer...\n");
 
     timer_start_periodic(1000);
     irq_enable();

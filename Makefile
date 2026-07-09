@@ -40,6 +40,9 @@ $(BUILD)/exception.o: arch/arm64/exception.c | $(BUILD)
 $(BUILD)/exception_asm.o: arch/arm64/exception.s | $(BUILD)
 	$(CC) -c $< -o $@
 
+$(BUILD)/timer.o: arch/arm64/timer.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -54,6 +57,7 @@ $(BUILD)/saturnos.elf: \
     $(BUILD)/uart.o \
     $(BUILD)/exception.o \
     $(BUILD)/exception_asm.o \
+	$(BUILD)/timer.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^

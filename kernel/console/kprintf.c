@@ -6,7 +6,7 @@
 static void print_hex(unsigned int value)
 {
     char buffer[9];
-    int i;
+    unsigned int i;
     char *p;
 
     if (value == 0)
@@ -15,10 +15,10 @@ static void print_hex(unsigned int value)
         return;
     }
 
-    for (i = 28; i >= 0; i -= 4)
+    for (i = 0; i < 8; i++)
     {
-        int nibble = (value >> i) & 0xF;
-        buffer[(28 - i) / 4] = nibble < 10 ? '0' + nibble : 'a' + nibble - 10;
+        unsigned int nibble = (value >> (28 - i * 4)) & 0xF;
+        buffer[i] = nibble < 10 ? '0' + nibble : 'a' + nibble - 10;
     }
     buffer[8] = '\0';
 

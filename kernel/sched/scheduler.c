@@ -3,8 +3,10 @@
 #include "kprintf.h"
 #include "timer.h"
 
+static void idle_task(void);
 static void thread_a(void);
 static void thread_b(void);
+static void scheduler_exit_task(int task_id);
 static void thread_trampoline(void);
 
 static void scheduler_clear_context(struct cpu_context *context)
@@ -26,6 +28,7 @@ static void scheduler_clear_context(struct cpu_context *context)
 
 static struct task tasks[SCHED_MAX_TASKS];
 static unsigned char task_stacks[SCHED_MAX_TASKS][SCHED_STACK_SIZE] __attribute__((aligned(16)));
+static struct cpu_context bootstrap_context;
 static int current_task;
 static int task_count;
 static int threads_started;
@@ -40,15 +43,15 @@ static int scheduler_next_runnable_task(void)
     {
         candidate = (current_task + i) % task_count;
 
-        if (threads_started && candidate == 0)
-        {
-            continue;
-        }
-
-        if (tasks[candidate].state != TASK_ZOMBIE)
+        if (candidate != 0 && tasks[candidate].state != TASK_ZOMBIE)
         {
             return candidate;
         }
+    }
+
+    if (tasks[0].state != TASK_ZOMBIE)
+    {
+        return 0;
     }
 
     return current_task;
@@ -75,7 +78,15 @@ static void scheduler_add_task(int pid, const char *name, void (*entry)(void))
         stack_top &= ~((unsigned long)0xF);
 
         tasks[task_count].context.sp = stack_top;
-        tasks[task_count].context.lr = (unsigned long)thread_trampoline;
+
+        if (pid == 0)
+        {
+            tasks[task_count].context.lr = (unsigned long)entry;
+        }
+        else
+        {
+            tasks[task_count].context.lr = (unsigned long)thread_trampoline;
+        }
     }
 
     task_count++;
@@ -87,12 +98,11 @@ void scheduler_init(void)
     current_task = 0;
     threads_started = 0;
     scheduler_ticks = 0;
+    scheduler_clear_context(&bootstrap_context);
 
-    scheduler_add_task(0, "kernel", 0);
+    scheduler_add_task(0, "idle", idle_task);
     scheduler_add_task(1, "thread-a", thread_a);
     scheduler_add_task(2, "thread-b", thread_b);
-
-    tasks[current_task].state = TASK_RUNNING;
 
     kprintf("Scheduler initialized with %d tasks\n", task_count);
     scheduler_dump_tasks();
@@ -198,11 +208,17 @@ void scheduler_preempt(void)
 
 void scheduler_exit(void)
 {
-    kprintf("Task %d (%s) exited\n",
-            tasks[current_task].pid,
-            tasks[current_task].name);
+    scheduler_exit_task(current_task);
+}
 
-    tasks[current_task].state = TASK_ZOMBIE;
+static void scheduler_exit_task(int task_id)
+{
+    kprintf("Task %d (%s) exited\n",
+            tasks[task_id].pid,
+            tasks[task_id].name);
+
+    tasks[task_id].state = TASK_ZOMBIE;
+    current_task = task_id;
     scheduler_yield();
 
     while (1)
@@ -214,7 +230,15 @@ void scheduler_start_threads(void)
 {
     kprintf("Starting preemptive kernel threads...\n");
     threads_started = 1;
-    scheduler_yield();
+
+    current_task = 0;
+    tasks[current_task].state = TASK_RUNNING;
+
+    cpu_switch_to(&bootstrap_context, &tasks[current_task].context);
+
+    while (1)
+    {
+    }
 }
 
 void scheduler_dump_tasks(void)
@@ -233,7 +257,8 @@ void scheduler_dump_tasks(void)
 
 static void thread_trampoline(void)
 {
-    void (*entry)(void) = tasks[current_task].entry;
+    int task_id = current_task;
+    void (*entry)(void) = tasks[task_id].entry;
 
     irq_enable();
 
@@ -242,7 +267,16 @@ static void thread_trampoline(void)
         entry();
     }
 
-    scheduler_exit();
+    scheduler_exit_task(task_id);
+}
+
+static void idle_task(void)
+{
+    while (1)
+    {
+        __asm__ volatile("wfi");
+        kprintf("Idle task woke\n");
+    }
 }
 
 static void thread_a(void)
@@ -263,12 +297,14 @@ static void thread_b(void)
 {
     int counter = 0;
 
-    while (1)
+    while (counter < 8)
     {
         counter++;
         kprintf("Thread B iteration %d\n", counter);
         timer_sleep_ms(250);
     }
+
+    kprintf("Thread B returning\n");
 }
 
 const struct task *scheduler_current_task(void)

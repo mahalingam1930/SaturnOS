@@ -4,7 +4,7 @@ CC = $(CROSS)gcc
 AS = $(CROSS)as
 LD = $(CROSS)ld
 
-CFLAGS = -ffreestanding -O2 -Wall -Wextra \
+CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only \
     -Ikernel/include \
     -Ikernel/console \
     -Idrivers/uart \
@@ -41,6 +41,9 @@ $(BUILD)/exception.o: arch/arm64/exception.c | $(BUILD)
 $(BUILD)/exception_asm.o: arch/arm64/exception.s | $(BUILD)
 	$(CC) -c $< -o $@
 
+$(BUILD)/context_asm.o: arch/arm64/context.S | $(BUILD)
+	$(CC) -c $< -o $@
+
 $(BUILD)/timer.o: arch/arm64/timer.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -64,6 +67,7 @@ $(BUILD)/saturnos.elf: \
     $(BUILD)/uart.o \
     $(BUILD)/exception.o \
     $(BUILD)/exception_asm.o \
+	$(BUILD)/context_asm.o \
 	$(BUILD)/timer.o \
 	$(BUILD)/irq.o \
 	$(BUILD)/scheduler.o \

@@ -8,7 +8,8 @@ CFLAGS = -ffreestanding -O2 -Wall -Wextra \
     -Ikernel/include \
     -Ikernel/console \
     -Idrivers/uart \
-    -Iarch/arm64
+    -Iarch/arm64 \
+	-Ikernel/panic
 
 BUILD = build
 
@@ -35,8 +36,11 @@ $(BUILD)/uart.o: drivers/uart/uart.c | $(BUILD)
 $(BUILD)/exception.o: arch/arm64/exception.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/exception_asm.o: arch/arm64/exception.S | $(BUILD)
+$(BUILD)/exception_asm.o: arch/arm64/exception.s | $(BUILD)
 	$(CC) -c $< -o $@
+
+$(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/saturnos.elf: \
     $(BUILD)/boot.o \
@@ -45,7 +49,8 @@ $(BUILD)/saturnos.elf: \
     $(BUILD)/kprintf.o \
     $(BUILD)/uart.o \
     $(BUILD)/exception.o \
-    $(BUILD)/exception_asm.o
+    $(BUILD)/exception_asm.o \
+	$(BUILD)/panic.o 
 	$(LD) -T boot/linker.ld -o $@ $^
 
 clean:

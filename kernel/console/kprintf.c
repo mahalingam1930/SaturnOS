@@ -7,10 +7,11 @@ static void print_hex(unsigned int value)
 {
     char buffer[9];
     int i;
+    char *p;
 
     if (value == 0)
     {
-        console_write("0");
+        console_putc('0');
         return;
     }
 
@@ -21,8 +22,7 @@ static void print_hex(unsigned int value)
     }
     buffer[8] = '\0';
 
-    /* skip leading zeros */
-    char *p = buffer;
+    p = buffer;
     while (*p == '0' && *(p + 1) != '\0') p++;
     console_write(p);
 }
@@ -34,13 +34,13 @@ static void print_decimal(int value)
 
     if (value == 0)
     {
-        console_write("0");
+        console_putc('0');
         return;
     }
 
     if (value < 0)
     {
-        console_write("-");
+        console_putc('-');
         value = -value;
     }
 
@@ -51,10 +51,7 @@ static void print_decimal(int value)
     }
 
     while (i > 0)
-    {
-        char c[2] = { buffer[--i], '\0' };
-        console_write(c);
-    }
+        console_putc(buffer[--i]);
 }
 
 void kprintf(const char *fmt, ...)
@@ -79,33 +76,25 @@ void kprintf(const char *fmt, ...)
             }
             else if (*fmt == 'c')
             {
-                char ch = (char)va_arg(args, int);
-
-                char str[2] = { ch, '\0' };
-                console_write(str);
+                console_putc((char)va_arg(args, int));
             }
             else if (*fmt == 'd')
             {
-                int value = va_arg(args, int);
-                print_decimal(value);
+                print_decimal(va_arg(args, int));
             }
             else if (*fmt == 'x')
             {
-                unsigned int value = va_arg(args, unsigned int);
-                print_hex(value);
+                print_hex(va_arg(args, unsigned int));
             }
             else
             {
-                console_write("%");
-
-                char c[2] = { *fmt, '\0' };
-                console_write(c);
+                console_putc('%');
+                console_putc(*fmt);
             }
         }
         else
         {
-            char c[2] = { *fmt, '\0' };
-            console_write(c);
+            console_putc(*fmt);
         }
 
         fmt++;

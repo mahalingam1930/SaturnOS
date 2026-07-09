@@ -4,12 +4,12 @@ project(SaturnOS C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_library(kernel STATIC
-    kernel/kernel.c
+add_executable(saturnos
+    kernel/src/kernel.c
 )
 
-target_include_directories(kernel PUBLIC
-    kernel
+target_include_directories(saturnos PRIVATE
+    kernel/include
 )
 
 message(STATUS "Building SaturnOS")

@@ -1,2 +1,0 @@
-/usr/bin/ar qc libkernel.a CMakeFiles/kernel.dir/kernel/kernel.c.o
-/usr/bin/ranlib libkernel.a

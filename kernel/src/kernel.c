@@ -5,6 +5,7 @@
 #include "irq.h"
 #include "scheduler.h"
 #include "thread_demo.h"
+#include "version.h"
 
 void kernel_main(void)
 {
@@ -16,8 +17,9 @@ void kernel_main(void)
     scheduler_init();
 
     kprintf("================================\n");
-    kprintf("Welcome to %s\n", "SaturnOS");
-    kprintf("Version %s\n", "0.2");
+    kprintf("Welcome to %s\n", SATURNOS_NAME);
+    kprintf("Version %s\n", SATURNOS_VERSION);
+    kprintf("Codename %s\n", SATURNOS_CODENAME);
     kprintf("Drive: %c\n", 'A');
     kprintf("CPU: %d\n", 0);
     kprintf("Memory: %d MB\n", 512);

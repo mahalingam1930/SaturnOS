@@ -24,6 +24,7 @@ struct task
 };
 
 void scheduler_init(void);
+int scheduler_create_kernel_thread(const char *name, void (*entry)(void));
 void scheduler_tick(void);
 void scheduler_yield(void);
 void scheduler_preempt(void);

@@ -1,11 +1,8 @@
 #include "scheduler.h"
 #include "irq.h"
 #include "kprintf.h"
-#include "timer.h"
 
 static void idle_task(void);
-static void thread_a(void);
-static void thread_b(void);
 static void scheduler_exit_task(int task_id);
 static void thread_trampoline(void);
 
@@ -57,14 +54,17 @@ static int scheduler_next_runnable_task(void)
     return current_task;
 }
 
-static void scheduler_add_task(int pid, const char *name, void (*entry)(void))
+static int scheduler_add_task(const char *name, void (*entry)(void))
 {
     unsigned long stack_top;
+    int pid;
 
     if (task_count >= SCHED_MAX_TASKS)
     {
-        return;
+        return -1;
     }
+
+    pid = task_count;
 
     tasks[task_count].pid = pid;
     tasks[task_count].name = name;
@@ -90,6 +90,8 @@ static void scheduler_add_task(int pid, const char *name, void (*entry)(void))
     }
 
     task_count++;
+
+    return pid;
 }
 
 void scheduler_init(void)
@@ -100,12 +102,24 @@ void scheduler_init(void)
     scheduler_ticks = 0;
     scheduler_clear_context(&bootstrap_context);
 
-    scheduler_add_task(0, "idle", idle_task);
-    scheduler_add_task(1, "thread-a", thread_a);
-    scheduler_add_task(2, "thread-b", thread_b);
+    scheduler_add_task("idle", idle_task);
 
     kprintf("Scheduler initialized with %d tasks\n", task_count);
     scheduler_dump_tasks();
+}
+
+int scheduler_create_kernel_thread(const char *name, void (*entry)(void))
+{
+    int pid = scheduler_add_task(name, entry);
+
+    if (pid < 0)
+    {
+        kprintf("Failed to create task: %s\n", name);
+        return -1;
+    }
+
+    kprintf("Created kernel thread %d: %s\n", pid, name);
+    return pid;
 }
 
 void scheduler_tick(void)
@@ -277,34 +291,6 @@ static void idle_task(void)
         __asm__ volatile("wfi");
         kprintf("Idle task woke\n");
     }
-}
-
-static void thread_a(void)
-{
-    int counter = 0;
-
-    while (counter < 4)
-    {
-        counter++;
-        kprintf("Thread A iteration %d\n", counter);
-        timer_sleep_ms(250);
-    }
-
-    kprintf("Thread A returning\n");
-}
-
-static void thread_b(void)
-{
-    int counter = 0;
-
-    while (counter < 8)
-    {
-        counter++;
-        kprintf("Thread B iteration %d\n", counter);
-        timer_sleep_ms(250);
-    }
-
-    kprintf("Thread B returning\n");
 }
 
 const struct task *scheduler_current_task(void)

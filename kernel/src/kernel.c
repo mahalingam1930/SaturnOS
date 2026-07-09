@@ -5,6 +5,34 @@
 #include "irq.h"
 #include "scheduler.h"
 
+static void demo_thread_a(void)
+{
+    int counter = 0;
+
+    while (counter < 4)
+    {
+        counter++;
+        kprintf("Thread A iteration %d\n", counter);
+        timer_sleep_ms(250);
+    }
+
+    kprintf("Thread A returning\n");
+}
+
+static void demo_thread_b(void)
+{
+    int counter = 0;
+
+    while (counter < 8)
+    {
+        counter++;
+        kprintf("Thread B iteration %d\n", counter);
+        timer_sleep_ms(250);
+    }
+
+    kprintf("Thread B returning\n");
+}
+
 void kernel_main(void)
 {
     uart_init();
@@ -31,6 +59,10 @@ void kernel_main(void)
     timer_sleep_ms(100);
     kprintf("Timer Tick End: 0x%x\n", (unsigned int)timer_get_ticks());
     kprintf("Timer test complete.\n");
+
+    scheduler_create_kernel_thread("thread-a", demo_thread_a);
+    scheduler_create_kernel_thread("thread-b", demo_thread_b);
+    scheduler_dump_tasks();
 
     timer_start_periodic(100);
     irq_enable();

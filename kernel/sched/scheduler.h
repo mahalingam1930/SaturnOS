@@ -10,7 +10,8 @@ enum task_state
 {
     TASK_UNUSED = 0,
     TASK_READY,
-    TASK_RUNNING
+    TASK_RUNNING,
+    TASK_ZOMBIE
 };
 
 struct task
@@ -18,12 +19,14 @@ struct task
     int pid;
     const char *name;
     enum task_state state;
+    void (*entry)(void);
     struct cpu_context context;
 };
 
 void scheduler_init(void);
 void scheduler_tick(void);
 void scheduler_yield(void);
+void scheduler_exit(void);
 void scheduler_start_threads(void);
 void scheduler_dump_tasks(void);
 const struct task *scheduler_current_task(void);

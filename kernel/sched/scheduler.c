@@ -4,6 +4,7 @@
 
 static void thread_a(void);
 static void thread_b(void);
+static void thread_trampoline(void);
 
 static void scheduler_clear_context(struct cpu_context *context)
 {
@@ -29,6 +30,29 @@ static int task_count;
 static int threads_started;
 static unsigned long scheduler_ticks;
 
+static int scheduler_next_runnable_task(void)
+{
+    int i;
+    int candidate;
+
+    for (i = 1; i <= task_count; i++)
+    {
+        candidate = (current_task + i) % task_count;
+
+        if (threads_started && candidate == 0)
+        {
+            continue;
+        }
+
+        if (tasks[candidate].state != TASK_ZOMBIE)
+        {
+            return candidate;
+        }
+    }
+
+    return current_task;
+}
+
 static void scheduler_add_task(int pid, const char *name, void (*entry)(void))
 {
     unsigned long stack_top;
@@ -41,6 +65,7 @@ static void scheduler_add_task(int pid, const char *name, void (*entry)(void))
     tasks[task_count].pid = pid;
     tasks[task_count].name = name;
     tasks[task_count].state = TASK_READY;
+    tasks[task_count].entry = entry;
     scheduler_clear_context(&tasks[task_count].context);
 
     if (entry)
@@ -49,7 +74,7 @@ static void scheduler_add_task(int pid, const char *name, void (*entry)(void))
         stack_top &= ~((unsigned long)0xF);
 
         tasks[task_count].context.sp = stack_top;
-        tasks[task_count].context.lr = (unsigned long)entry;
+        tasks[task_count].context.lr = (unsigned long)thread_trampoline;
     }
 
     task_count++;
@@ -79,7 +104,8 @@ void scheduler_tick(void)
     scheduler_ticks++;
 
     tasks[current_task].state = TASK_READY;
-    current_task = (current_task + 1) % task_count;
+    current_task = scheduler_next_runnable_task();
+
     tasks[current_task].state = TASK_RUNNING;
 
     kprintf("Scheduler tick %d: task %d -> task %d (%s)\n",
@@ -100,14 +126,27 @@ void scheduler_yield(void)
     }
 
     previous_task = current_task;
-    next_task = (current_task + 1) % task_count;
+    next_task = scheduler_next_runnable_task();
 
-    if (threads_started && next_task == 0)
+    if (next_task == previous_task)
     {
-        next_task = 1;
+        if (tasks[previous_task].state != TASK_ZOMBIE)
+        {
+            tasks[previous_task].state = TASK_RUNNING;
+            return;
+        }
+
+        kprintf("No runnable task remains\n");
+        while (1)
+        {
+        }
     }
 
-    tasks[previous_task].state = TASK_READY;
+    if (tasks[previous_task].state == TASK_RUNNING)
+    {
+        tasks[previous_task].state = TASK_READY;
+    }
+
     tasks[next_task].state = TASK_RUNNING;
     current_task = next_task;
 
@@ -117,6 +156,20 @@ void scheduler_yield(void)
             tasks[next_task].name);
 
     cpu_switch_to(&tasks[previous_task].context, &tasks[next_task].context);
+}
+
+void scheduler_exit(void)
+{
+    kprintf("Task %d (%s) exited\n",
+            tasks[current_task].pid,
+            tasks[current_task].name);
+
+    tasks[current_task].state = TASK_ZOMBIE;
+    scheduler_yield();
+
+    while (1)
+    {
+    }
 }
 
 void scheduler_start_threads(void)
@@ -140,17 +193,31 @@ void scheduler_dump_tasks(void)
     }
 }
 
+static void thread_trampoline(void)
+{
+    void (*entry)(void) = tasks[current_task].entry;
+
+    if (entry)
+    {
+        entry();
+    }
+
+    scheduler_exit();
+}
+
 static void thread_a(void)
 {
     int counter = 0;
 
-    while (1)
+    while (counter < 4)
     {
         counter++;
         kprintf("Thread A iteration %d\n", counter);
         timer_sleep_ms(250);
         scheduler_yield();
     }
+
+    kprintf("Thread A returning\n");
 }
 
 static void thread_b(void)

@@ -1,6 +1,9 @@
 #include "timer.h"
+#include "kprintf.h"
 
 static unsigned long timer_frequency;
+static unsigned long timer_interval_ticks;
+static unsigned long timer_irq_ticks;
 
 void timer_init(void)
 {
@@ -31,4 +34,27 @@ void timer_sleep_ms(unsigned long ms)
     while ((timer_get_ticks() - start) < delay_ticks)
     {
     }
+}
+
+unsigned long timer_get_irq_ticks(void)
+{
+    return timer_irq_ticks;
+}
+
+void timer_start_periodic(unsigned long interval_ms)
+{
+    timer_interval_ticks = (timer_frequency / 1000) * interval_ms;
+    timer_irq_ticks = 0;
+
+    __asm__ volatile("msr CNTP_TVAL_EL0, %0" : : "r"(timer_interval_ticks));
+    __asm__ volatile("msr CNTP_CTL_EL0, %0" : : "r"(1UL));
+}
+
+void timer_handle_irq(void)
+{
+    timer_irq_ticks++;
+
+    kprintf("Timer IRQ tick: %d\n", (int)timer_irq_ticks);
+
+    __asm__ volatile("msr CNTP_TVAL_EL0, %0" : : "r"(timer_interval_ticks));
 }

@@ -6,6 +6,7 @@
 #include "scheduler.h"
 #include "thread_demo.h"
 #include "version.h"
+#include "framebuffer.h"
 
 void kernel_main(void)
 {
@@ -15,6 +16,11 @@ void kernel_main(void)
     timer_init();
     irq_init();
     scheduler_init();
+
+    if (framebuffer_init())
+    {
+        framebuffer_draw_test_pattern();
+    }
 
     kprintf("================================\n");
     kprintf("%s %s (%s)\n",
@@ -26,6 +32,14 @@ void kernel_main(void)
     kprintf("IRQ    : GICv2 initialized\n");
     kprintf("Timer  : %d Hz\n", (int)timer_get_frequency());
     kprintf("Sched  : preemptive kernel threads\n");
+    if (framebuffer_is_ready())
+    {
+        kprintf("Video  : ramfb 640x480\n");
+    }
+    else
+    {
+        kprintf("Video  : UART only (fb status=%d)\n", framebuffer_status());
+    }
     kprintf("================================\n");
 
     kprintf("Timer sanity: start=0x%x\n", (unsigned int)timer_get_ticks());

@@ -11,8 +11,9 @@ CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only \
     -Iarch/arm64 \
 	-Ikernel/panic \
 	-Ikernel/exception \
-	-Ikernel/sched \
-	-Ikernel/demo
+    -Ikernel/sched \
+	-Ikernel/demo \
+	-Idrivers/video
 
 BUILD = build
 
@@ -34,6 +35,9 @@ $(BUILD)/kprintf.o: kernel/console/kprintf.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/uart.o: drivers/uart/uart.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/framebuffer.o: drivers/video/framebuffer.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/exception.o: arch/arm64/exception.c | $(BUILD)
@@ -69,6 +73,7 @@ $(BUILD)/saturnos.elf: \
     $(BUILD)/console.o \
     $(BUILD)/kprintf.o \
     $(BUILD)/uart.o \
+	$(BUILD)/framebuffer.o \
     $(BUILD)/exception.o \
     $(BUILD)/exception_asm.o \
 	$(BUILD)/context_asm.o \

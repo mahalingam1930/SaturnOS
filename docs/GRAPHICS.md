@@ -12,16 +12,14 @@ For a graphical QEMU window with the UART console attached to the window, run:
 ./scripts/run-gui.sh
 ```
 
-At this stage, the QEMU window is a graphical serial console. SaturnOS does not
-yet include a framebuffer or GPU driver, so kernel text is still produced
-through UART even though QEMU can display that serial output in a window.
+SaturnOS also has an early QEMU `ramfb` framebuffer path. When available, the
+kernel configures a 640x480 XRGB8888 framebuffer and draws a simple pixel test
+pattern before starting the scheduler.
 
 ## Next Milestone
 
 The next graphics milestone is a framebuffer console:
 
-- discover or configure a QEMU-visible framebuffer
-- map the framebuffer into the kernel
-- draw pixels and clear the screen
+- keep the QEMU-visible framebuffer stable
 - add a tiny bitmap font
 - route console text to both UART and framebuffer

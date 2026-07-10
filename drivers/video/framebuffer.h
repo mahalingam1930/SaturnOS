@@ -16,6 +16,18 @@ void framebuffer_fill_rect(unsigned int x,
                            unsigned int width,
                            unsigned int height,
                            uint32_t color);
+void framebuffer_draw_char(unsigned int x,
+                           unsigned int y,
+                           char c,
+                           uint32_t foreground,
+                           uint32_t background,
+                           unsigned int scale);
+void framebuffer_write_at(unsigned int x,
+                          unsigned int y,
+                          const char *text,
+                          uint32_t foreground,
+                          uint32_t background,
+                          unsigned int scale);
 void framebuffer_draw_test_pattern(void);
 
 #endif

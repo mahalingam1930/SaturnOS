@@ -25,6 +25,7 @@
 #define FRAMEBUFFER_CONSOLE_FG 0x00f8f9faU
 #define FRAMEBUFFER_CONSOLE_BG 0x00101820U
 #define FRAMEBUFFER_CONSOLE_DIM 0x004ecdc4U
+#define FRAMEBUFFER_CONSOLE_CURSOR 0x00ffd166U
 
 struct fw_cfg_file
 {
@@ -56,6 +57,7 @@ static int framebuffer_ready;
 static int framebuffer_status_code;
 static unsigned int console_column;
 static unsigned int console_row;
+static int console_cursor_visible;
 
 static const uint8_t glyph_blank[7] = {0, 0, 0, 0, 0, 0, 0};
 
@@ -478,6 +480,59 @@ static unsigned int framebuffer_console_rows(void)
            framebuffer_console_cell_height();
 }
 
+static unsigned int framebuffer_console_x(void)
+{
+    return FRAMEBUFFER_CONSOLE_MARGIN_X +
+           (console_column * framebuffer_console_cell_width());
+}
+
+static unsigned int framebuffer_console_y(void)
+{
+    return FRAMEBUFFER_CONSOLE_MARGIN_Y +
+           (console_row * framebuffer_console_cell_height());
+}
+
+void framebuffer_console_hide_cursor(void)
+{
+    unsigned int cell_width = framebuffer_console_cell_width();
+    unsigned int cell_height = framebuffer_console_cell_height();
+
+    if (!framebuffer_ready || !console_cursor_visible)
+    {
+        return;
+    }
+
+    framebuffer_fill_rect(framebuffer_console_x(),
+                          framebuffer_console_y() + cell_height - 2,
+                          cell_width,
+                          2,
+                          FRAMEBUFFER_CONSOLE_BG);
+    console_cursor_visible = 0;
+}
+
+void framebuffer_console_show_cursor(void)
+{
+    unsigned int cell_width = framebuffer_console_cell_width();
+    unsigned int cell_height = framebuffer_console_cell_height();
+
+    if (!framebuffer_ready)
+    {
+        return;
+    }
+
+    if (console_column >= framebuffer_console_columns())
+    {
+        console_column = framebuffer_console_columns() - 1;
+    }
+
+    framebuffer_fill_rect(framebuffer_console_x(),
+                          framebuffer_console_y() + cell_height - 2,
+                          cell_width,
+                          2,
+                          FRAMEBUFFER_CONSOLE_CURSOR);
+    console_cursor_visible = 1;
+}
+
 static void framebuffer_console_scroll(void)
 {
     unsigned int cell_height = framebuffer_console_cell_height();
@@ -525,6 +580,8 @@ void framebuffer_console_init(void)
     framebuffer_fill_rect(0, 0, FRAMEBUFFER_WIDTH, 4, FRAMEBUFFER_CONSOLE_DIM);
     console_column = 0;
     console_row = 0;
+    console_cursor_visible = 0;
+    framebuffer_console_show_cursor();
 }
 
 void framebuffer_console_putc(char c)
@@ -537,15 +594,19 @@ void framebuffer_console_putc(char c)
         return;
     }
 
+    framebuffer_console_hide_cursor();
+
     if (c == '\r')
     {
         console_column = 0;
+        framebuffer_console_show_cursor();
         return;
     }
 
     if (c == '\n')
     {
         framebuffer_console_newline();
+        framebuffer_console_show_cursor();
         return;
     }
 
@@ -555,6 +616,7 @@ void framebuffer_console_putc(char c)
         {
             framebuffer_console_putc(' ');
         }
+        framebuffer_console_show_cursor();
         return;
     }
 
@@ -575,6 +637,7 @@ void framebuffer_console_putc(char c)
                           FRAMEBUFFER_CONSOLE_BG,
                           FRAMEBUFFER_CONSOLE_SCALE);
     console_column++;
+    framebuffer_console_show_cursor();
 }
 
 void framebuffer_console_write(const char *text)

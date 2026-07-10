@@ -13,7 +13,9 @@ CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only \
 	-Ikernel/exception \
     -Ikernel/sched \
 	-Ikernel/demo \
-	-Idrivers/video
+	-Ikernel/input \
+	-Idrivers/video \
+	-Idrivers/keyboard
 
 BUILD = build
 
@@ -35,6 +37,9 @@ $(BUILD)/kprintf.o: kernel/console/kprintf.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/uart.o: drivers/uart/uart.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/keyboard.o: drivers/keyboard/keyboard.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/framebuffer.o: drivers/video/framebuffer.c | $(BUILD)
@@ -61,6 +66,9 @@ $(BUILD)/scheduler.o: kernel/sched/scheduler.c | $(BUILD)
 $(BUILD)/thread_demo.o: kernel/demo/thread_demo.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/keyboard_input.o: kernel/input/keyboard_input.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -73,6 +81,7 @@ $(BUILD)/saturnos.elf: \
     $(BUILD)/console.o \
     $(BUILD)/kprintf.o \
     $(BUILD)/uart.o \
+	$(BUILD)/keyboard.o \
 	$(BUILD)/framebuffer.o \
     $(BUILD)/exception.o \
     $(BUILD)/exception_asm.o \
@@ -81,6 +90,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/irq.o \
 	$(BUILD)/scheduler.o \
 	$(BUILD)/thread_demo.o \
+	$(BUILD)/keyboard_input.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^

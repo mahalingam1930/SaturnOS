@@ -61,6 +61,12 @@ Target: ARM64 QEMU `virt`
 - Kernel console output mirrored to both UART and framebuffer
 - Basic framebuffer scrolling
 
+### Input
+
+- UART-backed keyboard input polling
+- Keyboard input kernel thread
+- Typed characters echoed through UART and framebuffer console
+
 ## Build
 
 ```sh
@@ -120,8 +126,8 @@ docs/              Architecture, roadmap, and graphics notes
 ## Next Milestones
 
 - Improve framebuffer console text wrapping and cursor behavior
-- Add keyboard input
 - Build an interactive kernel shell
+- Add line editing for keyboard input
 - Begin memory management foundations
 - Expand scheduler robustness and task management
 

@@ -7,6 +7,7 @@
 #include "thread_demo.h"
 #include "version.h"
 #include "framebuffer.h"
+#include "keyboard_input.h"
 
 void kernel_main(void)
 {
@@ -47,6 +48,7 @@ void kernel_main(void)
     kprintf("Timer sanity: end=0x%x\n", (unsigned int)timer_get_ticks());
 
     thread_demo_init();
+    keyboard_input_init();
     scheduler_dump_tasks();
 
     timer_start_periodic(100);

@@ -3,7 +3,7 @@
 
 #include "context.h"
 
-#define SCHED_MAX_TASKS 4
+#define SCHED_MAX_TASKS 8
 #define SCHED_STACK_SIZE 4096
 
 enum task_state

@@ -48,6 +48,8 @@ static int vm_ready;
 static int vm_enable_attempted;
 static unsigned long vm_used_l2_tables;
 static unsigned long vm_blocks_mapped;
+static unsigned long vm_exec_blocks;
+static unsigned long vm_xn_blocks;
 static unsigned long vm_bytes_mapped;
 
 static void clear_table(unsigned long *table)
@@ -119,6 +121,15 @@ static int map_region(const struct vm_region *region)
         l2_table[l2_index] =
             arm64_mmu_l2_block_desc(pa, region->attributes);
 
+        if (arm64_mmu_desc_is_execute_never(l2_table[l2_index]))
+        {
+            vm_xn_blocks++;
+        }
+        else
+        {
+            vm_exec_blocks++;
+        }
+
         va += ARM64_L2_BLOCK_SIZE;
         pa += ARM64_L2_BLOCK_SIZE;
         remaining -= ARM64_L2_BLOCK_SIZE;
@@ -142,6 +153,8 @@ static int build_tables(void)
 
     vm_used_l2_tables = 0;
     vm_blocks_mapped = 0;
+    vm_exec_blocks = 0;
+    vm_xn_blocks = 0;
     vm_bytes_mapped = 0;
 
     for (unsigned long i = 0; i < vm_region_count(); i++)
@@ -211,6 +224,16 @@ unsigned long vm_mapped_blocks(void)
     return vm_blocks_mapped;
 }
 
+unsigned long vm_executable_blocks(void)
+{
+    return vm_exec_blocks;
+}
+
+unsigned long vm_execute_never_blocks(void)
+{
+    return vm_xn_blocks;
+}
+
 unsigned long vm_mapped_bytes(void)
 {
     return vm_bytes_mapped;
@@ -226,13 +249,16 @@ static void vm_dump_region(const struct vm_region *region)
     unsigned long end = region->virtual_start + region->size;
     unsigned long l1 = arm64_mmu_l1_index(region->virtual_start);
     unsigned long l2 = arm64_mmu_l2_index(region->virtual_start);
+    unsigned long descriptor =
+        arm64_mmu_l2_block_desc(region->physical_start, region->attributes);
 
-    kprintf("  %s: va=0x%x-0x%x pa=0x%x type=%s l1=%d l2=%d\n",
+    kprintf("  %s: va=0x%x-0x%x pa=0x%x type=%s perm=%s l1=%d l2=%d\n",
             region->name,
             (unsigned int)region->virtual_start,
             (unsigned int)end,
             (unsigned int)region->physical_start,
             region->type,
+            arm64_mmu_desc_execute_state(descriptor),
             (int)l1,
             (int)l2);
 }
@@ -259,6 +285,9 @@ void vm_dump_plan(void)
     kprintf("VM map   : blocks=%d bytes=%d\n",
             (int)vm_mapped_blocks(),
             (int)vm_mapped_bytes());
+    kprintf("VM perms : exec=%d xn=%d\n",
+            (int)vm_executable_blocks(),
+            (int)vm_execute_never_blocks());
     kprintf("VM gran  : 4 KiB pages, 2 MiB L2 blocks\n");
     kprintf("VM attrs : normal index=%d device index=%d\n",
             (int)ARM64_ATTR_INDEX_NORMAL,

@@ -14,6 +14,8 @@ map.
 - 2 MiB L2 block descriptors
 - MAIR_EL1, TCR_EL1, TTBR0_EL1, and SCTLR_EL1 setup
 - MMU enabled with TTBR0 identity mappings
+- Execute-permission diagnostics
+- Device/MMIO regions marked execute-never
 - Shell `vm` command for diagnostics
 
 ## Planned Identity Map
@@ -31,6 +33,14 @@ map.
 - RAM mapping: 64 x 2 MiB normal-memory blocks
 - Total mapped: 160 MiB
 
+## Permission Model
+
+- Device/MMIO blocks: execute-never
+- RAM blocks: executable for now because kernel text, rodata, data, heap, and
+  stacks still share coarse 2 MiB mappings
+- Next step: split kernel regions into smaller mappings so text can be
+  executable/read-only while data, heap, and stacks are execute-never
+
 ## MMU Configuration
 
 - Translation granule: 4 KiB
@@ -38,12 +48,12 @@ map.
 - Root lookup level: L1
 - Normal memory MAIR index: 0
 - Device memory MAIR index: 1
-- RAM mapping: executable for now because kernel text/data share 2 MiB blocks
+- RAM mapping: executable for now because kernel regions share 2 MiB blocks
 - Caches: left disabled for the first MMU milestone
 
 ## Next MMU Work
 
-1. Split kernel text, rodata, data, and device permissions.
+1. Split kernel text, rodata, data, heap, and stack permissions.
 2. Add table validation before enabling translation.
 3. Add page fault diagnostics for translation faults.
 4. Decide when to enable instruction and data caches.

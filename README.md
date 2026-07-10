@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.5.4
+Version: 0.5.5
 
 Codename: Memory
 
@@ -91,6 +91,8 @@ Target: ARM64 QEMU `virt`
 - Static L1/L2 translation tables with 2 MiB block mappings
 - MAIR_EL1, TCR_EL1, TTBR0_EL1, and SCTLR_EL1 MMU enable path
 - ARM64 MMU enabled with an identity map
+- VM diagnostics for executable and execute-never mappings
+- Device/MMIO regions marked execute-never
 - Shell `vm` command for virtual-memory diagnostics
 
 ## Build
@@ -160,7 +162,7 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Add page-table permission refinements for kernel text, data, and MMIO
+- Split kernel text, rodata, data, heap, and stacks into finer mappings
 - Expand scheduler robustness and task management
 
 ## Vision

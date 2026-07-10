@@ -37,6 +37,21 @@ unsigned long arm64_mmu_table_desc(unsigned long physical)
            ARM64_DESC_TABLE;
 }
 
+int arm64_mmu_desc_is_execute_never(unsigned long descriptor)
+{
+    return (descriptor & (ARM64_DESC_PXN | ARM64_DESC_UXN)) != 0;
+}
+
+const char *arm64_mmu_desc_execute_state(unsigned long descriptor)
+{
+    if (arm64_mmu_desc_is_execute_never(descriptor))
+    {
+        return "xn";
+    }
+
+    return "exec";
+}
+
 unsigned long arm64_mmu_l2_block_desc(unsigned long physical,
                                       unsigned long attributes)
 {

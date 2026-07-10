@@ -74,6 +74,8 @@ unsigned long arm64_mmu_l1_index(unsigned long address);
 unsigned long arm64_mmu_l2_index(unsigned long address);
 unsigned long arm64_mmu_l3_index(unsigned long address);
 unsigned long arm64_mmu_table_desc(unsigned long physical);
+int arm64_mmu_desc_is_execute_never(unsigned long descriptor);
+const char *arm64_mmu_desc_execute_state(unsigned long descriptor);
 unsigned long arm64_mmu_l2_block_desc(unsigned long physical,
                                       unsigned long attributes);
 unsigned long arm64_mmu_l3_page_desc(unsigned long physical,

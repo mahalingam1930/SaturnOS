@@ -6,6 +6,8 @@ void vm_dump_plan(void);
 unsigned long vm_region_count(void);
 unsigned long vm_table_count(void);
 unsigned long vm_mapped_blocks(void);
+unsigned long vm_executable_blocks(void);
+unsigned long vm_execute_never_blocks(void);
 unsigned long vm_mapped_bytes(void);
 unsigned long vm_root_table(void);
 int vm_mmu_enabled(void);

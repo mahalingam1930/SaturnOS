@@ -24,8 +24,8 @@ void kernel_main(void)
 
     pmm_init();
     heap_init();
-    vm_init();
     exception_init();
+    vm_init();
     timer_init();
     irq_init();
     scheduler_init();

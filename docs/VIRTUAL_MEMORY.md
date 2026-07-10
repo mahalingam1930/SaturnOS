@@ -1,7 +1,8 @@
 # SaturnOS Virtual Memory Plan
 
 This document tracks the ARM64 virtual-memory foundation. SaturnOS now builds
-the initial identity translation tables, but does not enable the MMU yet.
+the initial identity translation tables and enables the MMU with an identity
+map.
 
 ## Current Scope
 
@@ -11,6 +12,8 @@ the initial identity translation tables, but does not enable the MMU yet.
 - Identity-map tables for QEMU `virt` MMIO and RAM
 - Static L1/L2 tables
 - 2 MiB L2 block descriptors
+- MAIR_EL1, TCR_EL1, TTBR0_EL1, and SCTLR_EL1 setup
+- MMU enabled with TTBR0 identity mappings
 - Shell `vm` command for diagnostics
 
 ## Planned Identity Map
@@ -28,11 +31,19 @@ the initial identity translation tables, but does not enable the MMU yet.
 - RAM mapping: 64 x 2 MiB normal-memory blocks
 - Total mapped: 160 MiB
 
-## Next MMU Enable Checklist
+## MMU Configuration
 
-1. Fill MAIR_EL1 with normal and device memory attributes.
-2. Configure TCR_EL1 for the selected address size and granule.
-3. Point TTBR0_EL1 at the root L1 table.
-4. Flush TLBs and instruction caches.
-5. Enable SCTLR_EL1.M only after the identity map is verified.
-6. Keep UART, GIC, timer, ramfb, kernel text/data, stacks, and heap mapped.
+- Translation granule: 4 KiB
+- VA size: 32-bit TTBR0 address space
+- Root lookup level: L1
+- Normal memory MAIR index: 0
+- Device memory MAIR index: 1
+- RAM mapping: executable for now because kernel text/data share 2 MiB blocks
+- Caches: left disabled for the first MMU milestone
+
+## Next MMU Work
+
+1. Split kernel text, rodata, data, and device permissions.
+2. Add table validation before enabling translation.
+3. Add page fault diagnostics for translation faults.
+4. Decide when to enable instruction and data caches.

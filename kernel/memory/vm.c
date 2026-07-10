@@ -45,6 +45,7 @@ static unsigned long vm_l2_tables[VM_L2_TABLE_CAPACITY][ARM64_TABLE_ENTRIES]
     __attribute__((aligned(ARM64_TABLE_SIZE)));
 static struct vm_l2_table_slot vm_l2_slots[VM_L2_TABLE_CAPACITY];
 static int vm_ready;
+static int vm_enable_attempted;
 static unsigned long vm_used_l2_tables;
 static unsigned long vm_blocks_mapped;
 static unsigned long vm_bytes_mapped;
@@ -157,6 +158,12 @@ static int build_tables(void)
 void vm_init(void)
 {
     vm_ready = build_tables();
+
+    if (vm_ready)
+    {
+        arm64_mmu_enable(vm_root_table());
+        vm_enable_attempted = 1;
+    }
 }
 
 unsigned long vm_region_count(void)
@@ -172,6 +179,11 @@ const char *vm_state(void)
     }
 
     return arm64_mmu_state();
+}
+
+int vm_mmu_enabled(void)
+{
+    return arm64_mmu_is_enabled();
 }
 
 const char *vm_table_state(void)
@@ -228,7 +240,18 @@ static void vm_dump_region(const struct vm_region *region)
 void vm_dump_plan(void)
 {
     kprintf("VM state : %s\n", vm_state());
-    kprintf("VM mode  : identity tables built, MMU not enabled here\n");
+    if (vm_mmu_enabled())
+    {
+        kprintf("VM mode  : identity map active\n");
+    }
+    else if (vm_enable_attempted)
+    {
+        kprintf("VM mode  : enable attempted, MMU still disabled\n");
+    }
+    else
+    {
+        kprintf("VM mode  : identity tables built, MMU not enabled\n");
+    }
     kprintf("VM table : %s root=0x%x count=%d\n",
             vm_table_state(),
             (unsigned int)vm_root_table(),
@@ -240,6 +263,11 @@ void vm_dump_plan(void)
     kprintf("VM attrs : normal index=%d device index=%d\n",
             (int)ARM64_ATTR_INDEX_NORMAL,
             (int)ARM64_ATTR_INDEX_DEVICE);
+    kprintf("VM regs  : mair=0x%x tcr=0x%x ttbr0=0x%x\n",
+            (unsigned int)arm64_mmu_read_mair(),
+            (unsigned int)arm64_mmu_read_tcr(),
+            (unsigned int)arm64_mmu_read_ttbr0());
+    kprintf("VM sctlr : 0x%x\n", (unsigned int)arm64_mmu_read_sctlr());
     kprintf("VM regions: %d\n", (int)vm_region_count());
 
     for (unsigned long i = 0; i < vm_region_count(); i++)

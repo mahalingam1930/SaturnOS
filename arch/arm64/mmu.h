@@ -24,14 +24,37 @@
 
 #define ARM64_ATTR_INDEX_NORMAL 0UL
 #define ARM64_ATTR_INDEX_DEVICE 1UL
+#define ARM64_MAIR_NORMAL 0xffUL
+#define ARM64_MAIR_DEVICE_NGNRNE 0x00UL
+
+#define ARM64_MAIR_EL1_VALUE \
+    (ARM64_MAIR_NORMAL << (ARM64_ATTR_INDEX_NORMAL * 8)) | \
+    (ARM64_MAIR_DEVICE_NGNRNE << (ARM64_ATTR_INDEX_DEVICE * 8))
+
+#define ARM64_TCR_T0SZ_32BIT 32UL
+#define ARM64_TCR_IRGN0_WBWA (1UL << 8)
+#define ARM64_TCR_ORGN0_WBWA (1UL << 10)
+#define ARM64_TCR_SH0_INNER (3UL << 12)
+#define ARM64_TCR_TG0_4K (0UL << 14)
+#define ARM64_TCR_EPD1 (1UL << 23)
+#define ARM64_TCR_IPS_32BIT (0UL << 32)
+
+#define ARM64_TCR_EL1_VALUE \
+    (ARM64_TCR_T0SZ_32BIT | \
+     ARM64_TCR_IRGN0_WBWA | \
+     ARM64_TCR_ORGN0_WBWA | \
+     ARM64_TCR_SH0_INNER | \
+     ARM64_TCR_TG0_4K | \
+     ARM64_TCR_EPD1 | \
+     ARM64_TCR_IPS_32BIT)
+
+#define ARM64_SCTLR_M (1UL << 0)
 
 #define ARM64_NORMAL_MEMORY_ATTR \
     (ARM64_DESC_ATTR_INDEX(ARM64_ATTR_INDEX_NORMAL) | \
      ARM64_DESC_AP_RW_EL1 | \
      ARM64_DESC_SH_INNER | \
-     ARM64_DESC_AF | \
-     ARM64_DESC_PXN | \
-     ARM64_DESC_UXN)
+     ARM64_DESC_AF)
 
 #define ARM64_DEVICE_MEMORY_ATTR \
     (ARM64_DESC_ATTR_INDEX(ARM64_ATTR_INDEX_DEVICE) | \
@@ -42,6 +65,11 @@
 
 int arm64_mmu_is_enabled(void);
 const char *arm64_mmu_state(void);
+void arm64_mmu_enable(unsigned long root_table);
+unsigned long arm64_mmu_read_sctlr(void);
+unsigned long arm64_mmu_read_mair(void);
+unsigned long arm64_mmu_read_tcr(void);
+unsigned long arm64_mmu_read_ttbr0(void);
 unsigned long arm64_mmu_l1_index(unsigned long address);
 unsigned long arm64_mmu_l2_index(unsigned long address);
 unsigned long arm64_mmu_l3_index(unsigned long address);

@@ -8,6 +8,7 @@ unsigned long vm_table_count(void);
 unsigned long vm_mapped_blocks(void);
 unsigned long vm_mapped_bytes(void);
 unsigned long vm_root_table(void);
+int vm_mmu_enabled(void);
 const char *vm_state(void);
 const char *vm_table_state(void);
 

@@ -77,6 +77,9 @@ $(BUILD)/shell.o: kernel/shell/shell.c | $(BUILD)
 $(BUILD)/pmm.o: kernel/memory/pmm.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/heap.o: kernel/memory/heap.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -101,6 +104,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/keyboard_input.o \
 	$(BUILD)/shell.o \
 	$(BUILD)/pmm.o \
+	$(BUILD)/heap.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^

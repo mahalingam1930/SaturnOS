@@ -5,11 +5,11 @@ AArch64 assembly.
 
 The project is currently focused on early kernel foundations: boot, UART,
 exceptions, timer interrupts, kernel threads, preemptive scheduling, a QEMU
-framebuffer console, and physical memory management.
+framebuffer console, physical memory management, and a small kernel heap.
 
 ## Current Status
 
-Version: 0.5.0
+Version: 0.5.1
 
 Codename: Memory
 
@@ -71,7 +71,8 @@ Target: ARM64 QEMU `virt`
 ### Shell
 
 - Line-based kernel shell
-- Built-in `help`, `version`, `tasks`, `mem`, `ticks`, `clear`, and `panic` commands
+- Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `ticks`,
+  `clear`, and `panic` commands
 
 ### Memory Management
 
@@ -81,6 +82,9 @@ Target: ARM64 QEMU `virt`
 - QEMU ramfb memory reservation
 - `pmm_alloc_page` and `pmm_free_page` page APIs
 - Shell `mem` command for memory diagnostics
+- Page-backed kernel heap allocator
+- `kmalloc`, `kzalloc`, and `kfree` APIs
+- Shell `heap` and `heaptest` commands for heap diagnostics
 
 ## Build
 
@@ -136,18 +140,18 @@ docs/              Architecture, roadmap, and graphics notes
 1. Initialize UART.
 2. Initialize QEMU framebuffer if available.
 3. Initialize physical memory management.
-4. Initialize exceptions, timer, IRQ, and scheduler.
-5. Print boot diagnostics to UART and framebuffer.
-6. Start optional demo kernel threads when enabled.
-7. Start keyboard shell input thread.
-8. Enable periodic timer interrupts.
-9. Run preemptive kernel thread scheduling.
+4. Initialize the kernel heap.
+5. Initialize exceptions, timer, IRQ, and scheduler.
+6. Print boot diagnostics to UART and framebuffer.
+7. Start optional demo kernel threads when enabled.
+8. Start keyboard shell input thread.
+9. Enable periodic timer interrupts.
+10. Run preemptive kernel thread scheduling.
 
 ## Next Milestones
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Add a small kernel heap on top of the page allocator
 - Begin virtual memory and page-table management
 - Expand scheduler robustness and task management
 

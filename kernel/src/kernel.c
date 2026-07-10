@@ -10,6 +10,7 @@
 #include "keyboard_input.h"
 #include "config.h"
 #include "pmm.h"
+#include "heap.h"
 
 void kernel_main(void)
 {
@@ -21,6 +22,7 @@ void kernel_main(void)
     }
 
     pmm_init();
+    heap_init();
     exception_init();
     timer_init();
     irq_init();
@@ -38,6 +40,7 @@ void kernel_main(void)
     kprintf("Sched  : preemptive kernel threads\n");
     kprintf("Memory : %d KB free\n",
             (int)((pmm_free_pages() * PMM_PAGE_SIZE) / 1024));
+    kprintf("Heap   : initialized\n");
     if (framebuffer_is_ready())
     {
         kprintf("Video  : ramfb 640x480\n");

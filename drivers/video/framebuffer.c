@@ -19,6 +19,12 @@
 #define FW_CFG_DMA_ACCESS_BASE 0x46ffe000UL
 #define RAMFB_CONFIG_BASE 0x46fff000UL
 #define FRAMEBUFFER_BASE 0x47000000UL
+#define FRAMEBUFFER_CONSOLE_SCALE 2U
+#define FRAMEBUFFER_CONSOLE_MARGIN_X 8U
+#define FRAMEBUFFER_CONSOLE_MARGIN_Y 8U
+#define FRAMEBUFFER_CONSOLE_FG 0x00f8f9faU
+#define FRAMEBUFFER_CONSOLE_BG 0x00101820U
+#define FRAMEBUFFER_CONSOLE_DIM 0x004ecdc4U
 
 struct fw_cfg_file
 {
@@ -48,6 +54,8 @@ struct ramfb_config
 static volatile uint32_t *framebuffer = (volatile uint32_t *)FRAMEBUFFER_BASE;
 static int framebuffer_ready;
 static int framebuffer_status_code;
+static unsigned int console_column;
+static unsigned int console_row;
 
 static const uint8_t glyph_blank[7] = {0, 0, 0, 0, 0, 0, 0};
 
@@ -313,6 +321,11 @@ static const uint8_t *framebuffer_glyph(char c)
     static const uint8_t glyph_colon[7] = {0x00, 0x04, 0x04, 0x00, 0x04, 0x04, 0x00};
     static const uint8_t glyph_dash[7] = {0x00, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x00};
     static const uint8_t glyph_dot[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x0c};
+    static const uint8_t glyph_equal[7] = {0x00, 0x00, 0x1f, 0x00, 0x1f, 0x00, 0x00};
+    static const uint8_t glyph_lparen[7] = {0x02, 0x04, 0x08, 0x08, 0x08, 0x04, 0x02};
+    static const uint8_t glyph_rparen[7] = {0x08, 0x04, 0x02, 0x02, 0x02, 0x04, 0x08};
+    static const uint8_t glyph_slash[7] = {0x01, 0x01, 0x02, 0x04, 0x08, 0x10, 0x10};
+    static const uint8_t glyph_underscore[7] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1f};
 
     if (c >= 'a' && c <= 'z')
     {
@@ -360,6 +373,11 @@ static const uint8_t *framebuffer_glyph(char c)
         case ':': return glyph_colon;
         case '-': return glyph_dash;
         case '.': return glyph_dot;
+        case '=': return glyph_equal;
+        case '(': return glyph_lparen;
+        case ')': return glyph_rparen;
+        case '/': return glyph_slash;
+        case '_': return glyph_underscore;
         default: return glyph_blank;
     }
 }
@@ -434,6 +452,136 @@ void framebuffer_write_at(unsigned int x,
             cursor_x += cell_width;
         }
 
+        text++;
+    }
+}
+
+static unsigned int framebuffer_console_cell_width(void)
+{
+    return 6 * FRAMEBUFFER_CONSOLE_SCALE;
+}
+
+static unsigned int framebuffer_console_cell_height(void)
+{
+    return 8 * FRAMEBUFFER_CONSOLE_SCALE;
+}
+
+static unsigned int framebuffer_console_columns(void)
+{
+    return (FRAMEBUFFER_WIDTH - (FRAMEBUFFER_CONSOLE_MARGIN_X * 2)) /
+           framebuffer_console_cell_width();
+}
+
+static unsigned int framebuffer_console_rows(void)
+{
+    return (FRAMEBUFFER_HEIGHT - (FRAMEBUFFER_CONSOLE_MARGIN_Y * 2)) /
+           framebuffer_console_cell_height();
+}
+
+static void framebuffer_console_scroll(void)
+{
+    unsigned int cell_height = framebuffer_console_cell_height();
+    unsigned int start_y = FRAMEBUFFER_CONSOLE_MARGIN_Y;
+    unsigned int end_y = FRAMEBUFFER_HEIGHT - FRAMEBUFFER_CONSOLE_MARGIN_Y;
+
+    for (unsigned int y = start_y; y < end_y - cell_height; y++)
+    {
+        for (unsigned int x = FRAMEBUFFER_CONSOLE_MARGIN_X;
+             x < FRAMEBUFFER_WIDTH - FRAMEBUFFER_CONSOLE_MARGIN_X;
+             x++)
+        {
+            framebuffer[y * FRAMEBUFFER_WIDTH + x] =
+                framebuffer[(y + cell_height) * FRAMEBUFFER_WIDTH + x];
+        }
+    }
+
+    framebuffer_fill_rect(FRAMEBUFFER_CONSOLE_MARGIN_X,
+                          end_y - cell_height,
+                          FRAMEBUFFER_WIDTH - (FRAMEBUFFER_CONSOLE_MARGIN_X * 2),
+                          cell_height,
+                          FRAMEBUFFER_CONSOLE_BG);
+}
+
+static void framebuffer_console_newline(void)
+{
+    console_column = 0;
+    console_row++;
+
+    if (console_row >= framebuffer_console_rows())
+    {
+        framebuffer_console_scroll();
+        console_row = framebuffer_console_rows() - 1;
+    }
+}
+
+void framebuffer_console_init(void)
+{
+    if (!framebuffer_ready)
+    {
+        return;
+    }
+
+    framebuffer_clear(FRAMEBUFFER_CONSOLE_BG);
+    framebuffer_fill_rect(0, 0, FRAMEBUFFER_WIDTH, 4, FRAMEBUFFER_CONSOLE_DIM);
+    console_column = 0;
+    console_row = 0;
+}
+
+void framebuffer_console_putc(char c)
+{
+    unsigned int x;
+    unsigned int y;
+
+    if (!framebuffer_ready)
+    {
+        return;
+    }
+
+    if (c == '\r')
+    {
+        console_column = 0;
+        return;
+    }
+
+    if (c == '\n')
+    {
+        framebuffer_console_newline();
+        return;
+    }
+
+    if (c == '\t')
+    {
+        for (unsigned int i = 0; i < 4; i++)
+        {
+            framebuffer_console_putc(' ');
+        }
+        return;
+    }
+
+    if (console_column >= framebuffer_console_columns())
+    {
+        framebuffer_console_newline();
+    }
+
+    x = FRAMEBUFFER_CONSOLE_MARGIN_X +
+        (console_column * framebuffer_console_cell_width());
+    y = FRAMEBUFFER_CONSOLE_MARGIN_Y +
+        (console_row * framebuffer_console_cell_height());
+
+    framebuffer_draw_char(x,
+                          y,
+                          c,
+                          FRAMEBUFFER_CONSOLE_FG,
+                          FRAMEBUFFER_CONSOLE_BG,
+                          FRAMEBUFFER_CONSOLE_SCALE);
+    console_column++;
+}
+
+void framebuffer_console_write(const char *text)
+{
+    while (*text)
+    {
+        framebuffer_console_putc(*text);
         text++;
     }
 }

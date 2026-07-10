@@ -13,13 +13,13 @@ For a graphical QEMU window with the UART console attached to the window, run:
 ```
 
 SaturnOS also has an early QEMU `ramfb` framebuffer path. When available, the
-kernel configures a 640x480 XRGB8888 framebuffer, draws a simple pixel test
-pattern, and renders early bitmap text before starting the scheduler.
+kernel configures a 640x480 XRGB8888 framebuffer and mirrors the kernel console
+to both UART and the framebuffer.
 
 ## Next Milestone
 
-The next graphics milestone is routing the kernel console to the framebuffer:
+The next graphics milestone is improving the framebuffer console:
 
 - keep the QEMU-visible framebuffer stable
-- route console text to both UART and framebuffer
-- add scrolling for framebuffer console output
+- add a fuller font and cursor
+- improve text wrapping and screen layout

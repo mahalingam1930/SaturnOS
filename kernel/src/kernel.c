@@ -12,15 +12,15 @@ void kernel_main(void)
 {
     uart_init();
 
+    if (framebuffer_init())
+    {
+        framebuffer_console_init();
+    }
+
     exception_init();
     timer_init();
     irq_init();
     scheduler_init();
-
-    if (framebuffer_init())
-    {
-        framebuffer_draw_test_pattern();
-    }
 
     kprintf("================================\n");
     kprintf("%s %s (%s)\n",

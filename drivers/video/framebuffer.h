@@ -28,6 +28,9 @@ void framebuffer_write_at(unsigned int x,
                           uint32_t foreground,
                           uint32_t background,
                           unsigned int scale);
+void framebuffer_console_init(void);
+void framebuffer_console_putc(char c);
+void framebuffer_console_write(const char *text);
 void framebuffer_draw_test_pattern(void);
 
 #endif

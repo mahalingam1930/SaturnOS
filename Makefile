@@ -11,9 +11,10 @@ CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only \
     -Iarch/arm64 \
 	-Ikernel/panic \
 	-Ikernel/exception \
-    -Ikernel/sched \
+	-Ikernel/sched \
 	-Ikernel/demo \
 	-Ikernel/input \
+	-Ikernel/shell \
 	-Idrivers/video \
 	-Idrivers/keyboard
 
@@ -69,6 +70,9 @@ $(BUILD)/thread_demo.o: kernel/demo/thread_demo.c | $(BUILD)
 $(BUILD)/keyboard_input.o: kernel/input/keyboard_input.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/shell.o: kernel/shell/shell.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -91,6 +95,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/scheduler.o \
 	$(BUILD)/thread_demo.o \
 	$(BUILD)/keyboard_input.o \
+	$(BUILD)/shell.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^

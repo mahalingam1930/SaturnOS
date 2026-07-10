@@ -50,6 +50,7 @@ Target: ARM64 QEMU `virt`
 - Real idle task
 - Kernel thread creation API
 - Thread demo module
+- Optional demo kernel threads for scheduler testing
 
 ### Graphics
 
@@ -66,6 +67,11 @@ Target: ARM64 QEMU `virt`
 - UART-backed keyboard input polling
 - Keyboard input kernel thread
 - Typed characters echoed through UART and framebuffer console
+
+### Shell
+
+- Line-based kernel shell
+- Built-in `help`, `version`, `tasks`, `ticks`, `clear`, and `panic` commands
 
 ## Build
 
@@ -106,8 +112,10 @@ drivers/video/     QEMU ramfb framebuffer driver
 kernel/console/    Console and kprintf
 kernel/demo/       Kernel thread demo
 kernel/exception/  ESR decoder
+kernel/input/      Keyboard input thread
 kernel/panic/      Kernel panic diagnostics
 kernel/sched/      Kernel scheduler
+kernel/shell/      Interactive kernel shell
 kernel/src/        Kernel entry point
 scripts/           QEMU run scripts
 docs/              Architecture, roadmap, and graphics notes
@@ -119,14 +127,14 @@ docs/              Architecture, roadmap, and graphics notes
 2. Initialize QEMU framebuffer if available.
 3. Initialize exceptions, timer, IRQ, and scheduler.
 4. Print boot diagnostics to UART and framebuffer.
-5. Start demo kernel threads.
-6. Enable periodic timer interrupts.
-7. Run preemptive kernel thread scheduling.
+5. Start optional demo kernel threads when enabled.
+6. Start keyboard shell input thread.
+7. Enable periodic timer interrupts.
+8. Run preemptive kernel thread scheduling.
 
 ## Next Milestones
 
 - Improve framebuffer console text wrapping and cursor behavior
-- Build an interactive kernel shell
 - Add line editing for keyboard input
 - Begin memory management foundations
 - Expand scheduler robustness and task management

@@ -2,6 +2,7 @@
 #define EXCEPTION_H
 
 void exception_test(void);
+void exception_test_page_fault(void);
 
 void exception_handler(void);
 

@@ -1,7 +1,7 @@
 #include "panic.h"
 #include "kprintf.h"
 
-void kernel_panic(const char *reason,
+void kernel_panic(const struct exception_info *info,
                   unsigned long esr,
                   unsigned long elr,
                   unsigned long far,
@@ -12,7 +12,19 @@ void kernel_panic(const char *reason,
     kprintf("             SaturnOS KERNEL PANIC\n");
     kprintf("====================================================\n\n");
 
-    kprintf("Reason : %s\n\n", reason);
+    kprintf("Reason : %s\n", info->exception_class);
+    kprintf("EC     : 0x%x\n", (unsigned int)info->ec);
+    kprintf("ISS    : 0x%x\n", (unsigned int)info->iss);
+
+    if (info->has_fault_status)
+    {
+        kprintf("Access : %s\n", info->access_type);
+        kprintf("FSC    : 0x%x\n", (unsigned int)info->fsc);
+        kprintf("Fault  : %s\n", info->fault_status);
+        kprintf("Level  : %d\n", info->fault_level);
+    }
+
+    kprintf("\n");
 
     kprintf("ESR_EL1 : 0x%x\n", (unsigned int)esr);
     kprintf("ELR_EL1 : 0x%x\n", (unsigned int)elr);

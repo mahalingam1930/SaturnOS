@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.5.5
+Version: 0.5.6
 
 Codename: Memory
 
@@ -73,7 +73,7 @@ Target: ARM64 QEMU `virt`
 
 - Line-based kernel shell
 - Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `vm`,
-  `ticks`, `clear`, and `panic` commands
+  `ticks`, `clear`, `panic`, and `fault` commands
 
 ### Memory Management
 
@@ -93,6 +93,8 @@ Target: ARM64 QEMU `virt`
 - ARM64 MMU enabled with an identity map
 - VM diagnostics for executable and execute-never mappings
 - Device/MMIO regions marked execute-never
+- Page-fault diagnostics for instruction and data aborts
+- Decoded fault status code, access type, and fault level
 - Shell `vm` command for virtual-memory diagnostics
 
 ## Build
@@ -162,6 +164,7 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
+- Add table validation before enabling translation
 - Split kernel text, rodata, data, heap, and stacks into finer mappings
 - Expand scheduler robustness and task management
 

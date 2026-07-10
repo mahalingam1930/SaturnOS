@@ -19,6 +19,13 @@ void exception_test(void)
     __asm__ volatile("brk #0");
 }
 
+void exception_test_page_fault(void)
+{
+    volatile unsigned long *unmapped = (volatile unsigned long *)0x20000000UL;
+    volatile unsigned long value = *unmapped;
+    (void)value;
+}
+
 void exception_handler(void)
 {
     unsigned long esr;
@@ -31,10 +38,11 @@ void exception_handler(void)
     __asm__ volatile("mrs %0, FAR_EL1" : "=r"(far));
     __asm__ volatile("mrs %0, SPSR_EL1" : "=r"(spsr));
 
-    const char *reason = decode_exception_class(esr);
+    struct exception_info info;
+    decode_exception_info(esr, &info);
 
     kernel_panic(
-        reason,
+        &info,
         esr,
         elr,
         far,

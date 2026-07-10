@@ -48,6 +48,7 @@ static void shell_help(void)
     kprintf("  ticks    show scheduler/timer ticks\n");
     kprintf("  clear    clear framebuffer console\n");
     kprintf("  panic    trigger test exception\n");
+    kprintf("  fault    trigger test page fault\n");
 }
 
 static void shell_execute(const char *command)
@@ -101,6 +102,10 @@ static void shell_execute(const char *command)
     else if (string_equals(command, "panic"))
     {
         exception_test();
+    }
+    else if (string_equals(command, "fault"))
+    {
+        exception_test_page_fault();
     }
     else
     {

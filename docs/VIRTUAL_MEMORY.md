@@ -16,6 +16,7 @@ map.
 - MMU enabled with TTBR0 identity mappings
 - Execute-permission diagnostics
 - Device/MMIO regions marked execute-never
+- Page-fault diagnostics for instruction and data aborts
 - Shell `vm` command for diagnostics
 
 ## Planned Identity Map
@@ -55,5 +56,5 @@ map.
 
 1. Split kernel text, rodata, data, heap, and stack permissions.
 2. Add table validation before enabling translation.
-3. Add page fault diagnostics for translation faults.
+3. Add more detailed page-table walking diagnostics.
 4. Decide when to enable instruction and data caches.

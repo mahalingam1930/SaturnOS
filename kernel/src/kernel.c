@@ -43,7 +43,10 @@ void kernel_main(void)
     kprintf("Memory : %d KB free\n",
             (int)((pmm_free_pages() * PMM_PAGE_SIZE) / 1024));
     kprintf("Heap   : initialized\n");
-    kprintf("VM     : %s, tables %s\n", vm_state(), vm_table_state());
+    kprintf("VM     : %s, tables %s, check %s\n",
+            vm_state(),
+            vm_table_state(),
+            vm_validation_state());
     if (framebuffer_is_ready())
     {
         kprintf("Video  : ramfb 640x480\n");

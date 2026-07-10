@@ -17,6 +17,7 @@ map.
 - Execute-permission diagnostics
 - Device/MMIO regions marked execute-never
 - Page-fault diagnostics for instruction and data aborts
+- Translation-table validation before enabling the MMU
 - Shell `vm` command for diagnostics
 
 ## Planned Identity Map
@@ -52,9 +53,18 @@ map.
 - RAM mapping: executable for now because kernel regions share 2 MiB blocks
 - Caches: left disabled for the first MMU milestone
 
+## Validation
+
+Before enabling the MMU, SaturnOS validates:
+
+- L1 and L2 table alignment
+- L1 table descriptors for every mapped region
+- L2 block descriptors for every mapped block
+- Expected physical address for each 2 MiB block
+- Validated block count against mapped block count
+
 ## Next MMU Work
 
 1. Split kernel text, rodata, data, heap, and stack permissions.
-2. Add table validation before enabling translation.
-3. Add more detailed page-table walking diagnostics.
-4. Decide when to enable instruction and data caches.
+2. Add more detailed page-table walking diagnostics.
+3. Decide when to enable instruction and data caches.

@@ -13,6 +13,8 @@
 
 #define ARM64_DESC_VALID (1UL << 0)
 #define ARM64_DESC_TABLE (1UL << 1)
+#define ARM64_DESC_ADDR_MASK 0x0000fffffffff000UL
+#define ARM64_DESC_L2_BLOCK_ADDR_MASK 0x0000ffffffe00000UL
 #define ARM64_DESC_BLOCK ARM64_DESC_VALID
 #define ARM64_DESC_PAGE (ARM64_DESC_VALID | ARM64_DESC_TABLE)
 #define ARM64_DESC_ATTR_INDEX(index) ((unsigned long)(index) << 2)
@@ -74,6 +76,11 @@ unsigned long arm64_mmu_l1_index(unsigned long address);
 unsigned long arm64_mmu_l2_index(unsigned long address);
 unsigned long arm64_mmu_l3_index(unsigned long address);
 unsigned long arm64_mmu_table_desc(unsigned long physical);
+int arm64_mmu_desc_is_valid(unsigned long descriptor);
+int arm64_mmu_desc_is_table(unsigned long descriptor);
+int arm64_mmu_desc_is_l2_block(unsigned long descriptor);
+unsigned long arm64_mmu_desc_address(unsigned long descriptor);
+unsigned long arm64_mmu_l2_block_address(unsigned long descriptor);
 int arm64_mmu_desc_is_execute_never(unsigned long descriptor);
 const char *arm64_mmu_desc_execute_state(unsigned long descriptor);
 unsigned long arm64_mmu_l2_block_desc(unsigned long physical,

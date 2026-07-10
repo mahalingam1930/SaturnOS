@@ -37,6 +37,33 @@ unsigned long arm64_mmu_table_desc(unsigned long physical)
            ARM64_DESC_TABLE;
 }
 
+int arm64_mmu_desc_is_valid(unsigned long descriptor)
+{
+    return (descriptor & ARM64_DESC_VALID) != 0;
+}
+
+int arm64_mmu_desc_is_table(unsigned long descriptor)
+{
+    return (descriptor & (ARM64_DESC_VALID | ARM64_DESC_TABLE)) ==
+           (ARM64_DESC_VALID | ARM64_DESC_TABLE);
+}
+
+int arm64_mmu_desc_is_l2_block(unsigned long descriptor)
+{
+    return (descriptor & (ARM64_DESC_VALID | ARM64_DESC_TABLE)) ==
+           ARM64_DESC_VALID;
+}
+
+unsigned long arm64_mmu_desc_address(unsigned long descriptor)
+{
+    return descriptor & ARM64_DESC_ADDR_MASK;
+}
+
+unsigned long arm64_mmu_l2_block_address(unsigned long descriptor)
+{
+    return descriptor & ARM64_DESC_L2_BLOCK_ADDR_MASK;
+}
+
 int arm64_mmu_desc_is_execute_never(unsigned long descriptor)
 {
     return (descriptor & (ARM64_DESC_PXN | ARM64_DESC_UXN)) != 0;

@@ -45,9 +45,13 @@ static unsigned long vm_l2_tables[VM_L2_TABLE_CAPACITY][ARM64_TABLE_ENTRIES]
     __attribute__((aligned(ARM64_TABLE_SIZE)));
 static struct vm_l2_table_slot vm_l2_slots[VM_L2_TABLE_CAPACITY];
 static int vm_ready;
+static int vm_tables_built;
+static int vm_validated;
 static int vm_enable_attempted;
 static unsigned long vm_used_l2_tables;
 static unsigned long vm_blocks_mapped;
+static unsigned long vm_blocks_validated;
+static unsigned long vm_validation_error_count;
 static unsigned long vm_exec_blocks;
 static unsigned long vm_xn_blocks;
 static unsigned long vm_bytes_mapped;
@@ -153,6 +157,8 @@ static int build_tables(void)
 
     vm_used_l2_tables = 0;
     vm_blocks_mapped = 0;
+    vm_blocks_validated = 0;
+    vm_validation_error_count = 0;
     vm_exec_blocks = 0;
     vm_xn_blocks = 0;
     vm_bytes_mapped = 0;
@@ -168,9 +174,129 @@ static int build_tables(void)
     return 1;
 }
 
+static unsigned long *find_l2_table(unsigned long l1_index)
+{
+    for (unsigned long slot = 0; slot < vm_used_l2_tables; slot++)
+    {
+        if (vm_l2_slots[slot].used &&
+            vm_l2_slots[slot].l1_index == l1_index)
+        {
+            return vm_l2_tables[slot];
+        }
+    }
+
+    return 0;
+}
+
+static void validation_error(void)
+{
+    vm_validation_error_count++;
+}
+
+static int validate_region(const struct vm_region *region)
+{
+    unsigned long va = region->virtual_start;
+    unsigned long pa = region->physical_start;
+    unsigned long remaining = region->size;
+
+    if (!region_is_l2_aligned(region))
+    {
+        validation_error();
+        return 0;
+    }
+
+    while (remaining > 0)
+    {
+        unsigned long l1_index = arm64_mmu_l1_index(va);
+        unsigned long l2_index = arm64_mmu_l2_index(va);
+        unsigned long l1_descriptor = vm_l1_table[l1_index];
+        unsigned long *l2_table;
+        unsigned long l2_descriptor;
+
+        if (!arm64_mmu_desc_is_table(l1_descriptor))
+        {
+            validation_error();
+            return 0;
+        }
+
+        l2_table = find_l2_table(l1_index);
+        if (!l2_table ||
+            arm64_mmu_desc_address(l1_descriptor) != (unsigned long)l2_table)
+        {
+            validation_error();
+            return 0;
+        }
+
+        l2_descriptor = l2_table[l2_index];
+        if (!arm64_mmu_desc_is_l2_block(l2_descriptor))
+        {
+            validation_error();
+            return 0;
+        }
+
+        if (arm64_mmu_l2_block_address(l2_descriptor) != pa)
+        {
+            validation_error();
+            return 0;
+        }
+
+        vm_blocks_validated++;
+        va += ARM64_L2_BLOCK_SIZE;
+        pa += ARM64_L2_BLOCK_SIZE;
+        remaining -= ARM64_L2_BLOCK_SIZE;
+    }
+
+    return 1;
+}
+
+static int validate_tables(void)
+{
+    vm_blocks_validated = 0;
+    vm_validation_error_count = 0;
+
+    if (((unsigned long)vm_l1_table & (ARM64_TABLE_SIZE - 1)) != 0)
+    {
+        validation_error();
+        return 0;
+    }
+
+    for (unsigned long slot = 0; slot < vm_used_l2_tables; slot++)
+    {
+        if (((unsigned long)vm_l2_tables[slot] & (ARM64_TABLE_SIZE - 1)) != 0)
+        {
+            validation_error();
+            return 0;
+        }
+    }
+
+    for (unsigned long i = 0; i < vm_region_count(); i++)
+    {
+        if (!validate_region(&vm_regions[i]))
+        {
+            return 0;
+        }
+    }
+
+    if (vm_blocks_validated != vm_blocks_mapped)
+    {
+        validation_error();
+        return 0;
+    }
+
+    return 1;
+}
+
 void vm_init(void)
 {
-    vm_ready = build_tables();
+    vm_tables_built = build_tables();
+    vm_validated = 0;
+    vm_ready = 0;
+
+    if (vm_tables_built)
+    {
+        vm_validated = validate_tables();
+        vm_ready = vm_validated;
+    }
 
     if (vm_ready)
     {
@@ -201,17 +327,27 @@ int vm_mmu_enabled(void)
 
 const char *vm_table_state(void)
 {
-    if (vm_ready)
+    if (vm_tables_built)
     {
-        return "ready";
+        return "built";
     }
 
     return "error";
 }
 
+const char *vm_validation_state(void)
+{
+    if (vm_validated)
+    {
+        return "ok";
+    }
+
+    return "failed";
+}
+
 unsigned long vm_table_count(void)
 {
-    if (!vm_ready)
+    if (!vm_tables_built)
     {
         return 0;
     }
@@ -222,6 +358,16 @@ unsigned long vm_table_count(void)
 unsigned long vm_mapped_blocks(void)
 {
     return vm_blocks_mapped;
+}
+
+unsigned long vm_validated_blocks(void)
+{
+    return vm_blocks_validated;
+}
+
+unsigned long vm_validation_errors(void)
+{
+    return vm_validation_error_count;
 }
 
 unsigned long vm_executable_blocks(void)
@@ -282,6 +428,10 @@ void vm_dump_plan(void)
             vm_table_state(),
             (unsigned int)vm_root_table(),
             (int)vm_table_count());
+    kprintf("VM check : %s blocks=%d errors=%d\n",
+            vm_validation_state(),
+            (int)vm_validated_blocks(),
+            (int)vm_validation_errors());
     kprintf("VM map   : blocks=%d bytes=%d\n",
             (int)vm_mapped_blocks(),
             (int)vm_mapped_bytes());

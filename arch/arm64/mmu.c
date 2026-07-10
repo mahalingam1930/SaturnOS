@@ -34,6 +34,11 @@ unsigned long arm64_mmu_l3_index(unsigned long address)
     return (address >> ARM64_L3_SHIFT) & (ARM64_TABLE_ENTRIES - 1);
 }
 
+unsigned long arm64_mmu_table_desc(unsigned long physical)
+{
+    return (physical & ~(ARM64_PAGE_SIZE - 1)) | ARM64_DESC_TABLE;
+}
+
 unsigned long arm64_mmu_l2_block_desc(unsigned long physical,
                                       unsigned long attributes)
 {

@@ -4,6 +4,7 @@
 #define ARM64_PAGE_SHIFT 12UL
 #define ARM64_PAGE_SIZE (1UL << ARM64_PAGE_SHIFT)
 #define ARM64_TABLE_ENTRIES 512UL
+#define ARM64_TABLE_SIZE (ARM64_TABLE_ENTRIES * sizeof(unsigned long))
 #define ARM64_L1_SHIFT 30UL
 #define ARM64_L2_SHIFT 21UL
 #define ARM64_L3_SHIFT 12UL
@@ -44,6 +45,7 @@ const char *arm64_mmu_state(void);
 unsigned long arm64_mmu_l1_index(unsigned long address);
 unsigned long arm64_mmu_l2_index(unsigned long address);
 unsigned long arm64_mmu_l3_index(unsigned long address);
+unsigned long arm64_mmu_table_desc(unsigned long physical);
 unsigned long arm64_mmu_l2_block_desc(unsigned long physical,
                                       unsigned long attributes);
 unsigned long arm64_mmu_l3_page_desc(unsigned long physical,

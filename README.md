@@ -6,11 +6,11 @@ AArch64 assembly.
 The project is currently focused on early kernel foundations: boot, UART,
 exceptions, timer interrupts, kernel threads, preemptive scheduling, a QEMU
 framebuffer console, physical memory management, a small kernel heap, and
-virtual-memory planning.
+ARM64 translation-table planning.
 
 ## Current Status
 
-Version: 0.5.2
+Version: 0.5.3
 
 Codename: Memory
 
@@ -88,6 +88,7 @@ Target: ARM64 QEMU `virt`
 - Shell `heap` and `heaptest` commands for heap diagnostics
 - ARM64 page-table constants and descriptor helpers
 - Identity-map plan for QEMU `virt` RAM and MMIO
+- Static L1/L2 translation tables with 2 MiB block mappings
 - Shell `vm` command for virtual-memory diagnostics
 
 ## Build
@@ -157,7 +158,7 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Allocate real translation tables and enable the ARM64 MMU
+- Enable the ARM64 MMU using the verified identity tables
 - Expand scheduler robustness and task management
 
 ## Vision

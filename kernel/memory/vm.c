@@ -420,7 +420,7 @@ int vm_walk_address(unsigned long virtual_address, unsigned long *physical)
     return 1;
 }
 
-static void vm_dump_walk_address(const char *label, unsigned long address)
+void vm_dump_walk_address(const char *label, unsigned long address)
 {
     unsigned long l1 = arm64_mmu_l1_index(address);
     unsigned long l2 = arm64_mmu_l2_index(address);

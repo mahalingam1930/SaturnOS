@@ -19,6 +19,7 @@ map.
 - Page-fault diagnostics for instruction and data aborts
 - Translation-table validation before enabling the MMU
 - Shell `vm` and `vmwalk` commands for diagnostics
+- Hex/decimal shell argument parsing for `vmwalk`
 
 ## Planned Identity Map
 
@@ -66,14 +67,20 @@ Before enabling the MMU, SaturnOS validates:
 ## Page Walk Diagnostics
 
 The `vmwalk` shell command walks representative virtual addresses through the
-current L1/L2 tables:
+current L1/L2 tables. It also accepts an explicit address:
 
 - `0x09000000`: UART MMIO mapping
 - `0x40080000`: kernel image mapping
 - `0x20000000`: unmapped gap
 
+```text
+vmwalk 0x40080000
+vmwalk 0x09000000
+vmwalk 0x20000000
+```
+
 ## Next MMU Work
 
 1. Split kernel text, rodata, data, heap, and stack permissions.
-2. Add address-argument parsing for page-table walking diagnostics.
+2. Add named VM region lookup to page-table walking diagnostics.
 3. Decide when to enable instruction and data caches.

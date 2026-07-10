@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.5.8
+Version: 0.5.9
 
 Codename: Memory
 
@@ -97,6 +97,7 @@ Target: ARM64 QEMU `virt`
 - Decoded fault status code, access type, and fault level
 - Translation-table validation before enabling the MMU
 - VM diagnostics for validated blocks and validation errors
+- Shell hex/decimal argument parsing for VM page walks
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -167,7 +168,7 @@ docs/              Architecture, roadmap, and graphics notes
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
 - Split kernel text, rodata, data, heap, and stacks into finer mappings
-- Add address-argument parsing for page-table walking diagnostics
+- Add named VM region lookup to page-table walking diagnostics
 - Expand scheduler robustness and task management
 
 ## Vision

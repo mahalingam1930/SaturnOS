@@ -390,6 +390,77 @@ unsigned long vm_root_table(void)
     return (unsigned long)vm_l1_table;
 }
 
+int vm_walk_address(unsigned long virtual_address, unsigned long *physical)
+{
+    unsigned long l1 = arm64_mmu_l1_index(virtual_address);
+    unsigned long l2 = arm64_mmu_l2_index(virtual_address);
+    unsigned long offset = virtual_address & (ARM64_L2_BLOCK_SIZE - 1);
+    unsigned long l1_descriptor = vm_l1_table[l1];
+    unsigned long *l2_table;
+    unsigned long l2_descriptor;
+
+    if (!arm64_mmu_desc_is_table(l1_descriptor))
+    {
+        return 0;
+    }
+
+    l2_table = find_l2_table(l1);
+    if (!l2_table)
+    {
+        return 0;
+    }
+
+    l2_descriptor = l2_table[l2];
+    if (!arm64_mmu_desc_is_l2_block(l2_descriptor))
+    {
+        return 0;
+    }
+
+    *physical = arm64_mmu_l2_block_address(l2_descriptor) + offset;
+    return 1;
+}
+
+static void vm_dump_walk_address(const char *label, unsigned long address)
+{
+    unsigned long l1 = arm64_mmu_l1_index(address);
+    unsigned long l2 = arm64_mmu_l2_index(address);
+    unsigned long offset = address & (ARM64_L2_BLOCK_SIZE - 1);
+    unsigned long physical = 0;
+    unsigned long l1_descriptor = vm_l1_table[l1];
+
+    kprintf("VM walk %s: va=0x%x l1=%d l2=%d off=0x%x\n",
+            label,
+            (unsigned int)address,
+            (int)l1,
+            (int)l2,
+            (unsigned int)offset);
+    kprintf("  l1 desc=0x%x %s\n",
+            (unsigned int)l1_descriptor,
+            arm64_mmu_desc_is_table(l1_descriptor) ? "table" : "invalid");
+
+    if (vm_walk_address(address, &physical))
+    {
+        unsigned long *l2_table = find_l2_table(l1);
+        unsigned long l2_descriptor = l2_table[l2];
+
+        kprintf("  l2 desc=0x%x block perm=%s\n",
+                (unsigned int)l2_descriptor,
+                arm64_mmu_desc_execute_state(l2_descriptor));
+        kprintf("  pa=0x%x\n", (unsigned int)physical);
+    }
+    else
+    {
+        kprintf("  not mapped\n");
+    }
+}
+
+void vm_dump_walk_examples(void)
+{
+    vm_dump_walk_address("uart", 0x09000000UL);
+    vm_dump_walk_address("kernel", 0x40080000UL);
+    vm_dump_walk_address("gap", 0x20000000UL);
+}
+
 static void vm_dump_region(const struct vm_region *region)
 {
     unsigned long end = region->virtual_start + region->size;

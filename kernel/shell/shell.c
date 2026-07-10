@@ -45,6 +45,7 @@ static void shell_help(void)
     kprintf("  heap     show kernel heap stats\n");
     kprintf("  heaptest run heap allocation test\n");
     kprintf("  vm       show virtual memory plan\n");
+    kprintf("  vmwalk   walk sample virtual addresses\n");
     kprintf("  ticks    show scheduler/timer ticks\n");
     kprintf("  clear    clear framebuffer console\n");
     kprintf("  panic    trigger test exception\n");
@@ -88,6 +89,10 @@ static void shell_execute(const char *command)
     else if (string_equals(command, "vm"))
     {
         vm_dump_plan();
+    }
+    else if (string_equals(command, "vmwalk"))
+    {
+        vm_dump_walk_examples();
     }
     else if (string_equals(command, "ticks"))
     {

@@ -62,6 +62,9 @@ $(BUILD)/timer.o: arch/arm64/timer.c | $(BUILD)
 $(BUILD)/irq.o: arch/arm64/irq.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/mmu.o: arch/arm64/mmu.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/scheduler.o: kernel/sched/scheduler.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -78,6 +81,9 @@ $(BUILD)/pmm.o: kernel/memory/pmm.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/heap.o: kernel/memory/heap.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/vm.o: kernel/memory/vm.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
@@ -99,12 +105,14 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/context_asm.o \
 	$(BUILD)/timer.o \
 	$(BUILD)/irq.o \
+	$(BUILD)/mmu.o \
 	$(BUILD)/scheduler.o \
 	$(BUILD)/thread_demo.o \
 	$(BUILD)/keyboard_input.o \
 	$(BUILD)/shell.o \
 	$(BUILD)/pmm.o \
 	$(BUILD)/heap.o \
+	$(BUILD)/vm.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^

@@ -11,6 +11,7 @@
 #include "config.h"
 #include "pmm.h"
 #include "heap.h"
+#include "vm.h"
 
 void kernel_main(void)
 {
@@ -23,6 +24,7 @@ void kernel_main(void)
 
     pmm_init();
     heap_init();
+    vm_init();
     exception_init();
     timer_init();
     irq_init();
@@ -41,6 +43,7 @@ void kernel_main(void)
     kprintf("Memory : %d KB free\n",
             (int)((pmm_free_pages() * PMM_PAGE_SIZE) / 1024));
     kprintf("Heap   : initialized\n");
+    kprintf("VM     : %s\n", vm_state());
     if (framebuffer_is_ready())
     {
         kprintf("Video  : ramfb 640x480\n");

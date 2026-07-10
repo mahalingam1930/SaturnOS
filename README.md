@@ -5,11 +5,12 @@ AArch64 assembly.
 
 The project is currently focused on early kernel foundations: boot, UART,
 exceptions, timer interrupts, kernel threads, preemptive scheduling, a QEMU
-framebuffer console, physical memory management, and a small kernel heap.
+framebuffer console, physical memory management, a small kernel heap, and
+virtual-memory planning.
 
 ## Current Status
 
-Version: 0.5.1
+Version: 0.5.2
 
 Codename: Memory
 
@@ -71,8 +72,8 @@ Target: ARM64 QEMU `virt`
 ### Shell
 
 - Line-based kernel shell
-- Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `ticks`,
-  `clear`, and `panic` commands
+- Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `vm`,
+  `ticks`, `clear`, and `panic` commands
 
 ### Memory Management
 
@@ -85,6 +86,9 @@ Target: ARM64 QEMU `virt`
 - Page-backed kernel heap allocator
 - `kmalloc`, `kzalloc`, and `kfree` APIs
 - Shell `heap` and `heaptest` commands for heap diagnostics
+- ARM64 page-table constants and descriptor helpers
+- Identity-map plan for QEMU `virt` RAM and MMIO
+- Shell `vm` command for virtual-memory diagnostics
 
 ## Build
 
@@ -141,18 +145,19 @@ docs/              Architecture, roadmap, and graphics notes
 2. Initialize QEMU framebuffer if available.
 3. Initialize physical memory management.
 4. Initialize the kernel heap.
-5. Initialize exceptions, timer, IRQ, and scheduler.
-6. Print boot diagnostics to UART and framebuffer.
-7. Start optional demo kernel threads when enabled.
-8. Start keyboard shell input thread.
-9. Enable periodic timer interrupts.
-10. Run preemptive kernel thread scheduling.
+5. Initialize virtual-memory planning.
+6. Initialize exceptions, timer, IRQ, and scheduler.
+7. Print boot diagnostics to UART and framebuffer.
+8. Start optional demo kernel threads when enabled.
+9. Start keyboard shell input thread.
+10. Enable periodic timer interrupts.
+11. Run preemptive kernel thread scheduling.
 
 ## Next Milestones
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Begin virtual memory and page-table management
+- Allocate real translation tables and enable the ARM64 MMU
 - Expand scheduler robustness and task management
 
 ## Vision

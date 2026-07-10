@@ -7,6 +7,7 @@
 #include "scheduler.h"
 #include "timer.h"
 #include "version.h"
+#include "vm.h"
 
 #define SHELL_BUFFER_SIZE 64
 
@@ -43,6 +44,7 @@ static void shell_help(void)
     kprintf("  mem      show physical memory stats\n");
     kprintf("  heap     show kernel heap stats\n");
     kprintf("  heaptest run heap allocation test\n");
+    kprintf("  vm       show virtual memory plan\n");
     kprintf("  ticks    show scheduler/timer ticks\n");
     kprintf("  clear    clear framebuffer console\n");
     kprintf("  panic    trigger test exception\n");
@@ -81,6 +83,10 @@ static void shell_execute(const char *command)
     else if (string_equals(command, "heaptest"))
     {
         heap_self_test();
+    }
+    else if (string_equals(command, "vm"))
+    {
+        vm_dump_plan();
     }
     else if (string_equals(command, "ticks"))
     {

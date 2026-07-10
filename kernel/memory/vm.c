@@ -3,6 +3,18 @@
 #include "mmu.h"
 
 #define VM_L2_TABLE_CAPACITY 4UL
+#define VM_UART_BASE 0x09000000UL
+#define VM_UART_END 0x09001000UL
+#define VM_GIC_BASE 0x08000000UL
+#define VM_GIC_END 0x08020000UL
+#define VM_FW_CFG_BASE 0x09020000UL
+#define VM_FW_CFG_END 0x09021000UL
+#define VM_RAMFB_CONTROL_BASE 0x46ffe000UL
+#define VM_FRAMEBUFFER_BASE 0x47000000UL
+#define VM_FRAMEBUFFER_END 0x4712c000UL
+
+extern char _kernel_start[];
+extern char _kernel_end[];
 
 struct vm_region
 {
@@ -18,6 +30,13 @@ struct vm_l2_table_slot
 {
     unsigned long l1_index;
     int used;
+};
+
+struct vm_named_region
+{
+    const char *name;
+    unsigned long start;
+    unsigned long end;
 };
 
 static const struct vm_region vm_regions[] = {
@@ -37,6 +56,15 @@ static const struct vm_region vm_regions[] = {
         ARM64_NORMAL_MEMORY_ATTR,
         "normal",
     },
+};
+
+static const struct vm_named_region vm_named_regions[] = {
+    {"gic", VM_GIC_BASE, VM_GIC_END},
+    {"uart", VM_UART_BASE, VM_UART_END},
+    {"fw_cfg", VM_FW_CFG_BASE, VM_FW_CFG_END},
+    {"kernel", (unsigned long)_kernel_start, (unsigned long)_kernel_end},
+    {"ramfb-control", VM_RAMFB_CONTROL_BASE, VM_FRAMEBUFFER_BASE},
+    {"framebuffer", VM_FRAMEBUFFER_BASE, VM_FRAMEBUFFER_END},
 };
 
 static unsigned long vm_l1_table[ARM64_TABLE_ENTRIES]
@@ -390,6 +418,31 @@ unsigned long vm_root_table(void)
     return (unsigned long)vm_l1_table;
 }
 
+const char *vm_region_name_for_address(unsigned long address)
+{
+    for (unsigned long i = 0;
+         i < sizeof(vm_named_regions) / sizeof(vm_named_regions[0]);
+         i++)
+    {
+        if (address >= vm_named_regions[i].start &&
+            address < vm_named_regions[i].end)
+        {
+            return vm_named_regions[i].name;
+        }
+    }
+
+    for (unsigned long i = 0; i < vm_region_count(); i++)
+    {
+        if (address >= vm_regions[i].virtual_start &&
+            address < vm_regions[i].virtual_start + vm_regions[i].size)
+        {
+            return vm_regions[i].name;
+        }
+    }
+
+    return "gap";
+}
+
 int vm_walk_address(unsigned long virtual_address, unsigned long *physical)
 {
     unsigned long l1 = arm64_mmu_l1_index(virtual_address);
@@ -427,10 +480,12 @@ void vm_dump_walk_address(const char *label, unsigned long address)
     unsigned long offset = address & (ARM64_L2_BLOCK_SIZE - 1);
     unsigned long physical = 0;
     unsigned long l1_descriptor = vm_l1_table[l1];
+    const char *region = vm_region_name_for_address(address);
 
-    kprintf("VM walk %s: va=0x%x l1=%d l2=%d off=0x%x\n",
+    kprintf("VM walk %s: va=0x%x region=%s l1=%d l2=%d off=0x%x\n",
             label,
             (unsigned int)address,
+            region,
             (int)l1,
             (int)l2,
             (unsigned int)offset);

@@ -6,6 +6,7 @@ void vm_dump_plan(void);
 void vm_dump_walk_examples(void);
 void vm_dump_walk_address(const char *label, unsigned long address);
 int vm_walk_address(unsigned long virtual_address, unsigned long *physical);
+const char *vm_region_name_for_address(unsigned long address);
 unsigned long vm_region_count(void);
 unsigned long vm_table_count(void);
 unsigned long vm_mapped_blocks(void);

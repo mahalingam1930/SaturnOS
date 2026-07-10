@@ -9,6 +9,7 @@ PHDRS
 SECTIONS
 {
     . = 0x40080000;
+    _kernel_start = .;
 
     .text :
     {
@@ -30,4 +31,7 @@ SECTIONS
         *(.bss*)
         *(COMMON)
     } :data
+
+    . = ALIGN(4096);
+    _kernel_end = .;
 }

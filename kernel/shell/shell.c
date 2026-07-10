@@ -2,6 +2,7 @@
 #include "exception.h"
 #include "framebuffer.h"
 #include "kprintf.h"
+#include "pmm.h"
 #include "scheduler.h"
 #include "timer.h"
 #include "version.h"
@@ -38,6 +39,7 @@ static void shell_help(void)
     kprintf("  help     show commands\n");
     kprintf("  version  show kernel version\n");
     kprintf("  tasks    show scheduler tasks\n");
+    kprintf("  mem      show physical memory stats\n");
     kprintf("  ticks    show scheduler/timer ticks\n");
     kprintf("  clear    clear framebuffer console\n");
     kprintf("  panic    trigger test exception\n");
@@ -64,6 +66,10 @@ static void shell_execute(const char *command)
     else if (string_equals(command, "tasks"))
     {
         scheduler_dump_tasks();
+    }
+    else if (string_equals(command, "mem"))
+    {
+        pmm_dump_stats();
     }
     else if (string_equals(command, "ticks"))
     {

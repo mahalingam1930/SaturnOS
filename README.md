@@ -4,14 +4,14 @@ SaturnOS is a small ARM64 operating system built from the ground up in C and
 AArch64 assembly.
 
 The project is currently focused on early kernel foundations: boot, UART,
-exceptions, timer interrupts, kernel threads, preemptive scheduling, and a
-QEMU framebuffer console.
+exceptions, timer interrupts, kernel threads, preemptive scheduling, a QEMU
+framebuffer console, and physical memory management.
 
 ## Current Status
 
-Version: 0.4.0
+Version: 0.5.0
 
-Codename: Scheduler
+Codename: Memory
 
 Target: ARM64 QEMU `virt`
 
@@ -71,7 +71,16 @@ Target: ARM64 QEMU `virt`
 ### Shell
 
 - Line-based kernel shell
-- Built-in `help`, `version`, `tasks`, `ticks`, `clear`, and `panic` commands
+- Built-in `help`, `version`, `tasks`, `mem`, `ticks`, `clear`, and `panic` commands
+
+### Memory Management
+
+- Physical memory manager for QEMU `virt` RAM
+- 4 KiB page bitmap allocator
+- Kernel image reservation using linker symbols
+- QEMU ramfb memory reservation
+- `pmm_alloc_page` and `pmm_free_page` page APIs
+- Shell `mem` command for memory diagnostics
 
 ## Build
 
@@ -113,6 +122,7 @@ kernel/console/    Console and kprintf
 kernel/demo/       Kernel thread demo
 kernel/exception/  ESR decoder
 kernel/input/      Keyboard input thread
+kernel/memory/     Physical memory manager
 kernel/panic/      Kernel panic diagnostics
 kernel/sched/      Kernel scheduler
 kernel/shell/      Interactive kernel shell
@@ -125,18 +135,20 @@ docs/              Architecture, roadmap, and graphics notes
 
 1. Initialize UART.
 2. Initialize QEMU framebuffer if available.
-3. Initialize exceptions, timer, IRQ, and scheduler.
-4. Print boot diagnostics to UART and framebuffer.
-5. Start optional demo kernel threads when enabled.
-6. Start keyboard shell input thread.
-7. Enable periodic timer interrupts.
-8. Run preemptive kernel thread scheduling.
+3. Initialize physical memory management.
+4. Initialize exceptions, timer, IRQ, and scheduler.
+5. Print boot diagnostics to UART and framebuffer.
+6. Start optional demo kernel threads when enabled.
+7. Start keyboard shell input thread.
+8. Enable periodic timer interrupts.
+9. Run preemptive kernel thread scheduling.
 
 ## Next Milestones
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Begin memory management foundations
+- Add a small kernel heap on top of the page allocator
+- Begin virtual memory and page-table management
 - Expand scheduler robustness and task management
 
 ## Vision

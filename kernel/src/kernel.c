@@ -9,6 +9,7 @@
 #include "framebuffer.h"
 #include "keyboard_input.h"
 #include "config.h"
+#include "pmm.h"
 
 void kernel_main(void)
 {
@@ -19,6 +20,7 @@ void kernel_main(void)
         framebuffer_console_init();
     }
 
+    pmm_init();
     exception_init();
     timer_init();
     irq_init();
@@ -34,6 +36,8 @@ void kernel_main(void)
     kprintf("IRQ    : GICv2 initialized\n");
     kprintf("Timer  : %d Hz\n", (int)timer_get_frequency());
     kprintf("Sched  : preemptive kernel threads\n");
+    kprintf("Memory : %d KB free\n",
+            (int)((pmm_free_pages() * PMM_PAGE_SIZE) / 1024));
     if (framebuffer_is_ready())
     {
         kprintf("Video  : ramfb 640x480\n");

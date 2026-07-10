@@ -4,7 +4,7 @@ CC = $(CROSS)gcc
 AS = $(CROSS)as
 LD = $(CROSS)ld
 
-CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only \
+CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only -MMD -MP \
     -Ikernel/include \
     -Ikernel/console \
     -Idrivers/uart \
@@ -15,6 +15,7 @@ CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only \
 	-Ikernel/demo \
 	-Ikernel/input \
 	-Ikernel/shell \
+	-Ikernel/memory \
 	-Idrivers/video \
 	-Idrivers/keyboard
 
@@ -73,6 +74,9 @@ $(BUILD)/keyboard_input.o: kernel/input/keyboard_input.c | $(BUILD)
 $(BUILD)/shell.o: kernel/shell/shell.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/pmm.o: kernel/memory/pmm.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -96,11 +100,14 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/thread_demo.o \
 	$(BUILD)/keyboard_input.o \
 	$(BUILD)/shell.o \
+	$(BUILD)/pmm.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^
 
 clean:
 	rm -rf $(BUILD)
+
+-include $(BUILD)/*.d
 
 .PHONY: all clean

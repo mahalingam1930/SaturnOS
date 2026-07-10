@@ -1,4 +1,5 @@
 #include "framebuffer.h"
+#include "version.h"
 
 #define FW_CFG_BASE 0x09020000UL
 #define FW_CFG_DATA 0x00
@@ -691,7 +692,12 @@ void framebuffer_draw_test_pattern(void)
     framebuffer_write_at(72, 66, "SaturnOS", 0x00f8f9fa, 0x00205070, 3);
     framebuffer_write_at(72, 154, "RAMFB", 0x00101820, 0x00ff4f5e, 3);
     framebuffer_write_at(264, 154, "TEXT", 0x00101820, 0x004ecdc4, 3);
-    framebuffer_write_at(456, 154, "0.4.0", 0x00101820, 0x00ffd166, 2);
+    framebuffer_write_at(456,
+                         154,
+                         SATURNOS_VERSION,
+                         0x00101820,
+                         0x00ffd166,
+                         2);
     framebuffer_write_at(72,
                          414,
                          "FRAMEBUFFER TEXT ONLINE",

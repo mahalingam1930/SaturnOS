@@ -290,6 +290,21 @@ Kernel threads still run in EL1, so their diagnostics report `el0=no`.
 Future user tasks will only become `el0=yes` after they have a user address
 space with installed user mappings and executable user code.
 
+## EL0 Transition Stub
+
+SaturnOS now has a guarded user-mode transition API:
+
+```text
+user_mode_can_enter(task)
+user_mode_prepare(task)
+user_mode_enter_stub(task)
+```
+
+The stub checks task, address-space, validation, PC, SP, and SPSR readiness,
+then returns a status string. It does not execute `eret`, switch TTBR0, or
+leave EL1. Kernel threads report `user_entry=blocked` with status
+`kernel-task`, which is the expected safe state.
+
 ## User Address-Space Validation
 
 Address spaces now report validation status and error counts. The validator
@@ -309,6 +324,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add EL0 transition stub.
-2. Add user address-space switching preparation.
+1. Add user address-space switching preparation.
+2. Add EL0 exception-return implementation.
 3. Decide when to enable instruction and data caches.

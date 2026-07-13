@@ -3,6 +3,7 @@
 #include "cpu.h"
 #include "irq.h"
 #include "kprintf.h"
+#include "user.h"
 
 static void idle_task(void);
 static void scheduler_exit_task(int task_id);
@@ -399,6 +400,9 @@ void scheduler_dump_tasks(void)
                 (unsigned int)tasks[i].el0.pc,
                 (unsigned int)tasks[i].el0.sp,
                 (unsigned int)tasks[i].el0.spsr);
+        kprintf("    user_entry=%s status=%s\n",
+                user_mode_entry_state(&tasks[i]),
+                user_mode_status_name(user_mode_enter_stub(&tasks[i])));
         kprintf("    stack=0x%x-0x%x\n",
                 (unsigned int)tasks[i].memory.stack_start,
                 (unsigned int)tasks[i].memory.stack_end);

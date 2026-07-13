@@ -15,6 +15,14 @@
 
 extern char _kernel_start[];
 extern char _kernel_end[];
+extern char _text_start[];
+extern char _text_end[];
+extern char _rodata_start[];
+extern char _rodata_end[];
+extern char _data_start[];
+extern char _data_end[];
+extern char _bss_start[];
+extern char _bss_end[];
 
 struct vm_region
 {
@@ -62,6 +70,10 @@ static const struct vm_named_region vm_named_regions[] = {
     {"gic", VM_GIC_BASE, VM_GIC_END},
     {"uart", VM_UART_BASE, VM_UART_END},
     {"fw_cfg", VM_FW_CFG_BASE, VM_FW_CFG_END},
+    {"kernel-text", (unsigned long)_text_start, (unsigned long)_text_end},
+    {"kernel-rodata", (unsigned long)_rodata_start, (unsigned long)_rodata_end},
+    {"kernel-data", (unsigned long)_data_start, (unsigned long)_data_end},
+    {"kernel-bss", (unsigned long)_bss_start, (unsigned long)_bss_end},
     {"kernel", (unsigned long)_kernel_start, (unsigned long)_kernel_end},
     {"ramfb-control", VM_RAMFB_CONTROL_BASE, VM_FRAMEBUFFER_BASE},
     {"framebuffer", VM_FRAMEBUFFER_BASE, VM_FRAMEBUFFER_END},
@@ -509,11 +521,42 @@ void vm_dump_walk_address(const char *label, unsigned long address)
     }
 }
 
+static void vm_dump_section_walk(const char *label, char *start, char *end)
+{
+    if ((unsigned long)start >= (unsigned long)end)
+    {
+        kprintf("VM walk %s: empty section\n", label);
+        return;
+    }
+
+    vm_dump_walk_address(label, (unsigned long)start);
+}
+
 void vm_dump_walk_examples(void)
 {
     vm_dump_walk_address("uart", 0x09000000UL);
-    vm_dump_walk_address("kernel", 0x40080000UL);
+    vm_dump_section_walk("text", _text_start, _text_end);
+    vm_dump_section_walk("rodata", _rodata_start, _rodata_end);
+    vm_dump_section_walk("data", _data_start, _data_end);
+    vm_dump_section_walk("bss", _bss_start, _bss_end);
     vm_dump_walk_address("gap", 0x20000000UL);
+}
+
+static void vm_dump_kernel_sections(void)
+{
+    kprintf("VM kernel sections:\n");
+    kprintf("  text   0x%x-0x%x\n",
+            (unsigned int)(unsigned long)_text_start,
+            (unsigned int)(unsigned long)_text_end);
+    kprintf("  rodata 0x%x-0x%x\n",
+            (unsigned int)(unsigned long)_rodata_start,
+            (unsigned int)(unsigned long)_rodata_end);
+    kprintf("  data   0x%x-0x%x\n",
+            (unsigned int)(unsigned long)_data_start,
+            (unsigned int)(unsigned long)_data_end);
+    kprintf("  bss    0x%x-0x%x\n",
+            (unsigned int)(unsigned long)_bss_start,
+            (unsigned int)(unsigned long)_bss_end);
 }
 
 static void vm_dump_region(const struct vm_region *region)
@@ -573,6 +616,7 @@ void vm_dump_plan(void)
             (unsigned int)arm64_mmu_read_tcr(),
             (unsigned int)arm64_mmu_read_ttbr0());
     kprintf("VM sctlr : 0x%x\n", (unsigned int)arm64_mmu_read_sctlr());
+    vm_dump_kernel_sections();
     kprintf("VM regions: %d\n", (int)vm_region_count());
 
     for (unsigned long i = 0; i < vm_region_count(); i++)

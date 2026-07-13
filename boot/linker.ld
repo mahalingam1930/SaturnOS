@@ -11,26 +11,34 @@ SECTIONS
     . = 0x40080000;
     _kernel_start = .;
 
+    _text_start = .;
     .text :
     {
         *(.text*)
     } :text
+    _text_end = .;
 
+    _rodata_start = .;
     .rodata :
     {
         *(.rodata*)
     } :text
+    _rodata_end = .;
 
+    _data_start = .;
     .data :
     {
         *(.data*)
     } :data
+    _data_end = .;
 
+    _bss_start = .;
     .bss :
     {
         *(.bss*)
         *(COMMON)
     } :data
+    _bss_end = .;
 
     . = ALIGN(4096);
     _kernel_end = .;

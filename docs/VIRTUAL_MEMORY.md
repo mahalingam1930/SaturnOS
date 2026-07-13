@@ -21,6 +21,8 @@ map.
 - Shell `vm` and `vmwalk` commands for diagnostics
 - Hex/decimal shell argument parsing for `vmwalk`
 - Named VM region lookup for page-walk output
+- Linker-provided kernel section ranges for `.text`, `.rodata`, `.data`,
+  and `.bss`
 
 ## Planned Identity Map
 
@@ -44,6 +46,20 @@ map.
   stacks still share coarse 2 MiB mappings
 - Next step: split kernel regions into smaller mappings so text can be
   executable/read-only while data, heap, and stacks are execute-never
+
+## Kernel Section Symbols
+
+The linker script exports section boundaries for the kernel image:
+
+- `.text`: executable kernel code
+- `.rodata`: read-only constants and strings
+- `.data`: initialized writable data
+- `.bss`: zeroed writable data, tables, and stacks
+
+The VM diagnostics use these symbols to label kernel addresses more precisely.
+The current mappings are still coarse 2 MiB blocks; these ranges prepare the
+next permission-hardening step where executable code and writable data can be
+mapped differently.
 
 ## MMU Configuration
 
@@ -69,10 +85,11 @@ Before enabling the MMU, SaturnOS validates:
 
 The `vmwalk` shell command walks representative virtual addresses through the
 current L1/L2 tables. It also accepts an explicit address and labels known
-regions such as `uart`, `kernel`, `framebuffer`, and `gap`:
+regions such as `uart`, `kernel-text`, `kernel-rodata`, `kernel-data`,
+`kernel-bss`, `framebuffer`, and `gap`:
 
 - `0x09000000`: UART MMIO mapping
-- `0x40080000`: kernel image mapping
+- `0x40080000`: kernel text mapping
 - `0x20000000`: unmapped gap
 
 ```text

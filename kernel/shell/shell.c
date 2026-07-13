@@ -233,6 +233,19 @@ static int command_line_is_completion_target(void)
     return command_cursor == command_length;
 }
 
+static void shell_redraw_current_line(void)
+{
+    shell_prompt();
+
+    for (unsigned int i = 0; i < command_length; i++)
+    {
+        kprintf("%c", command_buffer[i]);
+    }
+
+    command_cursor = command_length;
+    rendered_length = command_length;
+}
+
 static unsigned int history_index(unsigned int logical_index)
 {
     unsigned int first;
@@ -489,6 +502,24 @@ static void shell_autocomplete(void)
 
     if (matches != 1 || !match)
     {
+        if (matches > 1)
+        {
+            kprintf("\nMatches:");
+
+            for (unsigned int i = 0; i < shell_command_count; i++)
+            {
+                if (command_prefix_matches(shell_commands[i].name,
+                                           command_buffer,
+                                           command_length))
+                {
+                    kprintf(" %s", shell_commands[i].name);
+                }
+            }
+
+            kprintf("\n");
+            shell_redraw_current_line();
+        }
+
         return;
     }
 

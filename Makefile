@@ -68,6 +68,9 @@ $(BUILD)/mmu.o: arch/arm64/mmu.c | $(BUILD)
 $(BUILD)/user.o: arch/arm64/user.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/user_entry.o: arch/arm64/user_entry.S | $(BUILD)
+	$(CC) -c $< -o $@
+
 $(BUILD)/scheduler.o: kernel/sched/scheduler.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -113,6 +116,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/irq.o \
 	$(BUILD)/mmu.o \
 	$(BUILD)/user.o \
+	$(BUILD)/user_entry.o \
 	$(BUILD)/scheduler.o \
 	$(BUILD)/thread_demo.o \
 	$(BUILD)/keyboard_input.o \

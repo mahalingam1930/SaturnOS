@@ -50,7 +50,20 @@ int user_mode_prepare(const struct task *task)
 
 int user_mode_enter_stub(const struct task *task)
 {
-    return user_mode_prepare(task);
+    int status = user_mode_prepare(task);
+
+    if (status != USER_MODE_READY)
+    {
+        return status;
+    }
+
+    /*
+     * The real EL0 return path exists now, but normal boot never reaches this
+     * call because no current kernel task is EL0-ready.
+     */
+    arm64_enter_el0(task->el0.pc, task->el0.sp, task->el0.spsr);
+
+    return USER_MODE_READY;
 }
 
 const char *user_mode_status_name(int status)

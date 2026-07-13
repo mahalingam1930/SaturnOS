@@ -19,5 +19,6 @@ int user_mode_prepare(const struct task *task);
 int user_mode_enter_stub(const struct task *task);
 const char *user_mode_status_name(int status);
 const char *user_mode_entry_state(const struct task *task);
+void arm64_enter_el0(unsigned long pc, unsigned long sp, unsigned long spsr);
 
 #endif

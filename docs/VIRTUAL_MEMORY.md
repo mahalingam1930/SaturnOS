@@ -305,6 +305,19 @@ then returns a status string. It does not execute `eret`, switch TTBR0, or
 leave EL1. Kernel threads report `user_entry=blocked` with status
 `kernel-task`, which is the expected safe state.
 
+## EL0 Exception-Return Path
+
+SaturnOS now has the low-level assembly doorway for future EL0 entry:
+
+```text
+arm64_enter_el0(pc, sp, spsr)
+```
+
+The routine writes `ELR_EL1`, `SP_EL0`, and `SPSR_EL1`, then executes `eret`.
+Normal kernel boot does not reach this path because current tasks are kernel
+tasks and fail the guarded readiness checks before the assembly routine can be
+called.
+
 ## User Address-Space Switching Preparation
 
 Address spaces now track switching metadata:
@@ -340,6 +353,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add EL0 exception-return implementation.
-2. Add guarded TTBR0 switch stub.
+1. Add guarded TTBR0 switch stub.
+2. Add first blocked user-task creation path.
 3. Decide when to enable instruction and data caches.

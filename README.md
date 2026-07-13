@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.27
+Version: 0.6.28
 
 Codename: Memory
 
@@ -71,6 +71,7 @@ Target: ARM64 QEMU `virt`
 - Controlled user task unblock path
 - Deliberate EL0 BRK smoke test and recovery
 - User smoke task completion cleanup
+- Hardened EL0 recovery tuple validation
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -154,6 +155,7 @@ Target: ARM64 QEMU `virt`
 - Shared EL1-only kernel mappings inside user address spaces
 - Expected lower-EL BRK recovery back to EL1
 - User smoke completion result diagnostics
+- Named EL0 recovery rejection diagnostics
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -223,7 +225,7 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Add EL0 exception return-to-kernel recovery hardening
+- Add per-user-task lifecycle counters
 - Expand scheduler robustness and task management
 
 ## Vision

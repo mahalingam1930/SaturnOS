@@ -452,7 +452,8 @@ Expected boot flow:
 ```text
 Starting EL0 BRK smoke test for task N (user-demo)
 EL0 smoke: entering user task at 0x100000
-EL0 smoke: caught expected BRK at ELR=0x100000
+EL0 smoke: recovery armed ec=0x3c iss=0x0 elr=0x100000
+EL0 smoke: caught expected BRK ec=0x3c iss=0x0 ELR=0x100000
 EL0 smoke: returned to EL1
 User task N (user-demo) smoke=passed
 User task N (user-demo) completed; state=zombie runnable=no
@@ -461,6 +462,33 @@ SaturnOS shell ready
 
 Only the expected lower-EL BRK is handled this way. Unexpected exceptions still
 fall through to the normal kernel panic diagnostics.
+
+## EL0 Recovery Hardening
+
+The EL0 smoke recovery path now validates the exact recovery tuple before it
+returns to kernel code:
+
+```text
+EC    BRK instruction, 0x3c
+ISS   BRK immediate 0
+mode  EL0t
+ELR   expected user smoke entry
+roots kernel and user TTBR0 roots present
+ret   explicit EL1 recovery label present
+```
+
+Any mismatch switches back to the kernel root when possible, prints a named
+rejection reason, and lets the normal panic path handle the exception:
+
+```text
+EL0 smoke: recovery rejected reason=unexpected-ec ...
+EL0 smoke: recovery rejected reason=unexpected-iss ...
+EL0 smoke: recovery rejected reason=unexpected-mode ...
+EL0 smoke: recovery rejected reason=unexpected-elr ...
+```
+
+This keeps the deliberate smoke path narrow: only the exact expected lower-EL
+BRK can recover.
 
 ## User Smoke Task Cleanup
 
@@ -496,6 +524,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add EL0 exception return-to-kernel recovery hardening.
-2. Add per-user-task lifecycle counters.
+1. Add per-user-task lifecycle counters.
+2. Add user exception statistics.
 3. Decide when to enable instruction and data caches.

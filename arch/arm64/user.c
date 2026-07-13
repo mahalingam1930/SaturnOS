@@ -6,14 +6,30 @@
 
 #define ESR_EC_SHIFT 26
 #define ESR_EC_MASK 0x3FUL
+#define ESR_ISS_MASK 0x01ffffffUL
 #define ESR_EC_BRK 0x3CUL
+#define ESR_BRK_IMM0 0x0UL
 #define SPSR_MODE_MASK 0xFUL
+
+enum user_smoke_reject_reason
+{
+    USER_SMOKE_REJECT_NONE = 0,
+    USER_SMOKE_REJECT_BAD_ROOTS,
+    USER_SMOKE_REJECT_BAD_RETURN,
+    USER_SMOKE_REJECT_UNEXPECTED_EC,
+    USER_SMOKE_REJECT_UNEXPECTED_ISS,
+    USER_SMOKE_REJECT_UNEXPECTED_MODE,
+    USER_SMOKE_REJECT_UNEXPECTED_ELR,
+};
 
 struct user_smoke_state
 {
     volatile int active;
     volatile int handled;
+    volatile int last_reject_reason;
+    volatile unsigned long reject_count;
     unsigned long expected_elr;
+    unsigned long expected_iss;
     unsigned long return_pc;
     unsigned long kernel_root;
     unsigned long user_root;
@@ -24,6 +40,59 @@ static struct user_smoke_state user_smoke;
 static unsigned long exception_class_value(unsigned long esr)
 {
     return (esr >> ESR_EC_SHIFT) & ESR_EC_MASK;
+}
+
+static unsigned long exception_iss_value(unsigned long esr)
+{
+    return esr & ESR_ISS_MASK;
+}
+
+static const char *user_smoke_reject_reason_name(int reason)
+{
+    switch (reason)
+    {
+        case USER_SMOKE_REJECT_NONE:
+            return "none";
+        case USER_SMOKE_REJECT_BAD_ROOTS:
+            return "bad-roots";
+        case USER_SMOKE_REJECT_BAD_RETURN:
+            return "bad-return";
+        case USER_SMOKE_REJECT_UNEXPECTED_EC:
+            return "unexpected-ec";
+        case USER_SMOKE_REJECT_UNEXPECTED_ISS:
+            return "unexpected-iss";
+        case USER_SMOKE_REJECT_UNEXPECTED_MODE:
+            return "unexpected-mode";
+        case USER_SMOKE_REJECT_UNEXPECTED_ELR:
+            return "unexpected-elr";
+        default:
+            return "unknown";
+    }
+}
+
+static int user_smoke_reject(int reason,
+                             unsigned long esr,
+                             unsigned long elr,
+                             unsigned long spsr)
+{
+    if (user_smoke.kernel_root)
+    {
+        arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
+    }
+
+    user_smoke.last_reject_reason = reason;
+    user_smoke.reject_count++;
+    user_smoke.active = 0;
+
+    kprintf("EL0 smoke: recovery rejected reason=%s ec=0x%x iss=0x%x "
+            "elr=0x%x spsr=0x%x\n",
+            user_smoke_reject_reason_name(reason),
+            (unsigned int)exception_class_value(esr),
+            (unsigned int)exception_iss_value(esr),
+            (unsigned int)elr,
+            (unsigned int)spsr);
+
+    return 0;
 }
 
 int user_mode_can_enter(const struct task *task)
@@ -120,13 +189,19 @@ int user_mode_run_smoke_test(const struct task *task)
 
     user_smoke.active = 1;
     user_smoke.handled = 0;
+    user_smoke.last_reject_reason = USER_SMOKE_REJECT_NONE;
     user_smoke.expected_elr = task->el0.pc;
+    user_smoke.expected_iss = ESR_BRK_IMM0;
     user_smoke.return_pc = (unsigned long)arm64_el0_smoke_return;
     user_smoke.kernel_root = space->kernel_root_table;
     user_smoke.user_root = space->target_root_table;
 
     kprintf("EL0 smoke: entering user task at 0x%x\n",
             (unsigned int)task->el0.pc);
+    kprintf("EL0 smoke: recovery armed ec=0x%x iss=0x%x elr=0x%x\n",
+            (unsigned int)ESR_EC_BRK,
+            (unsigned int)user_smoke.expected_iss,
+            (unsigned int)user_smoke.expected_elr);
 
     arm64_mmu_switch_ttbr0(user_smoke.user_root);
     arm64_enter_el0_smoke(task->el0.pc, task->el0.sp, task->el0.spsr);
@@ -148,6 +223,7 @@ int user_mode_handle_exception(unsigned long esr,
                                unsigned long spsr)
 {
     unsigned long ec = exception_class_value(esr);
+    unsigned long iss = exception_iss_value(esr);
     unsigned long mode = spsr & SPSR_MODE_MASK;
     (void)far;
 
@@ -156,20 +232,61 @@ int user_mode_handle_exception(unsigned long esr,
         return 0;
     }
 
-    if (ec != ESR_EC_BRK ||
-        mode != ARM64_SPSR_MODE_EL0T ||
-        elr != user_smoke.expected_elr)
+    if (!user_smoke.kernel_root || !user_smoke.user_root)
     {
-        arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
-        user_smoke.active = 0;
-        return 0;
+        return user_smoke_reject(USER_SMOKE_REJECT_BAD_ROOTS,
+                                 esr,
+                                 elr,
+                                 spsr);
+    }
+
+    if (!user_smoke.return_pc)
+    {
+        return user_smoke_reject(USER_SMOKE_REJECT_BAD_RETURN,
+                                 esr,
+                                 elr,
+                                 spsr);
+    }
+
+    if (ec != ESR_EC_BRK)
+    {
+        return user_smoke_reject(USER_SMOKE_REJECT_UNEXPECTED_EC,
+                                 esr,
+                                 elr,
+                                 spsr);
+    }
+
+    if (iss != user_smoke.expected_iss)
+    {
+        return user_smoke_reject(USER_SMOKE_REJECT_UNEXPECTED_ISS,
+                                 esr,
+                                 elr,
+                                 spsr);
+    }
+
+    if (mode != ARM64_SPSR_MODE_EL0T)
+    {
+        return user_smoke_reject(USER_SMOKE_REJECT_UNEXPECTED_MODE,
+                                 esr,
+                                 elr,
+                                 spsr);
+    }
+
+    if (elr != user_smoke.expected_elr)
+    {
+        return user_smoke_reject(USER_SMOKE_REJECT_UNEXPECTED_ELR,
+                                 esr,
+                                 elr,
+                                 spsr);
     }
 
     arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
     user_smoke.handled = 1;
     user_smoke.active = 0;
 
-    kprintf("EL0 smoke: caught expected BRK at ELR=0x%x\n",
+    kprintf("EL0 smoke: caught expected BRK ec=0x%x iss=0x%x ELR=0x%x\n",
+            (unsigned int)ec,
+            (unsigned int)iss,
             (unsigned int)elr);
 
     __asm__ volatile(

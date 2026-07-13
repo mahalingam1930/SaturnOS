@@ -126,8 +126,10 @@ static int vm_kernel_l3_mapped;
 static unsigned long vm_used_l2_tables;
 static unsigned long vm_blocks_mapped;
 static unsigned long vm_pages_mapped;
+static unsigned long vm_guard_pages;
 static unsigned long vm_blocks_validated;
 static unsigned long vm_pages_validated;
+static unsigned long vm_guard_pages_validated;
 static unsigned long vm_validation_error_count;
 static unsigned long vm_exec_blocks;
 static unsigned long vm_xn_blocks;
@@ -193,6 +195,11 @@ static unsigned long kernel_page_attributes(unsigned long address)
     }
 
     return VM_NORMAL_XN_MEMORY_ATTR;
+}
+
+static int vm_address_is_guard_page(unsigned long address)
+{
+    return scheduler_address_is_stack_guard(address);
 }
 
 static unsigned long *get_l2_table(unsigned long l1_index)
@@ -293,6 +300,12 @@ static int map_kernel_l3_block(void)
         unsigned long address = VM_KERNEL_L3_BASE + (i * ARM64_PAGE_SIZE);
         unsigned long attributes = kernel_page_attributes(address);
 
+        if (vm_address_is_guard_page(address))
+        {
+            vm_guard_pages++;
+            continue;
+        }
+
         vm_kernel_l3_table[i] =
             arm64_mmu_l3_page_desc(address, attributes);
 
@@ -306,6 +319,7 @@ static int map_kernel_l3_block(void)
         }
 
         vm_pages_mapped++;
+        vm_bytes_mapped += ARM64_PAGE_SIZE;
     }
 
     if (arm64_mmu_desc_is_l2_block(l2_table[l2_index]))
@@ -327,7 +341,6 @@ static int map_kernel_l3_block(void)
         arm64_mmu_table_desc((unsigned long)vm_kernel_l3_table);
 
     vm_kernel_l3_mapped = 1;
-    vm_bytes_mapped += ARM64_L2_BLOCK_SIZE;
     return 1;
 }
 
@@ -346,8 +359,10 @@ static int build_tables(void)
     vm_used_l2_tables = 0;
     vm_blocks_mapped = 0;
     vm_pages_mapped = 0;
+    vm_guard_pages = 0;
     vm_blocks_validated = 0;
     vm_pages_validated = 0;
+    vm_guard_pages_validated = 0;
     vm_validation_error_count = 0;
     vm_exec_blocks = 0;
     vm_xn_blocks = 0;
@@ -465,6 +480,21 @@ static int validate_region(const struct vm_region *region)
         unsigned long level;
         unsigned long step;
 
+        if (vm_address_is_guard_page(va))
+        {
+            if (translation_for_address(va, &physical, &descriptor, &level))
+            {
+                validation_error();
+                return 0;
+            }
+
+            va += ARM64_PAGE_SIZE;
+            pa += ARM64_PAGE_SIZE;
+            remaining -= ARM64_PAGE_SIZE;
+            vm_guard_pages_validated++;
+            continue;
+        }
+
         if (!translation_for_address(va, &physical, &descriptor, &level))
         {
             validation_error();
@@ -539,6 +569,12 @@ static int validate_tables(void)
     }
 
     if (vm_pages_validated != vm_pages_mapped)
+    {
+        validation_error();
+        return 0;
+    }
+
+    if (vm_guard_pages_validated != vm_guard_pages)
     {
         validation_error();
         return 0;
@@ -665,6 +701,11 @@ const char *vm_region_name_for_address(unsigned long address)
         return "heap";
     }
 
+    if (scheduler_address_is_stack_guard(address))
+    {
+        return "stack-guard";
+    }
+
     if (address >= stack_start && address < stack_end)
     {
         return "scheduler-stacks";
@@ -788,6 +829,7 @@ static void vm_dump_section_walk(const char *label, char *start, char *end)
 void vm_dump_walk_examples(void)
 {
     unsigned long heap_start = heap_region_start();
+    unsigned long guard_start = scheduler_stack_guard_start(0);
 
     vm_dump_walk_address("uart", 0x09000000UL);
     vm_dump_section_walk("text", _text_start, _text_end);
@@ -798,7 +840,8 @@ void vm_dump_walk_examples(void)
     {
         vm_dump_walk_address("heap", heap_start);
     }
-    vm_dump_walk_address("stacks", scheduler_stack_region_start());
+    vm_dump_walk_address("stack-guard", guard_start);
+    vm_dump_walk_address("stacks", scheduler_stack_start(0));
     vm_dump_walk_address("gap", 0x20000000UL);
 }
 
@@ -881,6 +924,12 @@ static const char *vm_actual_execute_permission_for_range(unsigned long start,
     {
         unsigned long descriptor;
 
+        if (vm_address_is_guard_page(address))
+        {
+            address += ARM64_PAGE_SIZE;
+            continue;
+        }
+
         if (!next_descriptor_in_range(&address, end, &descriptor))
         {
             return "unmapped";
@@ -906,6 +955,11 @@ static const char *vm_actual_execute_permission_for_range(unsigned long start,
         return "xn";
     }
 
+    if (!saw_exec)
+    {
+        return "unmapped";
+    }
+
     return "exec";
 }
 
@@ -926,6 +980,12 @@ static const char *vm_actual_write_permission_for_range(unsigned long start,
     while (address < end)
     {
         unsigned long descriptor;
+
+        if (vm_address_is_guard_page(address))
+        {
+            address += ARM64_PAGE_SIZE;
+            continue;
+        }
 
         if (!next_descriptor_in_range(&address, end, &descriptor))
         {
@@ -950,6 +1010,11 @@ static const char *vm_actual_write_permission_for_range(unsigned long start,
     if (saw_ro)
     {
         return "ro";
+    }
+
+    if (!saw_rw)
+    {
+        return "unmapped";
     }
 
     return "rw";
@@ -1061,6 +1126,44 @@ static void vm_dump_permission_range(const char *name,
             }));
 }
 
+static const char *vm_stack_guard_state(void)
+{
+    for (unsigned long i = 0; i <= scheduler_stack_count(); i++)
+    {
+        unsigned long start = scheduler_stack_guard_start(i);
+        unsigned long end = scheduler_stack_guard_end(i);
+
+        for (unsigned long address = start;
+             address < end;
+             address += ARM64_PAGE_SIZE)
+        {
+            unsigned long physical;
+            unsigned long descriptor;
+            unsigned long level;
+
+            if (translation_for_address(address,
+                                        &physical,
+                                        &descriptor,
+                                        &level))
+            {
+                return "mapped";
+            }
+        }
+    }
+
+    return "unmapped";
+}
+
+static void vm_dump_stack_guard_state(void)
+{
+    const char *state = vm_stack_guard_state();
+
+    kprintf("  guards pages=%d actual=%s status=%s\n",
+            (int)vm_guard_pages,
+            state,
+            state[0] == 'u' ? "enforced" : "broken");
+}
+
 static void vm_dump_permission_goal(const struct vm_permission_goal *goal)
 {
     vm_dump_permission_range(goal->name,
@@ -1090,6 +1193,7 @@ static void vm_dump_permission_goals(void)
                              scheduler_stack_region_end(),
                              1,
                              0);
+    vm_dump_stack_guard_state();
 }
 
 static int range_overlaps_kernel_l3_block(unsigned long start,
@@ -1144,14 +1248,16 @@ void vm_dump_plan(void)
             vm_table_state(),
             (unsigned int)vm_root_table(),
             (int)vm_table_count());
-    kprintf("VM check : %s blocks=%d pages=%d errors=%d\n",
+    kprintf("VM check : %s blocks=%d pages=%d guards=%d errors=%d\n",
             vm_validation_state(),
             (int)vm_validated_blocks(),
             (int)vm_pages_validated,
+            (int)vm_guard_pages_validated,
             (int)vm_validation_errors());
-    kprintf("VM map   : blocks=%d pages=%d bytes=%d\n",
+    kprintf("VM map   : blocks=%d pages=%d guards=%d bytes=%d\n",
             (int)vm_mapped_blocks(),
             (int)vm_pages_mapped,
+            (int)vm_guard_pages,
             (int)vm_mapped_bytes());
     kprintf("VM perms : exec_blocks=%d exec_pages=%d xn_blocks=%d xn_pages=%d\n",
             (int)vm_executable_blocks(),

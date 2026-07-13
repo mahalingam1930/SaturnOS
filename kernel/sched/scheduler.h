@@ -5,6 +5,10 @@
 
 #define SCHED_MAX_TASKS 8
 #define SCHED_STACK_SIZE 4096
+#define SCHED_STACK_GUARD_SIZE 4096
+#define SCHED_STACK_SLOT_SIZE (SCHED_STACK_GUARD_SIZE + SCHED_STACK_SIZE)
+#define SCHED_STACK_REGION_SIZE \
+    ((SCHED_MAX_TASKS * SCHED_STACK_SLOT_SIZE) + SCHED_STACK_GUARD_SIZE)
 
 enum task_state
 {
@@ -36,5 +40,12 @@ unsigned long scheduler_get_ticks(void);
 unsigned long scheduler_stack_region_start(void);
 unsigned long scheduler_stack_region_end(void);
 unsigned long scheduler_stack_region_bytes(void);
+unsigned long scheduler_stack_count(void);
+unsigned long scheduler_stack_start(unsigned long index);
+unsigned long scheduler_stack_end(unsigned long index);
+unsigned long scheduler_stack_guard_start(unsigned long index);
+unsigned long scheduler_stack_guard_end(unsigned long index);
+int scheduler_address_is_stack(unsigned long address);
+int scheduler_address_is_stack_guard(unsigned long address);
 
 #endif

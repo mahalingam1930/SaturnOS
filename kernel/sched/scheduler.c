@@ -42,7 +42,8 @@ static void scheduler_clear_context(struct cpu_context *context)
 }
 
 static struct task tasks[SCHED_MAX_TASKS];
-static unsigned char task_stacks[SCHED_MAX_TASKS][SCHED_STACK_SIZE] __attribute__((aligned(16)));
+static unsigned char task_stack_region[SCHED_STACK_REGION_SIZE]
+    __attribute__((aligned(SCHED_STACK_GUARD_SIZE)));
 static struct cpu_context bootstrap_context;
 static int current_task;
 static int task_count;
@@ -92,7 +93,7 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
 
     if (entry)
     {
-        stack_top = (unsigned long)&task_stacks[task_count][SCHED_STACK_SIZE];
+        stack_top = scheduler_stack_end((unsigned long)task_count);
         stack_top &= ~((unsigned long)0xF);
 
         tasks[task_count].context.sp = stack_top;
@@ -335,7 +336,7 @@ unsigned long scheduler_get_ticks(void)
 
 unsigned long scheduler_stack_region_start(void)
 {
-    return (unsigned long)&task_stacks[0][0];
+    return (unsigned long)&task_stack_region[0];
 }
 
 unsigned long scheduler_stack_region_end(void)
@@ -345,5 +346,68 @@ unsigned long scheduler_stack_region_end(void)
 
 unsigned long scheduler_stack_region_bytes(void)
 {
-    return SCHED_MAX_TASKS * SCHED_STACK_SIZE;
+    return SCHED_STACK_REGION_SIZE;
+}
+
+unsigned long scheduler_stack_count(void)
+{
+    return SCHED_MAX_TASKS;
+}
+
+unsigned long scheduler_stack_guard_start(unsigned long index)
+{
+    if (index > SCHED_MAX_TASKS)
+    {
+        index = SCHED_MAX_TASKS;
+    }
+
+    return scheduler_stack_region_start() + (index * SCHED_STACK_SLOT_SIZE);
+}
+
+unsigned long scheduler_stack_guard_end(unsigned long index)
+{
+    return scheduler_stack_guard_start(index) + SCHED_STACK_GUARD_SIZE;
+}
+
+unsigned long scheduler_stack_start(unsigned long index)
+{
+    if (index >= SCHED_MAX_TASKS)
+    {
+        index = SCHED_MAX_TASKS - 1;
+    }
+
+    return scheduler_stack_guard_end(index);
+}
+
+unsigned long scheduler_stack_end(unsigned long index)
+{
+    return scheduler_stack_start(index) + SCHED_STACK_SIZE;
+}
+
+int scheduler_address_is_stack(unsigned long address)
+{
+    for (unsigned long i = 0; i < SCHED_MAX_TASKS; i++)
+    {
+        if (address >= scheduler_stack_start(i) &&
+            address < scheduler_stack_end(i))
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int scheduler_address_is_stack_guard(unsigned long address)
+{
+    for (unsigned long i = 0; i <= SCHED_MAX_TASKS; i++)
+    {
+        if (address >= scheduler_stack_guard_start(i) &&
+            address < scheduler_stack_guard_end(i))
+        {
+            return 1;
+        }
+    }
+
+    return 0;
 }

@@ -31,6 +31,8 @@ map.
 - Execute-never default for normal RAM blocks
 - Heap and scheduler stack execute-never diagnostics
 - Read-only executable kernel `.text` pages
+- Unmapped guard pages around scheduler stacks
+- Validation for intentionally unmapped guard pages
 
 ## Planned Identity Map
 
@@ -57,6 +59,7 @@ map.
 - Kernel `.bss` pages: execute-never
 - Heap pages: execute-never and writable
 - Scheduler stack pages: execute-never and writable
+- Scheduler guard pages: unmapped
 - Remaining RAM blocks: execute-never by default
 
 The `vm` shell command reports desired and actual permissions:
@@ -70,6 +73,7 @@ VM protect: granularity=4 KiB kernel pages
   mmio exec=xn/xn enforced write=rw/rw enforced
   heap exec=xn/xn enforced write=rw/rw enforced
   stacks exec=xn/xn enforced write=rw/rw enforced
+  guards pages=9 actual=unmapped status=enforced
 ```
 
 The broad RAM region may still report mixed permissions because the first
@@ -108,9 +112,10 @@ Before enabling the MMU, SaturnOS validates:
 - L1 table descriptors for every mapped region
 - L2 block descriptors for every mapped block
 - L3 page descriptors for the protected kernel block
+- Intentionally unmapped scheduler stack guard pages
 - Expected physical address for each 2 MiB block
 - Expected physical address for each 4 KiB kernel page
-- Validated block and page counts against mapped counts
+- Validated block, page, and guard counts against mapped counts
 
 ## Page Walk Diagnostics
 
@@ -131,6 +136,5 @@ vmwalk 0x20000000
 
 ## Next MMU Work
 
-1. Add guard pages around kernel stacks.
-2. Expand named VM regions as new drivers and memory ranges appear.
-3. Decide when to enable instruction and data caches.
+1. Expand named VM regions as new drivers and memory ranges appear.
+2. Decide when to enable instruction and data caches.

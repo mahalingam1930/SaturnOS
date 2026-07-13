@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.32
+Version: 0.6.33
 
 Codename: Memory
 
@@ -87,6 +87,7 @@ Target: ARM64 QEMU `virt`
 - Basic framebuffer scrolling
 - Framebuffer console line wrapping and cursor-bound handling
 - Expanded framebuffer glyph coverage for shell and diagnostic punctuation
+- Polished framebuffer L-cursor with bounds-safe hide/show behavior
 
 ### Input
 
@@ -232,7 +233,7 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Add line editing for keyboard input
 - Add user exception statistics
-- Improve framebuffer cursor presentation
+- Improve framebuffer screen layout for longer diagnostics
 - Expand scheduler robustness and task management
 
 ## Vision

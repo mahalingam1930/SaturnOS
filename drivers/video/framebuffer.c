@@ -27,6 +27,7 @@
 #define FRAMEBUFFER_CONSOLE_BG 0x00101820U
 #define FRAMEBUFFER_CONSOLE_DIM 0x004ecdc4U
 #define FRAMEBUFFER_CONSOLE_CURSOR 0x00ffd166U
+#define FRAMEBUFFER_CONSOLE_CURSOR_THICKNESS 2U
 
 struct fw_cfg_file
 {
@@ -537,35 +538,10 @@ static unsigned int framebuffer_console_y(void)
            (console_row * framebuffer_console_cell_height());
 }
 
-void framebuffer_console_hide_cursor(void)
+static void framebuffer_console_clamp_cursor(void)
 {
-    unsigned int cell_width = framebuffer_console_cell_width();
-    unsigned int cell_height = framebuffer_console_cell_height();
-
-    if (!framebuffer_ready || !console_cursor_visible)
-    {
-        return;
-    }
-
-    framebuffer_fill_rect(framebuffer_console_x(),
-                          framebuffer_console_y() + cell_height - 2,
-                          cell_width,
-                          2,
-                          FRAMEBUFFER_CONSOLE_BG);
-    console_cursor_visible = 0;
-}
-
-void framebuffer_console_show_cursor(void)
-{
-    unsigned int cell_width = framebuffer_console_cell_width();
-    unsigned int cell_height = framebuffer_console_cell_height();
     unsigned int columns = framebuffer_console_columns();
     unsigned int rows = framebuffer_console_rows();
-
-    if (!framebuffer_ready)
-    {
-        return;
-    }
 
     if (console_column >= columns)
     {
@@ -576,12 +552,50 @@ void framebuffer_console_show_cursor(void)
     {
         console_row = rows - 1;
     }
+}
 
-    framebuffer_fill_rect(framebuffer_console_x(),
-                          framebuffer_console_y() + cell_height - 2,
+static void framebuffer_console_draw_cursor(uint32_t color)
+{
+    unsigned int cell_width = framebuffer_console_cell_width();
+    unsigned int cell_height = framebuffer_console_cell_height();
+    unsigned int thickness = FRAMEBUFFER_CONSOLE_CURSOR_THICKNESS;
+    unsigned int x = framebuffer_console_x();
+    unsigned int y = framebuffer_console_y();
+
+    framebuffer_fill_rect(x,
+                          y + cell_height - thickness,
                           cell_width,
-                          2,
-                          FRAMEBUFFER_CONSOLE_CURSOR);
+                          thickness,
+                          color);
+    framebuffer_fill_rect(x + cell_width - thickness,
+                          y,
+                          thickness,
+                          cell_height,
+                          color);
+}
+
+void framebuffer_console_hide_cursor(void)
+{
+    if (!framebuffer_ready || !console_cursor_visible)
+    {
+        return;
+    }
+
+    framebuffer_console_clamp_cursor();
+    framebuffer_console_draw_cursor(FRAMEBUFFER_CONSOLE_BG);
+    console_cursor_visible = 0;
+}
+
+void framebuffer_console_show_cursor(void)
+{
+    if (!framebuffer_ready)
+    {
+        return;
+    }
+
+    framebuffer_console_clamp_cursor();
+    framebuffer_console_draw_cursor(FRAMEBUFFER_CONSOLE_CURSOR);
+
     console_cursor_visible = 1;
 }
 

@@ -17,8 +17,8 @@ kernel configures a 640x480 XRGB8888 framebuffer and mirrors the kernel console
 to both UART and the framebuffer.
 
 The framebuffer console supports basic bitmap text rendering, shell and
-diagnostic punctuation glyphs, scrolling, line wrapping, and cursor-bound
-handling.
+diagnostic punctuation glyphs, scrolling, line wrapping, cursor-bound handling,
+and a bounds-safe L-style cursor.
 
 The graphical runner also exposes a QEMU virtio keyboard device. When the QEMU
 framebuffer window has focus, printable keys are delivered to the shell through
@@ -29,5 +29,4 @@ the graphical input path. UART input remains available through the terminal.
 The next graphics milestone is improving the framebuffer console presentation:
 
 - keep the QEMU-visible framebuffer stable
-- improve cursor presentation
 - improve screen layout for longer diagnostics

@@ -50,6 +50,8 @@ struct address_space
     int user_descriptors_ready;
     int user_mappings_ready;
     int user_execute_ready;
+    int validation_ready;
+    unsigned long validation_errors;
 };
 
 void address_space_init(unsigned long kernel_root_table);
@@ -58,5 +60,6 @@ void address_space_init_user(struct address_space *space,
                              unsigned long kernel_root_table);
 struct address_space *address_space_kernel(void);
 const char *address_space_kind_name(enum address_space_kind kind);
+const char *address_space_validation_state(const struct address_space *space);
 
 #endif

@@ -43,6 +43,7 @@ map.
 - User/kernel permission split metadata
 - Controlled user descriptor installation scaffold
 - EL0 entry state preparation metadata
+- User address-space validation diagnostics
 - Task memory metadata with stack, guard, address-space, and root-table
   diagnostics
 
@@ -289,8 +290,25 @@ Kernel threads still run in EL1, so their diagnostics report `el0=no`.
 Future user tasks will only become `el0=yes` after they have a user address
 space with installed user mappings and executable user code.
 
+## User Address-Space Validation
+
+Address spaces now report validation status and error counts. The validator
+checks:
+
+```text
+table storage      present for future user spaces
+descriptor counts  expected and installed descriptors match
+permission split   kernel EL0 access blocked
+region policy      code exec/ro, data+stack rw/xn
+EL0 readiness      executable user mapping is available
+```
+
+Kernel address spaces validate as `ok` with zero errors. Future user address
+spaces must pass this validation before SaturnOS should attempt address-space
+switching or EL0 entry.
+
 ## Next MMU Work
 
-1. Add user address-space validation diagnostics.
-2. Add EL0 transition stub.
+1. Add EL0 transition stub.
+2. Add user address-space switching preparation.
 3. Decide when to enable instruction and data caches.

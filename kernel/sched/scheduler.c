@@ -383,12 +383,16 @@ void scheduler_dump_tasks(void)
                         (int)space->user_descriptor_count,
                         (int)space->user_installed_descriptor_count);
             }
+            kprintf("    aspace_check=%s errors=%d\n",
+                    address_space_validation_state(space),
+                    (int)space->validation_errors);
         }
         else
         {
             kprintf("    aspace=none kind=none root=0x0 shared=no "
                     "split=no k_el0=no u_el0=no\n");
             kprintf("    user_tables=no user_desc=no user_map=no\n");
+            kprintf("    aspace_check=errors errors=1\n");
         }
         kprintf("    el0=%s pc=0x%x sp=0x%x spsr=0x%x\n",
                 tasks[i].el0.ready ? "yes" : "no",

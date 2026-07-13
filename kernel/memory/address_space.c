@@ -152,6 +152,101 @@ static void address_space_set_user_region(struct address_space *space,
     space->user_regions[index].executable = executable;
 }
 
+static int address_space_region_is_valid(
+    const struct address_space_user_region *region,
+    int want_writable,
+    int want_executable)
+{
+    if (!region->name)
+    {
+        return 0;
+    }
+
+    if (!region->user_access)
+    {
+        return 0;
+    }
+
+    if (region->start >= region->end)
+    {
+        return 0;
+    }
+
+    if (region->writable != want_writable)
+    {
+        return 0;
+    }
+
+    if (region->executable != want_executable)
+    {
+        return 0;
+    }
+
+    return 1;
+}
+
+static unsigned long address_space_validate_user(const struct address_space *space)
+{
+    unsigned long errors = 0;
+
+    if (!space)
+    {
+        return 1;
+    }
+
+    if (!space->permission_split_ready ||
+        space->kernel_el0_access ||
+        !space->user_el0_access)
+    {
+        errors++;
+    }
+
+    if (!space->user_tables_ready ||
+        !space->user_descriptors_ready ||
+        !space->user_mappings_ready)
+    {
+        errors++;
+    }
+
+    if (!space->user_root_table ||
+        space->user_table_slot >= ADDRESS_SPACE_USER_TABLE_SLOTS ||
+        space->user_table_count != 5)
+    {
+        errors++;
+    }
+
+    if (space->user_descriptor_count != ADDRESS_SPACE_USER_REGION_COUNT ||
+        space->user_installed_descriptor_count !=
+            space->user_descriptor_count ||
+        space->user_mapping_count != ADDRESS_SPACE_USER_REGION_COUNT)
+    {
+        errors++;
+    }
+
+    if (!address_space_region_is_valid(&space->user_regions[0], 0, 1) ||
+        !address_space_region_is_valid(&space->user_regions[1], 1, 0) ||
+        !address_space_region_is_valid(&space->user_regions[2], 1, 0))
+    {
+        errors++;
+    }
+
+    if (space->user_code_start < space->user_start ||
+        space->user_stack_end > space->user_end ||
+        space->user_code_start >= space->user_code_end ||
+        space->user_data_start >= space->user_data_end ||
+        space->user_stack_start >= space->user_stack_end)
+    {
+        errors++;
+    }
+
+    if (!space->user_execute_ready)
+    {
+        errors++;
+    }
+
+    return errors;
+}
+
 void address_space_init(unsigned long kernel_root_table)
 {
     kernel_address_space.name = "kernel";
@@ -181,6 +276,8 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.user_descriptors_ready = 0;
     kernel_address_space.user_mappings_ready = 0;
     kernel_address_space.user_execute_ready = 0;
+    kernel_address_space.validation_ready = 1;
+    kernel_address_space.validation_errors = 0;
 }
 
 void address_space_init_user(struct address_space *space,
@@ -254,6 +351,8 @@ void address_space_init_user(struct address_space *space,
     space->user_mappings_ready =
         space->user_installed_descriptor_count == space->user_descriptor_count;
     space->user_execute_ready = space->user_mappings_ready;
+    space->validation_errors = address_space_validate_user(space);
+    space->validation_ready = space->validation_errors == 0;
 }
 
 struct address_space *address_space_kernel(void)
@@ -272,4 +371,14 @@ const char *address_space_kind_name(enum address_space_kind kind)
         default:
             return "unknown";
     }
+}
+
+const char *address_space_validation_state(const struct address_space *space)
+{
+    if (!space || !space->validation_ready || space->validation_errors)
+    {
+        return "errors";
+    }
+
+    return "ok";
 }

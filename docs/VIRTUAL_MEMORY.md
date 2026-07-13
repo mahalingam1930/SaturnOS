@@ -50,7 +50,7 @@ map.
 ## Planned Identity Map
 
 ```text
-0x08000000 - 0x0a000000  device MMIO
+0x08000000 - 0x0a200000  device MMIO
 0x40000000 - 0x48000000  normal RAM
 ```
 
@@ -58,7 +58,7 @@ map.
 
 - Root L1 table: one 4 KiB table
 - L2 tables: one for low MMIO, one for RAM
-- MMIO mapping: 16 x 2 MiB device blocks
+- MMIO mapping: 17 x 2 MiB device blocks
 - RAM mapping: 63 x 2 MiB normal-memory blocks plus 512 x 4 KiB pages for
   the kernel block
 - Total mapped: 160 MiB
@@ -99,6 +99,8 @@ VM ranges:
   framebuffer  0x47000000-0x4712c000
   gic          0x08000000-0x08020000
   uart         0x09000000-0x09001000
+  fw_cfg       0x09020000-0x09021000
+  virtio-mmio  0x0a000000-0x0a004000
 
 VM protect: granularity=4 KiB kernel pages
   text exec=exec/exec enforced write=ro/ro enforced

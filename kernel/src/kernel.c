@@ -7,6 +7,7 @@
 #include "thread_demo.h"
 #include "version.h"
 #include "framebuffer.h"
+#include "keyboard.h"
 #include "keyboard_input.h"
 #include "config.h"
 #include "pmm.h"
@@ -33,6 +34,7 @@ void kernel_main(void)
     timer_init();
     irq_init();
     scheduler_init();
+    keyboard_init();
 
     kprintf("================================\n");
     kprintf("%s %s (%s)\n",
@@ -47,6 +49,7 @@ void kernel_main(void)
     kprintf("Memory : %d KB free\n",
             (int)((pmm_free_pages() * PMM_PAGE_SIZE) / 1024));
     kprintf("Heap   : initialized\n");
+    kprintf("Input  : %s\n", keyboard_source());
     kprintf("VM     : %s, tables %s, check %s\n",
             vm_state(),
             vm_table_state(),

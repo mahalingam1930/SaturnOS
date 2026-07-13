@@ -12,6 +12,9 @@
 #define VM_GIC_END 0x08020000UL
 #define VM_FW_CFG_BASE 0x09020000UL
 #define VM_FW_CFG_END 0x09021000UL
+#define VM_VIRTIO_MMIO_BASE 0x0a000000UL
+#define VM_VIRTIO_MMIO_END 0x0a004000UL
+#define VM_DEVICE_MMIO_END 0x0a200000UL
 #define VM_RAMFB_CONTROL_BASE 0x46ffe000UL
 #define VM_FRAMEBUFFER_BASE 0x47000000UL
 #define VM_FRAMEBUFFER_END 0x4712c000UL
@@ -76,7 +79,7 @@ static const struct vm_region vm_regions[] = {
         "mmio",
         0x08000000UL,
         0x08000000UL,
-        0x02000000UL,
+        VM_DEVICE_MMIO_END - 0x08000000UL,
         ARM64_DEVICE_MEMORY_ATTR,
         "device",
     },
@@ -94,6 +97,7 @@ static const struct vm_named_region vm_named_regions[] = {
     {"gic", VM_GIC_BASE, VM_GIC_END},
     {"uart", VM_UART_BASE, VM_UART_END},
     {"fw_cfg", VM_FW_CFG_BASE, VM_FW_CFG_END},
+    {"virtio-mmio", VM_VIRTIO_MMIO_BASE, VM_VIRTIO_MMIO_END},
     {"kernel-text", (unsigned long)_text_start, (unsigned long)_text_end},
     {"kernel-rodata", (unsigned long)_rodata_start, (unsigned long)_rodata_end},
     {"kernel-data", (unsigned long)_data_start, (unsigned long)_data_end},
@@ -108,7 +112,7 @@ static const struct vm_permission_goal vm_permission_goals[] = {
     {"rodata", (unsigned long)_rodata_start, (unsigned long)_rodata_end, 1, 1},
     {"data", (unsigned long)_data_start, (unsigned long)_data_end, 1, 0},
     {"bss", (unsigned long)_bss_start, (unsigned long)_bss_end, 1, 0},
-    {"mmio", 0x08000000UL, 0x0a000000UL, 1, 0},
+    {"mmio", 0x08000000UL, VM_DEVICE_MMIO_END, 1, 0},
 };
 
 static unsigned long vm_l1_table[ARM64_TABLE_ENTRIES]
@@ -910,6 +914,7 @@ static void vm_dump_named_ranges(void)
     vm_dump_range("gic         ", VM_GIC_BASE, VM_GIC_END);
     vm_dump_range("uart        ", VM_UART_BASE, VM_UART_END);
     vm_dump_range("fw_cfg      ", VM_FW_CFG_BASE, VM_FW_CFG_END);
+    vm_dump_range("virtio-mmio ", VM_VIRTIO_MMIO_BASE, VM_VIRTIO_MMIO_END);
 }
 
 static const char *vm_desired_permission(int want_xn)

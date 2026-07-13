@@ -19,11 +19,14 @@ to both UART and the framebuffer.
 The framebuffer console supports basic bitmap text rendering, scrolling,
 line wrapping, and cursor-bound handling.
 
+The graphical runner also exposes a QEMU virtio keyboard device. When the QEMU
+framebuffer window has focus, printable keys are delivered to the shell through
+the graphical input path. UART input remains available through the terminal.
+
 ## Next Milestone
 
-The next graphics milestone is making the framebuffer console more interactive:
+The next graphics milestone is improving the framebuffer console presentation:
 
 - keep the QEMU-visible framebuffer stable
 - add a fuller font and cursor
-- add keyboard input focus for the graphical window
 - improve screen layout for longer diagnostics

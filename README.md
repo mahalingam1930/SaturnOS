@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.30
+Version: 0.6.31
 
 Codename: Memory
 
@@ -90,6 +90,7 @@ Target: ARM64 QEMU `virt`
 ### Input
 
 - UART-backed keyboard input polling
+- QEMU virtio keyboard input for graphical framebuffer sessions
 - Keyboard input kernel thread
 - Typed characters echoed through UART and framebuffer console
 
@@ -188,7 +189,9 @@ Graphical framebuffer mode:
 ```
 
 In graphical mode, SaturnOS writes kernel output to both the terminal UART path
-and the QEMU framebuffer window.
+and the QEMU framebuffer window. Click the QEMU framebuffer window to send
+keyboard input through the virtio keyboard path; terminal input still works
+through UART.
 
 ## Project Layout
 
@@ -227,8 +230,8 @@ docs/              Architecture, roadmap, and graphics notes
 ## Next Milestones
 
 - Add line editing for keyboard input
-- Add graphical framebuffer keyboard input focus
 - Add user exception statistics
+- Add fuller framebuffer font coverage
 - Expand scheduler robustness and task management
 
 ## Vision

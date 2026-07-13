@@ -20,6 +20,13 @@ struct shell_command
     const char *description;
 };
 
+struct shell_alias
+{
+    const char *name;
+    const char *target;
+    const char *description;
+};
+
 static char command_buffer[SHELL_BUFFER_SIZE];
 static char history_buffer[SHELL_HISTORY_SIZE][SHELL_BUFFER_SIZE];
 static unsigned int command_length;
@@ -48,8 +55,21 @@ static const struct shell_command shell_commands[] = {
     {"fault", "trigger test page fault"},
 };
 
+static const struct shell_alias shell_aliases[] = {
+    {"h", "help", "show commands"},
+    {"?", "help", "show commands"},
+    {"ps", "tasks", "show scheduler tasks"},
+    {"free", "mem", "show physical memory stats"},
+    {"top", "tasks", "show scheduler tasks"},
+    {"uptime", "ticks", "show scheduler/timer ticks"},
+    {"cls", "clear", "clear framebuffer console"},
+};
+
 static const unsigned int shell_command_count =
     sizeof(shell_commands) / sizeof(shell_commands[0]);
+
+static const unsigned int shell_alias_count =
+    sizeof(shell_aliases) / sizeof(shell_aliases[0]);
 
 static int string_equals(const char *left, const char *right)
 {
@@ -91,6 +111,19 @@ static int command_equals(const char *command, const char *name)
     }
 
     return *command == '\0' || *command == ' ';
+}
+
+static const char *command_alias_target(const char *command)
+{
+    for (unsigned int i = 0; i < shell_alias_count; i++)
+    {
+        if (command_equals(command, shell_aliases[i].name))
+        {
+            return shell_aliases[i].target;
+        }
+    }
+
+    return command;
 }
 
 static int command_prefix_matches(const char *command,
@@ -500,6 +533,17 @@ static void shell_autocomplete(void)
         }
     }
 
+    for (unsigned int i = 0; i < shell_alias_count; i++)
+    {
+        if (command_prefix_matches(shell_aliases[i].name,
+                                   command_buffer,
+                                   command_length))
+        {
+            match = shell_aliases[i].name;
+            matches++;
+        }
+    }
+
     if (matches != 1 || !match)
     {
         if (matches > 1)
@@ -513,6 +557,16 @@ static void shell_autocomplete(void)
                                            command_length))
                 {
                     kprintf(" %s", shell_commands[i].name);
+                }
+            }
+
+            for (unsigned int i = 0; i < shell_alias_count; i++)
+            {
+                if (command_prefix_matches(shell_aliases[i].name,
+                                           command_buffer,
+                                           command_length))
+                {
+                    kprintf(" %s", shell_aliases[i].name);
                 }
             }
 
@@ -617,47 +671,66 @@ static void shell_help(void)
 
         kprintf(" %s\n", shell_commands[i].description);
     }
+
+    kprintf("Aliases:\n");
+    for (unsigned int i = 0; i < shell_alias_count; i++)
+    {
+        kprintf("  %s", shell_aliases[i].name);
+
+        for (unsigned int j = string_length(shell_aliases[i].name);
+             j < 8;
+             j++)
+        {
+            kprintf(" ");
+        }
+
+        kprintf(" %s -> %s\n",
+                shell_aliases[i].description,
+                shell_aliases[i].target);
+    }
 }
 
 static void shell_execute(const char *command)
 {
+    const char *effective_command = command_alias_target(command);
+
     if (command[0] == '\0')
     {
         return;
     }
 
-    if (string_equals(command, "help"))
+    if (string_equals(effective_command, "help"))
     {
         shell_help();
     }
-    else if (string_equals(command, "version"))
+    else if (string_equals(effective_command, "version"))
     {
         kprintf("%s %s (%s)\n",
                 SATURNOS_NAME,
                 SATURNOS_VERSION,
                 SATURNOS_CODENAME);
     }
-    else if (string_equals(command, "tasks"))
+    else if (string_equals(effective_command, "tasks"))
     {
         scheduler_dump_tasks();
     }
-    else if (string_equals(command, "mem"))
+    else if (string_equals(effective_command, "mem"))
     {
         pmm_dump_stats();
     }
-    else if (string_equals(command, "heap"))
+    else if (string_equals(effective_command, "heap"))
     {
         heap_dump_stats();
     }
-    else if (string_equals(command, "heaptest"))
+    else if (string_equals(effective_command, "heaptest"))
     {
         heap_self_test();
     }
-    else if (string_equals(command, "vm"))
+    else if (string_equals(effective_command, "vm"))
     {
         vm_dump_plan();
     }
-    else if (command_equals(command, "vmwalk"))
+    else if (command_equals(effective_command, "vmwalk"))
     {
         const char *arg = command_arg(command);
 
@@ -680,21 +753,21 @@ static void shell_execute(const char *command)
             }
         }
     }
-    else if (string_equals(command, "ticks"))
+    else if (string_equals(effective_command, "ticks"))
     {
         kprintf("scheduler ticks=%d timer irqs=%d\n",
                 (int)scheduler_get_ticks(),
                 (int)timer_get_irq_ticks());
     }
-    else if (string_equals(command, "clear"))
+    else if (string_equals(effective_command, "clear"))
     {
         framebuffer_console_init();
     }
-    else if (string_equals(command, "panic"))
+    else if (string_equals(effective_command, "panic"))
     {
         exception_test();
     }
-    else if (string_equals(command, "fault"))
+    else if (string_equals(effective_command, "fault"))
     {
         exception_test_page_fault();
     }

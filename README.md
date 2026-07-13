@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.39
+Version: 0.6.40
 
 Codename: Memory
 
@@ -106,6 +106,7 @@ Target: ARM64 QEMU `virt`
 - Fixed-size shell command history with up/down navigation
 - Tab autocomplete for unique built-in command prefixes
 - Tab completion match listing for ambiguous built-in command prefixes
+- Short shell aliases for common diagnostics
 - Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `vm`,
   `vmwalk`, `ticks`, `clear`, `panic`, and `fault` commands
 
@@ -240,7 +241,7 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Add user exception statistics
 - Add framebuffer status updates for runtime shell activity
-- Add shell command aliases for common diagnostics
+- Add shell command usage details for diagnostics
 - Expand scheduler robustness and task management
 
 ## Vision

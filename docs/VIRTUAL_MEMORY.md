@@ -41,6 +41,7 @@ map.
 - Controlled user code, data, and stack mapping plan
 - User code/data/stack descriptor permission scaffold
 - User/kernel permission split metadata
+- Controlled user descriptor installation scaffold
 - Task memory metadata with stack, guard, address-space, and root-table
   diagnostics
 
@@ -193,6 +194,7 @@ memory:
   region
 - kernel address spaces explicitly deny EL0 access
 - future user address spaces allow EL0 access only for controlled user regions
+- user address spaces install controlled descriptors into private L3 tables
 - user page-table mappings are marked as not ready until the real per-process
   tables exist
 
@@ -228,8 +230,9 @@ user data   readable, writable, execute-never
 user stack  readable, writable, execute-never
 ```
 
-The descriptor metadata is attached to address-space objects, but SaturnOS does
-not install those descriptors into active page tables yet.
+The descriptor metadata is attached to address-space objects. SaturnOS can now
+install representative controlled descriptors into user-owned tables, but it
+does not switch current kernel threads into those tables.
 
 ## User/Kernel Permission Split
 
@@ -247,8 +250,31 @@ task diagnostics report `k_el0=no`, `u_el0=no`, and inactive user mappings.
 Future user/process address spaces will set `u_el0=yes` while keeping
 `k_el0=no`.
 
+## User Descriptor Installation
+
+Future user address spaces now own:
+
+```text
+1 x L1 table
+1 x L2 table
+3 x L3 tables
+3 x one-page backing regions
+```
+
+The installed scaffold maps one controlled page for each planned user region:
+
+```text
+code   first page of user code range
+data   first page of user data range
+stack  first page of user stack range
+```
+
+This proves that SaturnOS can build the table hierarchy and attach descriptors
+with the planned permissions. The active scheduler still uses the safe kernel
+root table until EL0 entry and address-space switching are ready.
+
 ## Next MMU Work
 
-1. Attach controlled user descriptors to user page tables.
-2. Add EL0 entry preparation.
+1. Add EL0 entry preparation.
+2. Add user address-space validation diagnostics.
 3. Decide when to enable instruction and data caches.

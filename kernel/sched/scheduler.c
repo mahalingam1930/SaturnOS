@@ -344,6 +344,12 @@ void scheduler_dump_tasks(void)
                     space->user_tables_ready ? "yes" : "no",
                     space->user_descriptors_ready ? "yes" : "no",
                     space->user_mappings_ready ? "yes" : "no");
+            if (space->user_descriptor_count)
+            {
+                kprintf("    user_desc_count=%d installed=%d\n",
+                        (int)space->user_descriptor_count,
+                        (int)space->user_installed_descriptor_count);
+            }
         }
         else
         {

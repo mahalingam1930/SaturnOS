@@ -25,6 +25,17 @@ static struct address_space kernel_address_space;
 static unsigned long user_l1_tables[ADDRESS_SPACE_USER_TABLE_SLOTS]
                                    [ARM64_TABLE_ENTRIES]
     __attribute__((aligned(ARM64_TABLE_SIZE)));
+static unsigned long user_l2_tables[ADDRESS_SPACE_USER_TABLE_SLOTS]
+                                   [ARM64_TABLE_ENTRIES]
+    __attribute__((aligned(ARM64_TABLE_SIZE)));
+static unsigned long user_l3_tables[ADDRESS_SPACE_USER_TABLE_SLOTS]
+                                   [ADDRESS_SPACE_USER_REGION_COUNT]
+                                   [ARM64_TABLE_ENTRIES]
+    __attribute__((aligned(ARM64_TABLE_SIZE)));
+static unsigned char user_region_pages[ADDRESS_SPACE_USER_TABLE_SLOTS]
+                                      [ADDRESS_SPACE_USER_REGION_COUNT]
+                                      [ARM64_PAGE_SIZE]
+    __attribute__((aligned(ARM64_PAGE_SIZE)));
 static unsigned long user_table_slots_used;
 
 static void address_space_clear_table(unsigned long *table)
@@ -35,19 +46,73 @@ static void address_space_clear_table(unsigned long *table)
     }
 }
 
-static unsigned long *address_space_alloc_user_l1_table(void)
+static int address_space_alloc_user_table_slot(void)
 {
     unsigned long slot;
 
     if (user_table_slots_used >= ADDRESS_SPACE_USER_TABLE_SLOTS)
     {
-        return 0;
+        return -1;
     }
 
     slot = user_table_slots_used++;
     address_space_clear_table(user_l1_tables[slot]);
+    address_space_clear_table(user_l2_tables[slot]);
+    for (unsigned long i = 0; i < ADDRESS_SPACE_USER_REGION_COUNT; i++)
+    {
+        address_space_clear_table(user_l3_tables[slot][i]);
+    }
 
-    return user_l1_tables[slot];
+    return (int)slot;
+}
+
+static unsigned long address_space_install_user_descriptors(
+    struct address_space *space)
+{
+    unsigned long installed = 0;
+    unsigned long *l1_table;
+    unsigned long *l2_table;
+    unsigned long slot;
+
+    if (!space || space->user_table_slot >= ADDRESS_SPACE_USER_TABLE_SLOTS)
+    {
+        return 0;
+    }
+
+    slot = space->user_table_slot;
+    l1_table = user_l1_tables[slot];
+    l2_table = user_l2_tables[slot];
+
+    address_space_clear_table(l1_table);
+    address_space_clear_table(l2_table);
+    l1_table[0] = arm64_mmu_table_desc((unsigned long)l2_table);
+
+    for (unsigned long i = 0; i < space->user_descriptor_count; i++)
+    {
+        unsigned long l2_index;
+        unsigned long l3_index;
+        unsigned long *l3_table;
+
+        if (i >= ADDRESS_SPACE_USER_REGION_COUNT ||
+            !space->user_regions[i].name)
+        {
+            continue;
+        }
+
+        l2_index = arm64_mmu_l2_index(space->user_regions[i].start);
+        l3_index = arm64_mmu_l3_index(space->user_regions[i].start);
+        l3_table = user_l3_tables[slot][i];
+
+        address_space_clear_table(l3_table);
+        l2_table[l2_index] = arm64_mmu_table_desc((unsigned long)l3_table);
+        l3_table[l3_index] =
+            arm64_mmu_l3_page_desc(
+                (unsigned long)&user_region_pages[slot][i][0],
+                space->user_regions[i].attributes);
+        installed++;
+    }
+
+    return installed;
 }
 
 static void address_space_clear_user_regions(struct address_space *space)
@@ -94,6 +159,7 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.root_table = kernel_root_table;
     kernel_address_space.kernel_root_table = kernel_root_table;
     kernel_address_space.user_root_table = 0;
+    kernel_address_space.user_table_slot = ADDRESS_SPACE_USER_TABLE_SLOTS;
     kernel_address_space.user_table_count = 0;
     kernel_address_space.user_start = 0;
     kernel_address_space.user_end = 0;
@@ -105,6 +171,7 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.user_stack_end = 0;
     kernel_address_space.user_mapping_count = 0;
     kernel_address_space.user_descriptor_count = 0;
+    kernel_address_space.user_installed_descriptor_count = 0;
     address_space_clear_user_regions(&kernel_address_space);
     kernel_address_space.shared_kernel_map = 1;
     kernel_address_space.permission_split_ready = 1;
@@ -120,21 +187,26 @@ void address_space_init_user(struct address_space *space,
                              const char *name,
                              unsigned long kernel_root_table)
 {
-    unsigned long *user_l1_table;
+    int user_table_slot;
 
     if (!space)
     {
         return;
     }
 
-    user_l1_table = address_space_alloc_user_l1_table();
+    user_table_slot = address_space_alloc_user_table_slot();
 
     space->name = name ? name : "user";
     space->kind = ADDRESS_SPACE_USER;
     space->root_table = kernel_root_table;
     space->kernel_root_table = kernel_root_table;
-    space->user_root_table = (unsigned long)user_l1_table;
-    space->user_table_count = user_l1_table ? 1 : 0;
+    space->user_root_table =
+        user_table_slot >= 0 ? (unsigned long)user_l1_tables[user_table_slot] :
+        0;
+    space->user_table_slot =
+        user_table_slot >= 0 ? (unsigned long)user_table_slot :
+        ADDRESS_SPACE_USER_TABLE_SLOTS;
+    space->user_table_count = user_table_slot >= 0 ? 5 : 0;
     space->user_start = ADDRESS_SPACE_USER_START;
     space->user_end = ADDRESS_SPACE_USER_END;
     space->user_code_start = ADDRESS_SPACE_USER_CODE_START;
@@ -145,6 +217,7 @@ void address_space_init_user(struct address_space *space,
     space->user_stack_end = ADDRESS_SPACE_USER_STACK_END;
     space->user_mapping_count = 3;
     space->user_descriptor_count = ADDRESS_SPACE_USER_REGION_COUNT;
+    space->user_installed_descriptor_count = 0;
     address_space_clear_user_regions(space);
     address_space_set_user_region(space,
                                   0,
@@ -174,10 +247,13 @@ void address_space_init_user(struct address_space *space,
     space->permission_split_ready = 1;
     space->kernel_el0_access = 0;
     space->user_el0_access = 1;
-    space->user_tables_ready = user_l1_table ? 1 : 0;
-    space->user_descriptors_ready = user_l1_table ? 1 : 0;
-    space->user_mappings_ready = 0;
-    space->user_execute_ready = 0;
+    space->user_tables_ready = user_table_slot >= 0 ? 1 : 0;
+    space->user_descriptors_ready = user_table_slot >= 0 ? 1 : 0;
+    space->user_installed_descriptor_count =
+        address_space_install_user_descriptors(space);
+    space->user_mappings_ready =
+        space->user_installed_descriptor_count == space->user_descriptor_count;
+    space->user_execute_ready = space->user_mappings_ready;
 }
 
 struct address_space *address_space_kernel(void)

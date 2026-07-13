@@ -27,6 +27,7 @@ struct address_space
     unsigned long root_table;
     unsigned long kernel_root_table;
     unsigned long user_root_table;
+    unsigned long user_table_slot;
     unsigned long user_table_count;
     unsigned long user_start;
     unsigned long user_end;
@@ -38,6 +39,7 @@ struct address_space
     unsigned long user_stack_end;
     unsigned long user_mapping_count;
     unsigned long user_descriptor_count;
+    unsigned long user_installed_descriptor_count;
     struct address_space_user_region
         user_regions[ADDRESS_SPACE_USER_REGION_COUNT];
     int shared_kernel_map;

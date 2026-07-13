@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.8
+Version: 0.6.9
 
 Codename: Memory
 
@@ -50,6 +50,8 @@ Target: ARM64 QEMU `virt`
 - Timer-driven preemptive scheduling
 - Real idle task
 - Kernel thread creation API
+- Task memory metadata foundation
+- Per-task stack and guard range diagnostics
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -183,7 +185,8 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Prepare for cleaner task/process memory separation
+- Add task address-space objects
+- Prepare task/process memory separation beyond the shared kernel map
 - Expand scheduler robustness and task management
 
 ## Vision

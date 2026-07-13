@@ -18,6 +18,17 @@ enum task_state
     TASK_ZOMBIE
 };
 
+struct task_memory
+{
+    unsigned long address_space_root;
+    unsigned long stack_start;
+    unsigned long stack_end;
+    unsigned long guard_low_start;
+    unsigned long guard_low_end;
+    unsigned long guard_high_start;
+    unsigned long guard_high_end;
+};
+
 struct task
 {
     int pid;
@@ -25,6 +36,7 @@ struct task
     enum task_state state;
     void (*entry)(void);
     struct cpu_context context;
+    struct task_memory memory;
 };
 
 void scheduler_init(void);

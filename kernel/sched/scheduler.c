@@ -2,6 +2,7 @@
 #include "config.h"
 #include "irq.h"
 #include "kprintf.h"
+#include "vm.h"
 
 static void idle_task(void);
 static void scheduler_exit_task(int task_id);
@@ -39,6 +40,32 @@ static void scheduler_clear_context(struct cpu_context *context)
     context->fp = 0;
     context->lr = 0;
     context->sp = 0;
+}
+
+static void scheduler_clear_memory(struct task_memory *memory)
+{
+    memory->address_space_root = 0;
+    memory->stack_start = 0;
+    memory->stack_end = 0;
+    memory->guard_low_start = 0;
+    memory->guard_low_end = 0;
+    memory->guard_high_start = 0;
+    memory->guard_high_end = 0;
+}
+
+static void scheduler_init_task_memory(struct task *task, int pid)
+{
+    task->memory.address_space_root = vm_root_table();
+    task->memory.stack_start = scheduler_stack_start((unsigned long)pid);
+    task->memory.stack_end = scheduler_stack_end((unsigned long)pid);
+    task->memory.guard_low_start =
+        scheduler_stack_guard_start((unsigned long)pid);
+    task->memory.guard_low_end =
+        scheduler_stack_guard_end((unsigned long)pid);
+    task->memory.guard_high_start =
+        scheduler_stack_guard_start((unsigned long)pid + 1);
+    task->memory.guard_high_end =
+        scheduler_stack_guard_end((unsigned long)pid + 1);
 }
 
 static struct task tasks[SCHED_MAX_TASKS];
@@ -90,6 +117,8 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
     tasks[task_count].state = TASK_READY;
     tasks[task_count].entry = entry;
     scheduler_clear_context(&tasks[task_count].context);
+    scheduler_clear_memory(&tasks[task_count].memory);
+    scheduler_init_task_memory(&tasks[task_count], pid);
 
     if (entry)
     {
@@ -298,6 +327,16 @@ void scheduler_dump_tasks(void)
                 tasks[i].pid,
                 tasks[i].name,
                 scheduler_state_name(tasks[i].state));
+        kprintf("    asid=root ttbr0=0x%x\n",
+                (unsigned int)tasks[i].memory.address_space_root);
+        kprintf("    stack=0x%x-0x%x\n",
+                (unsigned int)tasks[i].memory.stack_start,
+                (unsigned int)tasks[i].memory.stack_end);
+        kprintf("    guards=0x%x-0x%x 0x%x-0x%x\n",
+                (unsigned int)tasks[i].memory.guard_low_start,
+                (unsigned int)tasks[i].memory.guard_low_end,
+                (unsigned int)tasks[i].memory.guard_high_start,
+                (unsigned int)tasks[i].memory.guard_high_end);
     }
 }
 

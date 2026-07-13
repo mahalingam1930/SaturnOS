@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.5
+Version: 0.6.6
 
 Codename: Memory
 
@@ -109,6 +109,7 @@ Target: ARM64 QEMU `virt`
 - VM diagnostics for execute and write permissions
 - Execute-never default for normal RAM blocks
 - Heap and scheduler stack execute-never diagnostics
+- Read-only executable kernel `.text` pages
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -178,7 +179,6 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Add read-only page permissions for executable kernel text
 - Add guard pages around kernel stacks
 - Expand named VM regions as new drivers and memory ranges appear
 - Expand scheduler robustness and task management

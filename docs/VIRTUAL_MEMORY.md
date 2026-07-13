@@ -30,6 +30,7 @@ map.
 - Execute and write-permission diagnostics for page walks
 - Execute-never default for normal RAM blocks
 - Heap and scheduler stack execute-never diagnostics
+- Read-only executable kernel `.text` pages
 
 ## Planned Identity Map
 
@@ -50,7 +51,7 @@ map.
 ## Permission Model
 
 - Device/MMIO blocks: execute-never
-- Kernel `.text` pages: executable
+- Kernel `.text` pages: executable and read-only
 - Kernel `.rodata` pages: execute-never and read-only
 - Kernel `.data` pages: execute-never when present
 - Kernel `.bss` pages: execute-never
@@ -62,7 +63,7 @@ The `vm` shell command reports desired and actual permissions:
 
 ```text
 VM protect: granularity=4 KiB kernel pages
-  text exec=exec/exec enforced write=rw/rw enforced
+  text exec=exec/exec enforced write=ro/ro enforced
   rodata exec=xn/xn enforced write=ro/ro enforced
   data exec=xn/empty empty write=rw/empty empty
   bss exec=xn/xn enforced write=rw/rw enforced
@@ -79,7 +80,7 @@ rest of RAM remains mapped with execute-never L2 blocks.
 
 The linker script exports section boundaries for the kernel image:
 
-- `.text`: executable kernel code
+- `.text`: executable kernel code, mapped read-only
 - `.rodata`: read-only constants and strings, mapped read-only
 - `.data`: initialized writable data
 - `.bss`: zeroed writable data, tables, and stacks
@@ -130,7 +131,6 @@ vmwalk 0x20000000
 
 ## Next MMU Work
 
-1. Add read-only page permissions for executable kernel text.
-2. Add guard pages around kernel stacks.
-3. Expand named VM regions as new drivers and memory ranges appear.
-4. Decide when to enable instruction and data caches.
+1. Add guard pages around kernel stacks.
+2. Expand named VM regions as new drivers and memory ranges appear.
+3. Decide when to enable instruction and data caches.

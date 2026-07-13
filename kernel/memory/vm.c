@@ -24,6 +24,9 @@
      ARM64_DESC_AP_RO_EL1 | \
      ARM64_DESC_PXN | \
      ARM64_DESC_UXN)
+#define VM_NORMAL_RO_EXEC_MEMORY_ATTR \
+    ((ARM64_NORMAL_MEMORY_ATTR & ~ARM64_DESC_AP_MASK) | \
+     ARM64_DESC_AP_RO_EL1)
 
 extern char _kernel_start[];
 extern char _kernel_end[];
@@ -101,7 +104,7 @@ static const struct vm_named_region vm_named_regions[] = {
 };
 
 static const struct vm_permission_goal vm_permission_goals[] = {
-    {"text", (unsigned long)_text_start, (unsigned long)_text_end, 0, 0},
+    {"text", (unsigned long)_text_start, (unsigned long)_text_end, 0, 1},
     {"rodata", (unsigned long)_rodata_start, (unsigned long)_rodata_end, 1, 1},
     {"data", (unsigned long)_data_start, (unsigned long)_data_end, 1, 0},
     {"bss", (unsigned long)_bss_start, (unsigned long)_bss_end, 1, 0},
@@ -181,7 +184,7 @@ static unsigned long kernel_page_attributes(unsigned long address)
 {
     if (address_in_kernel_text(address))
     {
-        return ARM64_NORMAL_MEMORY_ATTR;
+        return VM_NORMAL_RO_EXEC_MEMORY_ATTR;
     }
 
     if (address_in_kernel_rodata(address))

@@ -33,5 +33,8 @@ void scheduler_start_threads(void);
 void scheduler_dump_tasks(void);
 const struct task *scheduler_current_task(void);
 unsigned long scheduler_get_ticks(void);
+unsigned long scheduler_stack_region_start(void);
+unsigned long scheduler_stack_region_end(void);
+unsigned long scheduler_stack_region_bytes(void);
 
 #endif

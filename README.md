@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.4
+Version: 0.6.5
 
 Codename: Memory
 
@@ -107,6 +107,8 @@ Target: ARM64 QEMU `virt`
 - Execute-never enforcement for kernel `.rodata` and `.bss`
 - Read-only page permissions for kernel `.rodata`
 - VM diagnostics for execute and write permissions
+- Execute-never default for normal RAM blocks
+- Heap and scheduler stack execute-never diagnostics
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -176,8 +178,8 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Extend execute-never protection to heap and scheduler stacks
 - Add read-only page permissions for executable kernel text
+- Add guard pages around kernel stacks
 - Expand named VM regions as new drivers and memory ranges appear
 - Expand scheduler robustness and task management
 

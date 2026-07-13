@@ -28,6 +28,8 @@ map.
 - Execute-never page enforcement for kernel `.rodata` and `.bss`
 - Read-only page enforcement for kernel `.rodata`
 - Execute and write-permission diagnostics for page walks
+- Execute-never default for normal RAM blocks
+- Heap and scheduler stack execute-never diagnostics
 
 ## Planned Identity Map
 
@@ -52,8 +54,9 @@ map.
 - Kernel `.rodata` pages: execute-never and read-only
 - Kernel `.data` pages: execute-never when present
 - Kernel `.bss` pages: execute-never
-- Remaining RAM blocks: executable for now until heap and stack mappings are
-  split further
+- Heap pages: execute-never and writable
+- Scheduler stack pages: execute-never and writable
+- Remaining RAM blocks: execute-never by default
 
 The `vm` shell command reports desired and actual permissions:
 
@@ -64,11 +67,13 @@ VM protect: granularity=4 KiB kernel pages
   data exec=xn/empty empty write=rw/empty empty
   bss exec=xn/xn enforced write=rw/rw enforced
   mmio exec=xn/xn enforced write=rw/rw enforced
+  heap exec=xn/xn enforced write=rw/rw enforced
+  stacks exec=xn/xn enforced write=rw/rw enforced
 ```
 
 The broad RAM region may still report mixed permissions because the first
-2 MiB RAM block is split into L3 pages while the rest of RAM remains mapped
-with L2 blocks.
+2 MiB RAM block is split into executable and execute-never L3 pages while the
+rest of RAM remains mapped with execute-never L2 blocks.
 
 ## Kernel Section Symbols
 
@@ -90,7 +95,7 @@ permissions more precisely.
 - Normal memory MAIR index: 0
 - Device memory MAIR index: 1
 - Kernel mapping: 4 KiB L3 pages inside the first 2 MiB RAM block
-- Remaining RAM mapping: executable 2 MiB blocks for now
+- Remaining RAM mapping: execute-never 2 MiB blocks
 - Caches: left disabled for the first MMU milestone
 
 ## Validation
@@ -125,7 +130,7 @@ vmwalk 0x20000000
 
 ## Next MMU Work
 
-1. Extend execute-never protection to heap and scheduler stacks.
-2. Add read-only page permissions for executable kernel text.
+1. Add read-only page permissions for executable kernel text.
+2. Add guard pages around kernel stacks.
 3. Expand named VM regions as new drivers and memory ranges appear.
 4. Decide when to enable instruction and data caches.

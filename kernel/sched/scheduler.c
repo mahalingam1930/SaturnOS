@@ -332,3 +332,18 @@ unsigned long scheduler_get_ticks(void)
 {
     return scheduler_ticks;
 }
+
+unsigned long scheduler_stack_region_start(void)
+{
+    return (unsigned long)&task_stacks[0][0];
+}
+
+unsigned long scheduler_stack_region_end(void)
+{
+    return scheduler_stack_region_start() + scheduler_stack_region_bytes();
+}
+
+unsigned long scheduler_stack_region_bytes(void)
+{
+    return SCHED_MAX_TASKS * SCHED_STACK_SIZE;
+}

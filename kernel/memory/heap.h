@@ -10,6 +10,8 @@ unsigned long heap_used_bytes(void);
 unsigned long heap_free_bytes(void);
 unsigned long heap_overhead_bytes(void);
 unsigned long heap_page_count(void);
+unsigned long heap_region_start(void);
+unsigned long heap_region_end(void);
 void heap_dump_stats(void);
 void heap_self_test(void);
 

@@ -1,6 +1,8 @@
 #include "vm.h"
+#include "heap.h"
 #include "kprintf.h"
 #include "mmu.h"
+#include "scheduler.h"
 
 #define VM_L2_TABLE_CAPACITY 4UL
 #define VM_L3_TABLE_CAPACITY 1UL
@@ -80,7 +82,7 @@ static const struct vm_region vm_regions[] = {
         0x40000000UL,
         0x40000000UL,
         0x08000000UL,
-        ARM64_NORMAL_MEMORY_ATTR,
+        VM_NORMAL_XN_MEMORY_ATTR,
         "normal",
     },
 };
@@ -648,6 +650,23 @@ unsigned long vm_root_table(void)
 
 const char *vm_region_name_for_address(unsigned long address)
 {
+    unsigned long heap_start = heap_region_start();
+    unsigned long heap_end = heap_region_end();
+    unsigned long stack_start = scheduler_stack_region_start();
+    unsigned long stack_end = scheduler_stack_region_end();
+
+    if (heap_start != heap_end &&
+        address >= heap_start &&
+        address < heap_end)
+    {
+        return "heap";
+    }
+
+    if (address >= stack_start && address < stack_end)
+    {
+        return "scheduler-stacks";
+    }
+
     for (unsigned long i = 0;
          i < sizeof(vm_named_regions) / sizeof(vm_named_regions[0]);
          i++)
@@ -765,11 +784,18 @@ static void vm_dump_section_walk(const char *label, char *start, char *end)
 
 void vm_dump_walk_examples(void)
 {
+    unsigned long heap_start = heap_region_start();
+
     vm_dump_walk_address("uart", 0x09000000UL);
     vm_dump_section_walk("text", _text_start, _text_end);
     vm_dump_section_walk("rodata", _rodata_start, _rodata_end);
     vm_dump_section_walk("data", _data_start, _data_end);
     vm_dump_section_walk("bss", _bss_start, _bss_end);
+    if (heap_start != heap_region_end())
+    {
+        vm_dump_walk_address("heap", heap_start);
+    }
+    vm_dump_walk_address("stacks", scheduler_stack_region_start());
     vm_dump_walk_address("gap", 0x20000000UL);
 }
 
@@ -1004,20 +1030,48 @@ static const char *vm_write_permission_status(
     return "too-strict";
 }
 
-static void vm_dump_permission_goal(const struct vm_permission_goal *goal)
+static void vm_dump_permission_range(const char *name,
+                                     unsigned long start,
+                                     unsigned long end,
+                                     int want_xn,
+                                     int want_ro)
 {
     kprintf("  %s exec=%s/%s %s write=%s/%s %s\n",
-            goal->name,
-            vm_desired_permission(goal->want_xn),
-            vm_actual_execute_permission_for_range(goal->start, goal->end),
-            vm_execute_permission_status(goal),
-            vm_desired_write_permission(goal->want_ro),
-            vm_actual_write_permission_for_range(goal->start, goal->end),
-            vm_write_permission_status(goal));
+            name,
+            vm_desired_permission(want_xn),
+            vm_actual_execute_permission_for_range(start, end),
+            vm_execute_permission_status(&(struct vm_permission_goal){
+                name,
+                start,
+                end,
+                want_xn,
+                want_ro,
+            }),
+            vm_desired_write_permission(want_ro),
+            vm_actual_write_permission_for_range(start, end),
+            vm_write_permission_status(&(struct vm_permission_goal){
+                name,
+                start,
+                end,
+                want_xn,
+                want_ro,
+            }));
+}
+
+static void vm_dump_permission_goal(const struct vm_permission_goal *goal)
+{
+    vm_dump_permission_range(goal->name,
+                             goal->start,
+                             goal->end,
+                             goal->want_xn,
+                             goal->want_ro);
 }
 
 static void vm_dump_permission_goals(void)
 {
+    unsigned long heap_start = heap_region_start();
+    unsigned long heap_end = heap_region_end();
+
     kprintf("VM protect: granularity=4 KiB kernel pages\n");
 
     for (unsigned long i = 0;
@@ -1026,6 +1080,13 @@ static void vm_dump_permission_goals(void)
     {
         vm_dump_permission_goal(&vm_permission_goals[i]);
     }
+
+    vm_dump_permission_range("heap", heap_start, heap_end, 1, 0);
+    vm_dump_permission_range("stacks",
+                             scheduler_stack_region_start(),
+                             scheduler_stack_region_end(),
+                             1,
+                             0);
 }
 
 static int range_overlaps_kernel_l3_block(unsigned long start,

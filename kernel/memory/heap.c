@@ -16,6 +16,8 @@ static struct heap_block *heap_head;
 static struct heap_block *heap_tail;
 static unsigned long heap_pages;
 static unsigned long heap_used;
+static unsigned long heap_start;
+static unsigned long heap_end;
 
 static unsigned long align_up(unsigned long value)
 {
@@ -98,11 +100,14 @@ static struct heap_block *find_free_block(unsigned long size)
 static struct heap_block *grow_heap(void)
 {
     struct heap_block *block = (struct heap_block *)pmm_alloc_page();
+    unsigned long page;
 
     if (!block)
     {
         return 0;
     }
+
+    page = (unsigned long)block;
 
     block->size = heap_block_capacity();
     block->free = 1;
@@ -121,6 +126,16 @@ static struct heap_block *grow_heap(void)
 
     heap_pages++;
 
+    if (heap_start == 0 || page < heap_start)
+    {
+        heap_start = page;
+    }
+
+    if (page + PMM_PAGE_SIZE > heap_end)
+    {
+        heap_end = page + PMM_PAGE_SIZE;
+    }
+
     return block;
 }
 
@@ -130,6 +145,8 @@ void heap_init(void)
     heap_tail = 0;
     heap_pages = 0;
     heap_used = 0;
+    heap_start = 0;
+    heap_end = 0;
 }
 
 void *kmalloc(unsigned long size)
@@ -236,6 +253,16 @@ unsigned long heap_page_count(void)
     return heap_pages;
 }
 
+unsigned long heap_region_start(void)
+{
+    return heap_start;
+}
+
+unsigned long heap_region_end(void)
+{
+    return heap_end;
+}
+
 unsigned long heap_overhead_bytes(void)
 {
     unsigned long total = heap_total_bytes();
@@ -253,6 +280,9 @@ unsigned long heap_overhead_bytes(void)
 void heap_dump_stats(void)
 {
     kprintf("Heap pages: %d\n", (int)heap_page_count());
+    kprintf("Heap range: 0x%x - 0x%x\n",
+            (unsigned int)heap_region_start(),
+            (unsigned int)heap_region_end());
     kprintf("Heap bytes: total=%d used=%d free=%d overhead=%d\n",
             (int)heap_total_bytes(),
             (int)heap_used_bytes(),

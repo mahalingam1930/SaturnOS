@@ -54,9 +54,11 @@
 #define KEY_RIGHTSHIFT 54U
 #define KEY_SPACE 57U
 #define KEY_HOME 102U
+#define KEY_UP 103U
 #define KEY_LEFT 105U
 #define KEY_RIGHT 106U
 #define KEY_END 107U
+#define KEY_DOWN 108U
 #define KEY_DELETE 111U
 
 struct virtq_desc
@@ -388,6 +390,11 @@ static char keycode_to_ascii(uint16_t code)
         return KEYBOARD_CHAR_HOME;
     }
 
+    if (code == KEY_UP)
+    {
+        return KEYBOARD_CHAR_UP;
+    }
+
     if (code == KEY_LEFT)
     {
         return KEYBOARD_CHAR_LEFT;
@@ -401,6 +408,11 @@ static char keycode_to_ascii(uint16_t code)
     if (code == KEY_END)
     {
         return KEYBOARD_CHAR_END;
+    }
+
+    if (code == KEY_DOWN)
+    {
+        return KEYBOARD_CHAR_DOWN;
     }
 
     if (code == KEY_RIGHT)

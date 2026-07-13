@@ -3,9 +3,11 @@
 
 #define KEYBOARD_CHAR_HOME 0x01
 #define KEYBOARD_CHAR_LEFT 0x02
+#define KEYBOARD_CHAR_UP 0x03
 #define KEYBOARD_CHAR_DELETE 0x04
 #define KEYBOARD_CHAR_END 0x05
 #define KEYBOARD_CHAR_RIGHT 0x06
+#define KEYBOARD_CHAR_DOWN 0x0e
 
 void keyboard_init(void);
 int keyboard_read_char(char *out);

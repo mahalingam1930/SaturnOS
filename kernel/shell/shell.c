@@ -11,13 +11,21 @@
 #include "vm.h"
 
 #define SHELL_BUFFER_SIZE 64
+#define SHELL_HISTORY_SIZE 8
 #define SHELL_PROMPT "saturn> "
 
 static char command_buffer[SHELL_BUFFER_SIZE];
+static char history_buffer[SHELL_HISTORY_SIZE][SHELL_BUFFER_SIZE];
 static unsigned int command_length;
 static unsigned int command_cursor;
 static unsigned int rendered_length;
 static unsigned int escape_state;
+static unsigned int history_count;
+static unsigned int history_next;
+static unsigned int history_view;
+
+static void shell_home(void);
+static void shell_end(void);
 
 static int string_equals(const char *left, const char *right)
 {
@@ -148,6 +156,74 @@ static void shell_prompt(void)
     rendered_length = 0;
 }
 
+static void copy_string(char *destination, const char *source)
+{
+    unsigned int i = 0;
+
+    while (source[i] && i < SHELL_BUFFER_SIZE - 1)
+    {
+        destination[i] = source[i];
+        i++;
+    }
+
+    destination[i] = '\0';
+}
+
+static unsigned int string_length(const char *text)
+{
+    unsigned int length = 0;
+
+    while (text[length])
+    {
+        length++;
+    }
+
+    return length;
+}
+
+static unsigned int history_index(unsigned int logical_index)
+{
+    unsigned int first;
+
+    if (history_count < SHELL_HISTORY_SIZE)
+    {
+        return logical_index;
+    }
+
+    first = history_next;
+    return (first + logical_index) % SHELL_HISTORY_SIZE;
+}
+
+static const char *history_entry(unsigned int logical_index)
+{
+    return history_buffer[history_index(logical_index)];
+}
+
+static void history_add(const char *command)
+{
+    if (command[0] == '\0')
+    {
+        return;
+    }
+
+    if (history_count > 0 &&
+        string_equals(command, history_entry(history_count - 1)))
+    {
+        history_view = history_count;
+        return;
+    }
+
+    copy_string(history_buffer[history_next], command);
+    history_next = (history_next + 1) % SHELL_HISTORY_SIZE;
+
+    if (history_count < SHELL_HISTORY_SIZE)
+    {
+        history_count++;
+    }
+
+    history_view = history_count;
+}
+
 static void shell_move_left(unsigned int count)
 {
     while (count > 0)
@@ -190,6 +266,18 @@ static void shell_redraw_from_cursor(unsigned int old_length)
 
     shell_move_left(printed);
     rendered_length = command_length;
+}
+
+static void shell_replace_line(const char *text)
+{
+    unsigned int old_length = command_length;
+
+    shell_home();
+    copy_string(command_buffer, text);
+    command_length = string_length(command_buffer);
+    command_cursor = 0;
+    shell_redraw_from_cursor(old_length);
+    shell_end();
 }
 
 static void shell_insert_char(char c)
@@ -279,6 +367,40 @@ static void shell_end(void)
     shell_move_right(command_length - command_cursor);
 }
 
+static void shell_history_previous(void)
+{
+    if (history_count == 0)
+    {
+        return;
+    }
+
+    if (history_view == 0)
+    {
+        return;
+    }
+
+    history_view--;
+    shell_replace_line(history_entry(history_view));
+}
+
+static void shell_history_next(void)
+{
+    if (history_count == 0 || history_view >= history_count)
+    {
+        return;
+    }
+
+    history_view++;
+
+    if (history_view == history_count)
+    {
+        shell_replace_line("");
+        return;
+    }
+
+    shell_replace_line(history_entry(history_view));
+}
+
 static int shell_handle_escape_char(char c)
 {
     if (escape_state == 0)
@@ -303,6 +425,18 @@ static int shell_handle_escape_char(char c)
                 command_cursor--;
                 kprintf("\b");
             }
+            return 1;
+        }
+
+        if (c == 'A')
+        {
+            shell_history_previous();
+            return 1;
+        }
+
+        if (c == 'B')
+        {
+            shell_history_next();
             return 1;
         }
 
@@ -451,6 +585,7 @@ void shell_init(void)
     command_cursor = 0;
     rendered_length = 0;
     escape_state = 0;
+    history_view = history_count;
     kprintf("SaturnOS shell ready\n");
     shell_prompt();
 }
@@ -489,6 +624,12 @@ void shell_handle_char(char c)
         return;
     }
 
+    if (c == KEYBOARD_CHAR_UP)
+    {
+        shell_history_previous();
+        return;
+    }
+
     if (c == KEYBOARD_CHAR_DELETE)
     {
         shell_delete();
@@ -498,6 +639,12 @@ void shell_handle_char(char c)
     if (c == KEYBOARD_CHAR_END)
     {
         shell_end();
+        return;
+    }
+
+    if (c == KEYBOARD_CHAR_DOWN)
+    {
+        shell_history_next();
         return;
     }
 
@@ -511,11 +658,13 @@ void shell_handle_char(char c)
     {
         command_buffer[command_length] = '\0';
         kprintf("\n");
+        history_add(command_buffer);
         shell_execute(command_buffer);
         command_length = 0;
         command_cursor = 0;
         rendered_length = 0;
         escape_state = 0;
+        history_view = history_count;
         shell_prompt();
         return;
     }
@@ -531,5 +680,6 @@ void shell_handle_char(char c)
         return;
     }
 
+    history_view = history_count;
     shell_insert_char(c);
 }

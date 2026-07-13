@@ -39,6 +39,7 @@ map.
 - User/process address-space object scaffold
 - Static user address-space L1 table pool
 - Controlled user code, data, and stack mapping plan
+- User code/data/stack descriptor permission scaffold
 - Task memory metadata with stack, guard, address-space, and root-table
   diagnostics
 
@@ -187,6 +188,8 @@ memory:
 - user address spaces still share the protected kernel map
 - user address spaces can own L1 page-table storage
 - user address spaces reserve controlled code, data, and stack ranges
+- user address spaces carry intended descriptor permissions for each user
+  region
 - user page-table mappings are marked as not ready until the real per-process
   tables exist
 
@@ -214,8 +217,19 @@ These ranges are policy metadata only in this milestone. SaturnOS reports the
 plan through address-space diagnostics, but the mappings are still inactive
 until real user descriptors and EL0 permissions are added.
 
+The planned descriptor policy is:
+
+```text
+user code   readable, executable, read-only, privileged-execute-never
+user data   readable, writable, execute-never
+user stack  readable, writable, execute-never
+```
+
+The descriptor metadata is attached to address-space objects, but SaturnOS does
+not install those descriptors into active page tables yet.
+
 ## Next MMU Work
 
-1. Build user page descriptors for controlled user mappings.
-2. Add user/kernel permission split for future EL0 mappings.
+1. Add user/kernel permission split for future EL0 mappings.
+2. Attach controlled user descriptors to user page tables.
 3. Decide when to enable instruction and data caches.

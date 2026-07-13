@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.13
+Version: 0.6.14
 
 Codename: Memory
 
@@ -57,6 +57,7 @@ Target: ARM64 QEMU `virt`
 - User/process address-space scaffold
 - User address-space page-table storage scaffold
 - Controlled user code, data, and stack mapping plan
+- User code/data/stack descriptor permission scaffold
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -125,6 +126,7 @@ Target: ARM64 QEMU `virt`
 - User/process address-space object scaffold
 - Static user address-space L1 table pool for future processes
 - Controlled user virtual-memory ranges for future processes
+- User descriptor policy for code, data, and stack permissions
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -194,8 +196,8 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Build user page descriptors for controlled user mappings
 - Add user/kernel permission split for future EL0 mappings
+- Attach controlled user descriptors to user page tables
 - Expand scheduler robustness and task management
 
 ## Vision

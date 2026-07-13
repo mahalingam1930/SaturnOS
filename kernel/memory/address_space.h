@@ -1,10 +1,23 @@
 #ifndef ADDRESS_SPACE_H
 #define ADDRESS_SPACE_H
 
+#define ADDRESS_SPACE_USER_REGION_COUNT 3UL
+
 enum address_space_kind
 {
     ADDRESS_SPACE_KERNEL = 0,
     ADDRESS_SPACE_USER,
+};
+
+struct address_space_user_region
+{
+    const char *name;
+    unsigned long start;
+    unsigned long end;
+    unsigned long attributes;
+    int user_access;
+    int writable;
+    int executable;
 };
 
 struct address_space
@@ -24,8 +37,12 @@ struct address_space
     unsigned long user_stack_start;
     unsigned long user_stack_end;
     unsigned long user_mapping_count;
+    unsigned long user_descriptor_count;
+    struct address_space_user_region
+        user_regions[ADDRESS_SPACE_USER_REGION_COUNT];
     int shared_kernel_map;
     int user_tables_ready;
+    int user_descriptors_ready;
     int user_mappings_ready;
     int user_execute_ready;
 };

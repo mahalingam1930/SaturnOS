@@ -10,6 +10,16 @@
 #define ADDRESS_SPACE_USER_DATA_END 0x00300000UL
 #define ADDRESS_SPACE_USER_STACK_START 0x3fff0000UL
 #define ADDRESS_SPACE_USER_STACK_END 0x40000000UL
+#define ADDRESS_SPACE_USER_CODE_ATTR \
+    ((ARM64_NORMAL_MEMORY_ATTR & ~ARM64_DESC_AP_MASK) | \
+     ARM64_DESC_AP_RO_EL0 | \
+     ARM64_DESC_PXN)
+#define ADDRESS_SPACE_USER_DATA_ATTR \
+    ((ARM64_NORMAL_MEMORY_ATTR & ~ARM64_DESC_AP_MASK) | \
+     ARM64_DESC_AP_RW_EL0 | \
+     ARM64_DESC_PXN | \
+     ARM64_DESC_UXN)
+#define ADDRESS_SPACE_USER_STACK_ATTR ADDRESS_SPACE_USER_DATA_ATTR
 
 static struct address_space kernel_address_space;
 static unsigned long user_l1_tables[ADDRESS_SPACE_USER_TABLE_SLOTS]
@@ -40,6 +50,43 @@ static unsigned long *address_space_alloc_user_l1_table(void)
     return user_l1_tables[slot];
 }
 
+static void address_space_clear_user_regions(struct address_space *space)
+{
+    for (unsigned long i = 0; i < ADDRESS_SPACE_USER_REGION_COUNT; i++)
+    {
+        space->user_regions[i].name = 0;
+        space->user_regions[i].start = 0;
+        space->user_regions[i].end = 0;
+        space->user_regions[i].attributes = 0;
+        space->user_regions[i].user_access = 0;
+        space->user_regions[i].writable = 0;
+        space->user_regions[i].executable = 0;
+    }
+}
+
+static void address_space_set_user_region(struct address_space *space,
+                                          unsigned long index,
+                                          const char *name,
+                                          unsigned long start,
+                                          unsigned long end,
+                                          unsigned long attributes,
+                                          int writable,
+                                          int executable)
+{
+    if (index >= ADDRESS_SPACE_USER_REGION_COUNT)
+    {
+        return;
+    }
+
+    space->user_regions[index].name = name;
+    space->user_regions[index].start = start;
+    space->user_regions[index].end = end;
+    space->user_regions[index].attributes = attributes;
+    space->user_regions[index].user_access = 1;
+    space->user_regions[index].writable = writable;
+    space->user_regions[index].executable = executable;
+}
+
 void address_space_init(unsigned long kernel_root_table)
 {
     kernel_address_space.name = "kernel";
@@ -57,8 +104,11 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.user_stack_start = 0;
     kernel_address_space.user_stack_end = 0;
     kernel_address_space.user_mapping_count = 0;
+    kernel_address_space.user_descriptor_count = 0;
+    address_space_clear_user_regions(&kernel_address_space);
     kernel_address_space.shared_kernel_map = 1;
     kernel_address_space.user_tables_ready = 0;
+    kernel_address_space.user_descriptors_ready = 0;
     kernel_address_space.user_mappings_ready = 0;
     kernel_address_space.user_execute_ready = 0;
 }
@@ -91,8 +141,35 @@ void address_space_init_user(struct address_space *space,
     space->user_stack_start = ADDRESS_SPACE_USER_STACK_START;
     space->user_stack_end = ADDRESS_SPACE_USER_STACK_END;
     space->user_mapping_count = 3;
+    space->user_descriptor_count = ADDRESS_SPACE_USER_REGION_COUNT;
+    address_space_clear_user_regions(space);
+    address_space_set_user_region(space,
+                                  0,
+                                  "code",
+                                  space->user_code_start,
+                                  space->user_code_end,
+                                  ADDRESS_SPACE_USER_CODE_ATTR,
+                                  0,
+                                  1);
+    address_space_set_user_region(space,
+                                  1,
+                                  "data",
+                                  space->user_data_start,
+                                  space->user_data_end,
+                                  ADDRESS_SPACE_USER_DATA_ATTR,
+                                  1,
+                                  0);
+    address_space_set_user_region(space,
+                                  2,
+                                  "stack",
+                                  space->user_stack_start,
+                                  space->user_stack_end,
+                                  ADDRESS_SPACE_USER_STACK_ATTR,
+                                  1,
+                                  0);
     space->shared_kernel_map = 1;
     space->user_tables_ready = user_l1_table ? 1 : 0;
+    space->user_descriptors_ready = user_l1_table ? 1 : 0;
     space->user_mappings_ready = 0;
     space->user_execute_ready = 0;
 }

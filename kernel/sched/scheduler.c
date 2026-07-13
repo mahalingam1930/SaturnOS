@@ -332,18 +332,19 @@ void scheduler_dump_tasks(void)
         if (space)
         {
             kprintf("    aspace=%s kind=%s root=0x%x shared=%s "
-                    "user_tables=%s user_map=%s\n",
+                    "user_tables=%s user_desc=%s user_map=%s\n",
                     space->name,
                     address_space_kind_name(space->kind),
                     (unsigned int)space->root_table,
                     space->shared_kernel_map ? "yes" : "no",
                     space->user_tables_ready ? "yes" : "no",
+                    space->user_descriptors_ready ? "yes" : "no",
                     space->user_mappings_ready ? "yes" : "no");
         }
         else
         {
             kprintf("    aspace=none kind=none root=0x0 shared=no "
-                    "user_tables=no user_map=no\n");
+                    "user_tables=no user_desc=no user_map=no\n");
         }
         kprintf("    stack=0x%x-0x%x\n",
                 (unsigned int)tasks[i].memory.stack_start,

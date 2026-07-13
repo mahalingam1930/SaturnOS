@@ -18,6 +18,7 @@ SECTIONS
     } :text
     _text_end = .;
 
+    . = ALIGN(4096);
     _rodata_start = .;
     .rodata :
     {
@@ -25,6 +26,7 @@ SECTIONS
     } :text
     _rodata_end = .;
 
+    . = ALIGN(4096);
     _data_start = .;
     .data :
     {
@@ -32,6 +34,7 @@ SECTIONS
     } :data
     _data_end = .;
 
+    . = ALIGN(4096);
     _bss_start = .;
     .bss :
     {

@@ -3,6 +3,7 @@
 #include "mmu.h"
 
 #define VM_L2_TABLE_CAPACITY 4UL
+#define VM_L3_TABLE_CAPACITY 1UL
 #define VM_UART_BASE 0x09000000UL
 #define VM_UART_END 0x09001000UL
 #define VM_GIC_BASE 0x08000000UL
@@ -12,6 +13,10 @@
 #define VM_RAMFB_CONTROL_BASE 0x46ffe000UL
 #define VM_FRAMEBUFFER_BASE 0x47000000UL
 #define VM_FRAMEBUFFER_END 0x4712c000UL
+#define VM_KERNEL_L3_BASE 0x40000000UL
+#define VM_KERNEL_L3_END (VM_KERNEL_L3_BASE + ARM64_L2_BLOCK_SIZE)
+#define VM_NORMAL_XN_MEMORY_ATTR \
+    (ARM64_NORMAL_MEMORY_ATTR | ARM64_DESC_PXN | ARM64_DESC_UXN)
 
 extern char _kernel_start[];
 extern char _kernel_end[];
@@ -99,17 +104,24 @@ static unsigned long vm_l1_table[ARM64_TABLE_ENTRIES]
     __attribute__((aligned(ARM64_TABLE_SIZE)));
 static unsigned long vm_l2_tables[VM_L2_TABLE_CAPACITY][ARM64_TABLE_ENTRIES]
     __attribute__((aligned(ARM64_TABLE_SIZE)));
+static unsigned long vm_kernel_l3_table[ARM64_TABLE_ENTRIES]
+    __attribute__((aligned(ARM64_TABLE_SIZE)));
 static struct vm_l2_table_slot vm_l2_slots[VM_L2_TABLE_CAPACITY];
 static int vm_ready;
 static int vm_tables_built;
 static int vm_validated;
 static int vm_enable_attempted;
+static int vm_kernel_l3_mapped;
 static unsigned long vm_used_l2_tables;
 static unsigned long vm_blocks_mapped;
+static unsigned long vm_pages_mapped;
 static unsigned long vm_blocks_validated;
+static unsigned long vm_pages_validated;
 static unsigned long vm_validation_error_count;
 static unsigned long vm_exec_blocks;
 static unsigned long vm_xn_blocks;
+static unsigned long vm_exec_pages;
+static unsigned long vm_xn_pages;
 static unsigned long vm_bytes_mapped;
 
 static void clear_table(unsigned long *table)
@@ -118,6 +130,43 @@ static void clear_table(unsigned long *table)
     {
         table[i] = 0;
     }
+}
+
+static unsigned long align_down(unsigned long value, unsigned long size)
+{
+    return value & ~(size - 1);
+}
+
+static unsigned long align_up(unsigned long value, unsigned long size)
+{
+    return (value + size - 1) & ~(size - 1);
+}
+
+static int address_in_range(unsigned long address,
+                            unsigned long start,
+                            unsigned long end)
+{
+    return address >= start && address < end;
+}
+
+static int address_in_kernel_text(unsigned long address)
+{
+    unsigned long text_start =
+        align_down((unsigned long)_text_start, ARM64_PAGE_SIZE);
+    unsigned long text_end =
+        align_up((unsigned long)_text_end, ARM64_PAGE_SIZE);
+
+    return address_in_range(address, text_start, text_end);
+}
+
+static unsigned long kernel_page_attributes(unsigned long address)
+{
+    if (address_in_kernel_text(address))
+    {
+        return ARM64_NORMAL_MEMORY_ATTR;
+    }
+
+    return VM_NORMAL_XN_MEMORY_ATTR;
 }
 
 static unsigned long *get_l2_table(unsigned long l1_index)
@@ -200,9 +249,66 @@ static int map_region(const struct vm_region *region)
     return 1;
 }
 
+static int map_kernel_l3_block(void)
+{
+    unsigned long l1_index = arm64_mmu_l1_index(VM_KERNEL_L3_BASE);
+    unsigned long l2_index = arm64_mmu_l2_index(VM_KERNEL_L3_BASE);
+    unsigned long *l2_table = get_l2_table(l1_index);
+
+    if (!l2_table)
+    {
+        return 0;
+    }
+
+    clear_table(vm_kernel_l3_table);
+
+    for (unsigned long i = 0; i < ARM64_TABLE_ENTRIES; i++)
+    {
+        unsigned long address = VM_KERNEL_L3_BASE + (i * ARM64_PAGE_SIZE);
+        unsigned long attributes = kernel_page_attributes(address);
+
+        vm_kernel_l3_table[i] =
+            arm64_mmu_l3_page_desc(address, attributes);
+
+        if (arm64_mmu_desc_is_execute_never(vm_kernel_l3_table[i]))
+        {
+            vm_xn_pages++;
+        }
+        else
+        {
+            vm_exec_pages++;
+        }
+
+        vm_pages_mapped++;
+    }
+
+    if (arm64_mmu_desc_is_l2_block(l2_table[l2_index]))
+    {
+        if (arm64_mmu_desc_is_execute_never(l2_table[l2_index]))
+        {
+            vm_xn_blocks--;
+        }
+        else
+        {
+            vm_exec_blocks--;
+        }
+
+        vm_blocks_mapped--;
+        vm_bytes_mapped -= ARM64_L2_BLOCK_SIZE;
+    }
+
+    l2_table[l2_index] =
+        arm64_mmu_table_desc((unsigned long)vm_kernel_l3_table);
+
+    vm_kernel_l3_mapped = 1;
+    vm_bytes_mapped += ARM64_L2_BLOCK_SIZE;
+    return 1;
+}
+
 static int build_tables(void)
 {
     clear_table(vm_l1_table);
+    clear_table(vm_kernel_l3_table);
 
     for (unsigned long i = 0; i < VM_L2_TABLE_CAPACITY; i++)
     {
@@ -213,11 +319,16 @@ static int build_tables(void)
 
     vm_used_l2_tables = 0;
     vm_blocks_mapped = 0;
+    vm_pages_mapped = 0;
     vm_blocks_validated = 0;
+    vm_pages_validated = 0;
     vm_validation_error_count = 0;
     vm_exec_blocks = 0;
     vm_xn_blocks = 0;
+    vm_exec_pages = 0;
+    vm_xn_pages = 0;
     vm_bytes_mapped = 0;
+    vm_kernel_l3_mapped = 0;
 
     for (unsigned long i = 0; i < vm_region_count(); i++)
     {
@@ -225,6 +336,11 @@ static int build_tables(void)
         {
             return 0;
         }
+    }
+
+    if (!map_kernel_l3_block())
+    {
+        return 0;
     }
 
     return 1;
@@ -244,13 +360,21 @@ static unsigned long *find_l2_table(unsigned long l1_index)
     return 0;
 }
 
-static int l2_descriptor_for_address(unsigned long address,
-                                     unsigned long *descriptor)
+static int translation_for_address(unsigned long address,
+                                   unsigned long *physical,
+                                   unsigned long *descriptor,
+                                   unsigned long *level)
 {
     unsigned long l1_index = arm64_mmu_l1_index(address);
     unsigned long l2_index = arm64_mmu_l2_index(address);
+    unsigned long l3_index = arm64_mmu_l3_index(address);
+    unsigned long l2_offset = address & (ARM64_L2_BLOCK_SIZE - 1);
+    unsigned long l3_offset = address & (ARM64_PAGE_SIZE - 1);
     unsigned long l1_descriptor = vm_l1_table[l1_index];
     unsigned long *l2_table;
+    unsigned long l2_descriptor;
+    unsigned long *l3_table;
+    unsigned long l3_descriptor;
 
     if (!arm64_mmu_desc_is_table(l1_descriptor))
     {
@@ -263,8 +387,32 @@ static int l2_descriptor_for_address(unsigned long address,
         return 0;
     }
 
-    *descriptor = l2_table[l2_index];
-    return arm64_mmu_desc_is_l2_block(*descriptor);
+    l2_descriptor = l2_table[l2_index];
+    if (arm64_mmu_desc_is_l2_block(l2_descriptor))
+    {
+        *physical = arm64_mmu_l2_block_address(l2_descriptor) + l2_offset;
+        *descriptor = l2_descriptor;
+        *level = 2;
+        return 1;
+    }
+
+    if (!arm64_mmu_desc_is_table(l2_descriptor))
+    {
+        return 0;
+    }
+
+    l3_table = (unsigned long *)arm64_mmu_desc_address(l2_descriptor);
+    l3_descriptor = l3_table[l3_index];
+
+    if (!arm64_mmu_desc_is_l3_page(l3_descriptor))
+    {
+        return 0;
+    }
+
+    *physical = arm64_mmu_l3_page_address(l3_descriptor) + l3_offset;
+    *descriptor = l3_descriptor;
+    *level = 3;
+    return 1;
 }
 
 static void validation_error(void)
@@ -286,43 +434,37 @@ static int validate_region(const struct vm_region *region)
 
     while (remaining > 0)
     {
-        unsigned long l1_index = arm64_mmu_l1_index(va);
-        unsigned long l2_index = arm64_mmu_l2_index(va);
-        unsigned long l1_descriptor = vm_l1_table[l1_index];
-        unsigned long *l2_table;
-        unsigned long l2_descriptor;
+        unsigned long physical;
+        unsigned long descriptor;
+        unsigned long level;
+        unsigned long step;
 
-        if (!arm64_mmu_desc_is_table(l1_descriptor))
+        if (!translation_for_address(va, &physical, &descriptor, &level))
         {
             validation_error();
             return 0;
         }
 
-        l2_table = find_l2_table(l1_index);
-        if (!l2_table ||
-            arm64_mmu_desc_address(l1_descriptor) != (unsigned long)l2_table)
+        if (physical != pa)
         {
             validation_error();
             return 0;
         }
 
-        l2_descriptor = l2_table[l2_index];
-        if (!arm64_mmu_desc_is_l2_block(l2_descriptor))
+        if (level == 2)
         {
-            validation_error();
-            return 0;
+            step = ARM64_L2_BLOCK_SIZE;
+            vm_blocks_validated++;
+        }
+        else
+        {
+            step = ARM64_PAGE_SIZE;
+            vm_pages_validated++;
         }
 
-        if (arm64_mmu_l2_block_address(l2_descriptor) != pa)
-        {
-            validation_error();
-            return 0;
-        }
-
-        vm_blocks_validated++;
-        va += ARM64_L2_BLOCK_SIZE;
-        pa += ARM64_L2_BLOCK_SIZE;
-        remaining -= ARM64_L2_BLOCK_SIZE;
+        va += step;
+        pa += step;
+        remaining -= step;
     }
 
     return 1;
@@ -331,6 +473,7 @@ static int validate_region(const struct vm_region *region)
 static int validate_tables(void)
 {
     vm_blocks_validated = 0;
+    vm_pages_validated = 0;
     vm_validation_error_count = 0;
 
     if (((unsigned long)vm_l1_table & (ARM64_TABLE_SIZE - 1)) != 0)
@@ -348,6 +491,13 @@ static int validate_tables(void)
         }
     }
 
+    if (vm_kernel_l3_mapped &&
+        ((unsigned long)vm_kernel_l3_table & (ARM64_TABLE_SIZE - 1)) != 0)
+    {
+        validation_error();
+        return 0;
+    }
+
     for (unsigned long i = 0; i < vm_region_count(); i++)
     {
         if (!validate_region(&vm_regions[i]))
@@ -357,6 +507,12 @@ static int validate_tables(void)
     }
 
     if (vm_blocks_validated != vm_blocks_mapped)
+    {
+        validation_error();
+        return 0;
+    }
+
+    if (vm_pages_validated != vm_pages_mapped)
     {
         validation_error();
         return 0;
@@ -431,7 +587,7 @@ unsigned long vm_table_count(void)
         return 0;
     }
 
-    return 1 + vm_used_l2_tables;
+    return 1 + vm_used_l2_tables + (vm_kernel_l3_mapped ? 1 : 0);
 }
 
 unsigned long vm_mapped_blocks(void)
@@ -496,15 +652,17 @@ const char *vm_region_name_for_address(unsigned long address)
 
 int vm_walk_address(unsigned long virtual_address, unsigned long *physical)
 {
-    unsigned long offset = virtual_address & (ARM64_L2_BLOCK_SIZE - 1);
-    unsigned long l2_descriptor;
+    unsigned long descriptor;
+    unsigned long level;
 
-    if (!l2_descriptor_for_address(virtual_address, &l2_descriptor))
+    if (!translation_for_address(virtual_address,
+                                 physical,
+                                 &descriptor,
+                                 &level))
     {
         return 0;
     }
 
-    *physical = arm64_mmu_l2_block_address(l2_descriptor) + offset;
     return 1;
 }
 
@@ -512,31 +670,57 @@ void vm_dump_walk_address(const char *label, unsigned long address)
 {
     unsigned long l1 = arm64_mmu_l1_index(address);
     unsigned long l2 = arm64_mmu_l2_index(address);
+    unsigned long l3 = arm64_mmu_l3_index(address);
     unsigned long offset = address & (ARM64_L2_BLOCK_SIZE - 1);
     unsigned long physical = 0;
     unsigned long l1_descriptor = vm_l1_table[l1];
+    unsigned long *l2_table;
+    unsigned long l2_descriptor = 0;
     const char *region = vm_region_name_for_address(address);
 
-    kprintf("VM walk %s: va=0x%x region=%s l1=%d l2=%d off=0x%x\n",
+    kprintf("VM walk %s: va=0x%x region=%s l1=%d l2=%d l3=%d off=0x%x\n",
             label,
             (unsigned int)address,
             region,
             (int)l1,
             (int)l2,
+            (int)l3,
             (unsigned int)offset);
     kprintf("  l1 desc=0x%x %s\n",
             (unsigned int)l1_descriptor,
             arm64_mmu_desc_is_table(l1_descriptor) ? "table" : "invalid");
 
+    l2_table = find_l2_table(l1);
+    if (l2_table)
+    {
+        l2_descriptor = l2_table[l2];
+        kprintf("  l2 desc=0x%x %s\n",
+                (unsigned int)l2_descriptor,
+                arm64_mmu_desc_is_l2_block(l2_descriptor) ? "block" :
+                (arm64_mmu_desc_is_table(l2_descriptor) ? "table" :
+                 "invalid"));
+    }
+
     if (vm_walk_address(address, &physical))
     {
-        unsigned long l2_descriptor;
+        unsigned long descriptor;
+        unsigned long level;
 
-        l2_descriptor_for_address(address, &l2_descriptor);
+        translation_for_address(address, &physical, &descriptor, &level);
 
-        kprintf("  l2 desc=0x%x block perm=%s\n",
-                (unsigned int)l2_descriptor,
-                arm64_mmu_desc_execute_state(l2_descriptor));
+        if (level == 3)
+        {
+            kprintf("  l3 desc=0x%x page perm=%s\n",
+                    (unsigned int)descriptor,
+                    arm64_mmu_desc_execute_state(descriptor));
+        }
+        else
+        {
+            kprintf("  final desc=0x%x block perm=%s\n",
+                    (unsigned int)descriptor,
+                    arm64_mmu_desc_execute_state(descriptor));
+        }
+
         kprintf("  pa=0x%x\n", (unsigned int)physical);
     }
     else
@@ -596,9 +780,7 @@ static const char *vm_desired_permission(int want_xn)
 static const char *vm_actual_permission_for_range(unsigned long start,
                                                   unsigned long end)
 {
-    unsigned long block;
-    unsigned long first_block;
-    unsigned long last_block;
+    unsigned long address;
     int saw_exec = 0;
     int saw_xn = 0;
 
@@ -607,16 +789,16 @@ static const char *vm_actual_permission_for_range(unsigned long start,
         return "empty";
     }
 
-    first_block = start & ~(ARM64_L2_BLOCK_SIZE - 1);
-    last_block = (end - 1) & ~(ARM64_L2_BLOCK_SIZE - 1);
+    address = align_down(start, ARM64_PAGE_SIZE);
 
-    for (block = first_block;
-         block <= last_block;
-         block += ARM64_L2_BLOCK_SIZE)
+    while (address < end)
     {
+        unsigned long physical;
         unsigned long descriptor;
+        unsigned long level;
+        unsigned long step;
 
-        if (!l2_descriptor_for_address(block, &descriptor))
+        if (!translation_for_address(address, &physical, &descriptor, &level))
         {
             return "unmapped";
         }
@@ -634,6 +816,9 @@ static const char *vm_actual_permission_for_range(unsigned long start,
         {
             return "mixed";
         }
+
+        step = (level == 2) ? ARM64_L2_BLOCK_SIZE : ARM64_PAGE_SIZE;
+        address = align_down(address, step) + step;
     }
 
     if (saw_xn)
@@ -692,7 +877,7 @@ static void vm_dump_permission_goal(const struct vm_permission_goal *goal)
 
 static void vm_dump_permission_goals(void)
 {
-    kprintf("VM protect: granularity=2 MiB L2 blocks\n");
+    kprintf("VM protect: granularity=4 KiB kernel pages\n");
 
     for (unsigned long i = 0;
          i < sizeof(vm_permission_goals) / sizeof(vm_permission_goals[0]);
@@ -702,6 +887,14 @@ static void vm_dump_permission_goals(void)
     }
 }
 
+static int range_overlaps_kernel_l3_block(unsigned long start,
+                                          unsigned long end)
+{
+    return vm_kernel_l3_mapped &&
+           start < VM_KERNEL_L3_END &&
+           end > VM_KERNEL_L3_BASE;
+}
+
 static void vm_dump_region(const struct vm_region *region)
 {
     unsigned long end = region->virtual_start + region->size;
@@ -709,6 +902,12 @@ static void vm_dump_region(const struct vm_region *region)
     unsigned long l2 = arm64_mmu_l2_index(region->virtual_start);
     unsigned long descriptor =
         arm64_mmu_l2_block_desc(region->physical_start, region->attributes);
+    const char *permission = arm64_mmu_desc_execute_state(descriptor);
+
+    if (range_overlaps_kernel_l3_block(region->virtual_start, end))
+    {
+        permission = "mixed";
+    }
 
     kprintf("  %s: va=0x%x-0x%x pa=0x%x type=%s perm=%s l1=%d l2=%d\n",
             region->name,
@@ -716,7 +915,7 @@ static void vm_dump_region(const struct vm_region *region)
             (unsigned int)end,
             (unsigned int)region->physical_start,
             region->type,
-            arm64_mmu_desc_execute_state(descriptor),
+            permission,
             (int)l1,
             (int)l2);
 }
@@ -740,17 +939,21 @@ void vm_dump_plan(void)
             vm_table_state(),
             (unsigned int)vm_root_table(),
             (int)vm_table_count());
-    kprintf("VM check : %s blocks=%d errors=%d\n",
+    kprintf("VM check : %s blocks=%d pages=%d errors=%d\n",
             vm_validation_state(),
             (int)vm_validated_blocks(),
+            (int)vm_pages_validated,
             (int)vm_validation_errors());
-    kprintf("VM map   : blocks=%d bytes=%d\n",
+    kprintf("VM map   : blocks=%d pages=%d bytes=%d\n",
             (int)vm_mapped_blocks(),
+            (int)vm_pages_mapped,
             (int)vm_mapped_bytes());
-    kprintf("VM perms : exec=%d xn=%d\n",
+    kprintf("VM perms : exec_blocks=%d exec_pages=%d xn_blocks=%d xn_pages=%d\n",
             (int)vm_executable_blocks(),
-            (int)vm_execute_never_blocks());
-    kprintf("VM gran  : 4 KiB pages, 2 MiB L2 blocks\n");
+            (int)vm_exec_pages,
+            (int)vm_execute_never_blocks(),
+            (int)vm_xn_pages);
+    kprintf("VM gran  : 4 KiB kernel pages, 2 MiB blocks elsewhere\n");
     kprintf("VM attrs : normal index=%d device index=%d\n",
             (int)ARM64_ATTR_INDEX_NORMAL,
             (int)ARM64_ATTR_INDEX_DEVICE);

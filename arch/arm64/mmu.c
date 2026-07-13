@@ -54,6 +54,12 @@ int arm64_mmu_desc_is_l2_block(unsigned long descriptor)
            ARM64_DESC_VALID;
 }
 
+int arm64_mmu_desc_is_l3_page(unsigned long descriptor)
+{
+    return (descriptor & (ARM64_DESC_VALID | ARM64_DESC_TABLE)) ==
+           (ARM64_DESC_VALID | ARM64_DESC_TABLE);
+}
+
 unsigned long arm64_mmu_desc_address(unsigned long descriptor)
 {
     return descriptor & ARM64_DESC_ADDR_MASK;
@@ -62,6 +68,11 @@ unsigned long arm64_mmu_desc_address(unsigned long descriptor)
 unsigned long arm64_mmu_l2_block_address(unsigned long descriptor)
 {
     return descriptor & ARM64_DESC_L2_BLOCK_ADDR_MASK;
+}
+
+unsigned long arm64_mmu_l3_page_address(unsigned long descriptor)
+{
+    return descriptor & ARM64_DESC_L3_PAGE_ADDR_MASK;
 }
 
 int arm64_mmu_desc_is_execute_never(unsigned long descriptor)

@@ -90,6 +90,21 @@ const char *arm64_mmu_desc_execute_state(unsigned long descriptor)
     return "exec";
 }
 
+int arm64_mmu_desc_is_read_only(unsigned long descriptor)
+{
+    return (descriptor & ARM64_DESC_AP_MASK) == ARM64_DESC_AP_RO_EL1;
+}
+
+const char *arm64_mmu_desc_write_state(unsigned long descriptor)
+{
+    if (arm64_mmu_desc_is_read_only(descriptor))
+    {
+        return "ro";
+    }
+
+    return "rw";
+}
+
 unsigned long arm64_mmu_l2_block_desc(unsigned long physical,
                                       unsigned long attributes)
 {

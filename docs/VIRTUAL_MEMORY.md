@@ -26,6 +26,8 @@ map.
 - Permission diagnostics for kernel sections and MMIO
 - L3 page table for the 2 MiB block containing the kernel image
 - Execute-never page enforcement for kernel `.rodata` and `.bss`
+- Read-only page enforcement for kernel `.rodata`
+- Execute and write-permission diagnostics for page walks
 
 ## Planned Identity Map
 
@@ -47,7 +49,7 @@ map.
 
 - Device/MMIO blocks: execute-never
 - Kernel `.text` pages: executable
-- Kernel `.rodata` pages: execute-never
+- Kernel `.rodata` pages: execute-never and read-only
 - Kernel `.data` pages: execute-never when present
 - Kernel `.bss` pages: execute-never
 - Remaining RAM blocks: executable for now until heap and stack mappings are
@@ -57,11 +59,11 @@ The `vm` shell command reports desired and actual permissions:
 
 ```text
 VM protect: granularity=4 KiB kernel pages
-  text want=exec actual=exec status=enforced
-  rodata want=xn actual=xn status=enforced
-  data want=xn actual=empty status=empty
-  bss want=xn actual=xn status=enforced
-  mmio want=xn actual=xn status=enforced
+  text exec=exec/exec enforced write=rw/rw enforced
+  rodata exec=xn/xn enforced write=ro/ro enforced
+  data exec=xn/empty empty write=rw/empty empty
+  bss exec=xn/xn enforced write=rw/rw enforced
+  mmio exec=xn/xn enforced write=rw/rw enforced
 ```
 
 The broad RAM region may still report mixed permissions because the first
@@ -73,7 +75,7 @@ with L2 blocks.
 The linker script exports section boundaries for the kernel image:
 
 - `.text`: executable kernel code
-- `.rodata`: read-only constants and strings
+- `.rodata`: read-only constants and strings, mapped read-only
 - `.data`: initialized writable data
 - `.bss`: zeroed writable data, tables, and stacks
 
@@ -123,7 +125,7 @@ vmwalk 0x20000000
 
 ## Next MMU Work
 
-1. Add read-only page permissions for kernel `.rodata`.
-2. Extend execute-never protection to heap and scheduler stacks.
+1. Extend execute-never protection to heap and scheduler stacks.
+2. Add read-only page permissions for executable kernel text.
 3. Expand named VM regions as new drivers and memory ranges appear.
 4. Decide when to enable instruction and data caches.

@@ -17,6 +17,11 @@
 #define VM_KERNEL_L3_END (VM_KERNEL_L3_BASE + ARM64_L2_BLOCK_SIZE)
 #define VM_NORMAL_XN_MEMORY_ATTR \
     (ARM64_NORMAL_MEMORY_ATTR | ARM64_DESC_PXN | ARM64_DESC_UXN)
+#define VM_NORMAL_RO_XN_MEMORY_ATTR \
+    ((ARM64_NORMAL_MEMORY_ATTR & ~ARM64_DESC_AP_MASK) | \
+     ARM64_DESC_AP_RO_EL1 | \
+     ARM64_DESC_PXN | \
+     ARM64_DESC_UXN)
 
 extern char _kernel_start[];
 extern char _kernel_end[];
@@ -58,6 +63,7 @@ struct vm_permission_goal
     unsigned long start;
     unsigned long end;
     int want_xn;
+    int want_ro;
 };
 
 static const struct vm_region vm_regions[] = {
@@ -93,11 +99,11 @@ static const struct vm_named_region vm_named_regions[] = {
 };
 
 static const struct vm_permission_goal vm_permission_goals[] = {
-    {"text", (unsigned long)_text_start, (unsigned long)_text_end, 0},
-    {"rodata", (unsigned long)_rodata_start, (unsigned long)_rodata_end, 1},
-    {"data", (unsigned long)_data_start, (unsigned long)_data_end, 1},
-    {"bss", (unsigned long)_bss_start, (unsigned long)_bss_end, 1},
-    {"mmio", 0x08000000UL, 0x0a000000UL, 1},
+    {"text", (unsigned long)_text_start, (unsigned long)_text_end, 0, 0},
+    {"rodata", (unsigned long)_rodata_start, (unsigned long)_rodata_end, 1, 1},
+    {"data", (unsigned long)_data_start, (unsigned long)_data_end, 1, 0},
+    {"bss", (unsigned long)_bss_start, (unsigned long)_bss_end, 1, 0},
+    {"mmio", 0x08000000UL, 0x0a000000UL, 1, 0},
 };
 
 static unsigned long vm_l1_table[ARM64_TABLE_ENTRIES]
@@ -159,11 +165,26 @@ static int address_in_kernel_text(unsigned long address)
     return address_in_range(address, text_start, text_end);
 }
 
+static int address_in_kernel_rodata(unsigned long address)
+{
+    unsigned long rodata_start =
+        align_down((unsigned long)_rodata_start, ARM64_PAGE_SIZE);
+    unsigned long rodata_end =
+        align_up((unsigned long)_rodata_end, ARM64_PAGE_SIZE);
+
+    return address_in_range(address, rodata_start, rodata_end);
+}
+
 static unsigned long kernel_page_attributes(unsigned long address)
 {
     if (address_in_kernel_text(address))
     {
         return ARM64_NORMAL_MEMORY_ATTR;
+    }
+
+    if (address_in_kernel_rodata(address))
+    {
+        return VM_NORMAL_RO_XN_MEMORY_ATTR;
     }
 
     return VM_NORMAL_XN_MEMORY_ATTR;
@@ -710,15 +731,17 @@ void vm_dump_walk_address(const char *label, unsigned long address)
 
         if (level == 3)
         {
-            kprintf("  l3 desc=0x%x page perm=%s\n",
+            kprintf("  l3 desc=0x%x page perm=%s/%s\n",
                     (unsigned int)descriptor,
-                    arm64_mmu_desc_execute_state(descriptor));
+                    arm64_mmu_desc_execute_state(descriptor),
+                    arm64_mmu_desc_write_state(descriptor));
         }
         else
         {
-            kprintf("  final desc=0x%x block perm=%s\n",
+            kprintf("  final desc=0x%x block perm=%s/%s\n",
                     (unsigned int)descriptor,
-                    arm64_mmu_desc_execute_state(descriptor));
+                    arm64_mmu_desc_execute_state(descriptor),
+                    arm64_mmu_desc_write_state(descriptor));
         }
 
         kprintf("  pa=0x%x\n", (unsigned int)physical);
@@ -777,8 +800,42 @@ static const char *vm_desired_permission(int want_xn)
     return "exec";
 }
 
-static const char *vm_actual_permission_for_range(unsigned long start,
-                                                  unsigned long end)
+static const char *vm_desired_write_permission(int want_ro)
+{
+    if (want_ro)
+    {
+        return "ro";
+    }
+
+    return "rw";
+}
+
+static int next_descriptor_in_range(unsigned long *address,
+                                    unsigned long end,
+                                    unsigned long *descriptor)
+{
+    unsigned long physical;
+    unsigned long level;
+    unsigned long step;
+
+    if (!translation_for_address(*address, &physical, descriptor, &level))
+    {
+        return 0;
+    }
+
+    step = (level == 2) ? ARM64_L2_BLOCK_SIZE : ARM64_PAGE_SIZE;
+    *address = align_down(*address, step) + step;
+
+    if (*address > end)
+    {
+        *address = end;
+    }
+
+    return 1;
+}
+
+static const char *vm_actual_execute_permission_for_range(unsigned long start,
+                                                          unsigned long end)
 {
     unsigned long address;
     int saw_exec = 0;
@@ -793,12 +850,9 @@ static const char *vm_actual_permission_for_range(unsigned long start,
 
     while (address < end)
     {
-        unsigned long physical;
         unsigned long descriptor;
-        unsigned long level;
-        unsigned long step;
 
-        if (!translation_for_address(address, &physical, &descriptor, &level))
+        if (!next_descriptor_in_range(&address, end, &descriptor))
         {
             return "unmapped";
         }
@@ -816,9 +870,6 @@ static const char *vm_actual_permission_for_range(unsigned long start,
         {
             return "mixed";
         }
-
-        step = (level == 2) ? ARM64_L2_BLOCK_SIZE : ARM64_PAGE_SIZE;
-        address = align_down(address, step) + step;
     }
 
     if (saw_xn)
@@ -829,9 +880,57 @@ static const char *vm_actual_permission_for_range(unsigned long start,
     return "exec";
 }
 
-static const char *vm_permission_status(const struct vm_permission_goal *goal)
+static const char *vm_actual_write_permission_for_range(unsigned long start,
+                                                        unsigned long end)
 {
-    const char *actual = vm_actual_permission_for_range(goal->start, goal->end);
+    unsigned long address;
+    int saw_rw = 0;
+    int saw_ro = 0;
+
+    if (start >= end)
+    {
+        return "empty";
+    }
+
+    address = align_down(start, ARM64_PAGE_SIZE);
+
+    while (address < end)
+    {
+        unsigned long descriptor;
+
+        if (!next_descriptor_in_range(&address, end, &descriptor))
+        {
+            return "unmapped";
+        }
+
+        if (arm64_mmu_desc_is_read_only(descriptor))
+        {
+            saw_ro = 1;
+        }
+        else
+        {
+            saw_rw = 1;
+        }
+
+        if (saw_rw && saw_ro)
+        {
+            return "mixed";
+        }
+    }
+
+    if (saw_ro)
+    {
+        return "ro";
+    }
+
+    return "rw";
+}
+
+static const char *vm_execute_permission_status(
+    const struct vm_permission_goal *goal)
+{
+    const char *actual =
+        vm_actual_execute_permission_for_range(goal->start, goal->end);
 
     if (actual[0] == 'e' && actual[1] == 'm')
     {
@@ -866,13 +965,55 @@ static const char *vm_permission_status(const struct vm_permission_goal *goal)
     return "too-strict";
 }
 
+static const char *vm_write_permission_status(
+    const struct vm_permission_goal *goal)
+{
+    const char *actual =
+        vm_actual_write_permission_for_range(goal->start, goal->end);
+
+    if (actual[0] == 'e')
+    {
+        return "empty";
+    }
+
+    if (actual[0] == 'u')
+    {
+        return "unmapped";
+    }
+
+    if (actual[0] == 'm')
+    {
+        return "mixed";
+    }
+
+    if (goal->want_ro)
+    {
+        if (actual[0] == 'r' && actual[1] == 'o')
+        {
+            return "enforced";
+        }
+
+        return "writable";
+    }
+
+    if (actual[0] == 'r' && actual[1] == 'w')
+    {
+        return "enforced";
+    }
+
+    return "too-strict";
+}
+
 static void vm_dump_permission_goal(const struct vm_permission_goal *goal)
 {
-    kprintf("  %s want=%s actual=%s status=%s\n",
+    kprintf("  %s exec=%s/%s %s write=%s/%s %s\n",
             goal->name,
             vm_desired_permission(goal->want_xn),
-            vm_actual_permission_for_range(goal->start, goal->end),
-            vm_permission_status(goal));
+            vm_actual_execute_permission_for_range(goal->start, goal->end),
+            vm_execute_permission_status(goal),
+            vm_desired_write_permission(goal->want_ro),
+            vm_actual_write_permission_for_range(goal->start, goal->end),
+            vm_write_permission_status(goal));
 }
 
 static void vm_dump_permission_goals(void)

@@ -281,6 +281,8 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.validation_ready = 1;
     kernel_address_space.switch_ready = 1;
     kernel_address_space.switch_status = ADDRESS_SPACE_SWITCH_ACTIVE;
+    kernel_address_space.switch_stub_status =
+        ADDRESS_SPACE_SWITCH_STUB_ACTIVE;
     kernel_address_space.validation_errors = 0;
 }
 
@@ -368,6 +370,9 @@ void address_space_init_user(struct address_space *space,
     space->switch_status = space->switch_ready ?
         ADDRESS_SPACE_SWITCH_READY :
         ADDRESS_SPACE_SWITCH_BLOCKED;
+    space->switch_stub_status = space->switch_ready ?
+        ADDRESS_SPACE_SWITCH_STUB_READY :
+        ADDRESS_SPACE_SWITCH_STUB_BLOCKED;
 }
 
 struct address_space *address_space_kernel(void)
@@ -416,4 +421,55 @@ const char *address_space_switch_state(const struct address_space *space)
         default:
             return "unknown";
     }
+}
+
+const char *address_space_switch_stub_state(const struct address_space *space)
+{
+    if (!space)
+    {
+        return "blocked";
+    }
+
+    switch (space->switch_stub_status)
+    {
+        case ADDRESS_SPACE_SWITCH_STUB_ACTIVE:
+            return "active";
+        case ADDRESS_SPACE_SWITCH_STUB_READY:
+            return "ready";
+        case ADDRESS_SPACE_SWITCH_STUB_BLOCKED:
+            return "blocked";
+        default:
+            return "unknown";
+    }
+}
+
+int address_space_switch_stub(struct address_space *space)
+{
+    if (!space)
+    {
+        return ADDRESS_SPACE_SWITCH_STUB_BLOCKED;
+    }
+
+    if (space->switch_status == ADDRESS_SPACE_SWITCH_ACTIVE)
+    {
+        space->switch_stub_status = ADDRESS_SPACE_SWITCH_STUB_ACTIVE;
+        return space->switch_stub_status;
+    }
+
+    if (!space->switch_ready ||
+        !space->target_root_table ||
+        !space->validation_ready ||
+        space->validation_errors)
+    {
+        space->switch_stub_status = ADDRESS_SPACE_SWITCH_STUB_BLOCKED;
+        return space->switch_stub_status;
+    }
+
+    /*
+     * The low-level TTBR0 switch primitive exists, but this milestone only
+     * validates that a future switch is allowed. It deliberately does not call
+     * arm64_mmu_switch_ttbr0().
+     */
+    space->switch_stub_status = ADDRESS_SPACE_SWITCH_STUB_READY;
+    return space->switch_stub_status;
 }

@@ -16,6 +16,13 @@ enum address_space_switch_status
     ADDRESS_SPACE_SWITCH_BLOCKED,
 };
 
+enum address_space_switch_stub_status
+{
+    ADDRESS_SPACE_SWITCH_STUB_ACTIVE = 0,
+    ADDRESS_SPACE_SWITCH_STUB_READY,
+    ADDRESS_SPACE_SWITCH_STUB_BLOCKED,
+};
+
 struct address_space_user_region
 {
     const char *name;
@@ -62,6 +69,7 @@ struct address_space
     int validation_ready;
     int switch_ready;
     enum address_space_switch_status switch_status;
+    enum address_space_switch_stub_status switch_stub_status;
     unsigned long validation_errors;
 };
 
@@ -73,5 +81,7 @@ struct address_space *address_space_kernel(void);
 const char *address_space_kind_name(enum address_space_kind kind);
 const char *address_space_validation_state(const struct address_space *space);
 const char *address_space_switch_state(const struct address_space *space);
+const char *address_space_switch_stub_state(const struct address_space *space);
+int address_space_switch_stub(struct address_space *space);
 
 #endif

@@ -9,6 +9,7 @@ static void idle_task(void);
 static void scheduler_exit_task(int task_id);
 static void thread_trampoline(void);
 
+static struct address_space user_demo_address_space;
 static const char *scheduler_state_name(enum task_state state)
 {
     switch (state)
@@ -19,6 +20,8 @@ static const char *scheduler_state_name(enum task_state state)
             return "ready";
         case TASK_RUNNING:
             return "running";
+        case TASK_BLOCKED:
+            return "blocked";
         case TASK_ZOMBIE:
             return "zombie";
         default:
@@ -108,6 +111,12 @@ static int task_count;
 static int threads_started;
 static unsigned long scheduler_ticks;
 
+static int scheduler_task_is_runnable(const struct task *task)
+{
+    return task &&
+        (task->state == TASK_READY || task->state == TASK_RUNNING);
+}
+
 static int scheduler_next_runnable_task(void)
 {
     int i;
@@ -117,13 +126,13 @@ static int scheduler_next_runnable_task(void)
     {
         candidate = (current_task + i) % task_count;
 
-        if (candidate != 0 && tasks[candidate].state != TASK_ZOMBIE)
+        if (candidate != 0 && scheduler_task_is_runnable(&tasks[candidate]))
         {
             return candidate;
         }
     }
 
-    if (tasks[0].state != TASK_ZOMBIE)
+    if (scheduler_task_is_runnable(&tasks[0]))
     {
         return 0;
     }
@@ -203,13 +212,48 @@ int scheduler_create_kernel_thread(const char *name, void (*entry)(void))
     return pid;
 }
 
+int scheduler_create_blocked_user_task(const char *name)
+{
+    int pid;
+
+    if (task_count >= SCHED_MAX_TASKS)
+    {
+        kprintf("Failed to create blocked user task: %s\n", name);
+        return -1;
+    }
+
+    pid = task_count;
+    address_space_init_user(&user_demo_address_space,
+                            name ? name : "user-demo",
+                            address_space_kernel()->root_table);
+
+    tasks[task_count].pid = pid;
+    tasks[task_count].name = name ? name : "user-demo";
+    tasks[task_count].state = TASK_BLOCKED;
+    tasks[task_count].entry = 0;
+    scheduler_clear_context(&tasks[task_count].context);
+    scheduler_clear_memory(&tasks[task_count].memory);
+    scheduler_clear_el0(&tasks[task_count].el0);
+    scheduler_init_task_memory(&tasks[task_count], pid);
+    tasks[task_count].memory.address_space = &user_demo_address_space;
+    scheduler_init_task_el0(&tasks[task_count]);
+
+    task_count++;
+
+    kprintf("Created blocked user task %d: %s\n", pid, tasks[pid].name);
+    return pid;
+}
+
 void scheduler_tick(void)
 {
     int previous_task = current_task;
 
     scheduler_ticks++;
 
-    tasks[current_task].state = TASK_READY;
+    if (tasks[current_task].state == TASK_RUNNING)
+    {
+        tasks[current_task].state = TASK_READY;
+    }
     current_task = scheduler_next_runnable_task();
 
     tasks[current_task].state = TASK_RUNNING;
@@ -239,7 +283,7 @@ void scheduler_yield(void)
 
     if (next_task == previous_task)
     {
-        if (tasks[previous_task].state != TASK_ZOMBIE)
+        if (scheduler_task_is_runnable(&tasks[previous_task]))
         {
             tasks[previous_task].state = TASK_RUNNING;
             return;
@@ -392,6 +436,9 @@ void scheduler_dump_tasks(void)
                     (unsigned int)space->active_root_table,
                     (unsigned int)space->target_root_table,
                     space->switch_ready ? "yes" : "no");
+            address_space_switch_stub(space);
+            kprintf("    ttbr0_stub=%s\n",
+                    address_space_switch_stub_state(space));
         }
         else
         {
@@ -400,6 +447,7 @@ void scheduler_dump_tasks(void)
             kprintf("    user_tables=no user_desc=no user_map=no\n");
             kprintf("    aspace_check=errors errors=1\n");
             kprintf("    switch=blocked active=0x0 target=0x0 ready=no\n");
+            kprintf("    ttbr0_stub=blocked\n");
         }
         kprintf("    el0=%s pc=0x%x sp=0x%x spsr=0x%x\n",
                 tasks[i].el0.ready ? "yes" : "no",
@@ -408,7 +456,7 @@ void scheduler_dump_tasks(void)
                 (unsigned int)tasks[i].el0.spsr);
         kprintf("    user_entry=%s status=%s\n",
                 user_mode_entry_state(&tasks[i]),
-                user_mode_status_name(user_mode_enter_stub(&tasks[i])));
+                user_mode_status_name(user_mode_prepare(&tasks[i])));
         kprintf("    stack=0x%x-0x%x\n",
                 (unsigned int)tasks[i].memory.stack_start,
                 (unsigned int)tasks[i].memory.stack_end);

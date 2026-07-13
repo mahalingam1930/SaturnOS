@@ -210,3 +210,9 @@ void arm64_mmu_enable(unsigned long root_table)
         : "r"(sctlr)
         : "memory");
 }
+
+void arm64_mmu_switch_ttbr0(unsigned long root_table)
+{
+    __asm__ volatile("msr ttbr0_el1, %0" : : "r"(root_table));
+    arm64_mmu_invalidate_tlb();
+}

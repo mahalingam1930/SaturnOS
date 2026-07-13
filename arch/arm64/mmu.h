@@ -73,6 +73,7 @@
 int arm64_mmu_is_enabled(void);
 const char *arm64_mmu_state(void);
 void arm64_mmu_enable(unsigned long root_table);
+void arm64_mmu_switch_ttbr0(unsigned long root_table);
 unsigned long arm64_mmu_read_sctlr(void);
 unsigned long arm64_mmu_read_mair(void);
 unsigned long arm64_mmu_read_tcr(void);

@@ -301,9 +301,10 @@ user_mode_enter_stub(task)
 ```
 
 The stub checks task, address-space, validation, PC, SP, and SPSR readiness,
-then returns a status string. It does not execute `eret`, switch TTBR0, or
-leave EL1. Kernel threads report `user_entry=blocked` with status
-`kernel-task`, which is the expected safe state.
+then returns a status string. Scheduler diagnostics use the prepare/check path
+only, so boot diagnostics do not execute `eret`, switch TTBR0, or leave EL1.
+Kernel threads report `user_entry=blocked` with status `kernel-task`, which is
+the expected safe state.
 
 ## EL0 Exception-Return Path
 
@@ -334,6 +335,47 @@ kernel root. Future validated user address spaces can report `switch=ready`
 when their user root table is prepared and differs from the active kernel root.
 SaturnOS still does not write TTBR0 for user spaces in this milestone.
 
+## Guarded TTBR0 Switch Stub
+
+The MMU layer now exposes a low-level TTBR0 switch primitive:
+
+```text
+arm64_mmu_switch_ttbr0(root)
+```
+
+Address spaces also expose a guarded switch stub that validates the target root
+and reports `ttbr0_stub=active`, `ready`, or `blocked`. Current kernel tasks
+remain on the active kernel root and only exercise the diagnostic stub.
+
+## Blocked User Task Path
+
+The scheduler can now create a first user-shaped task object:
+
+```text
+task name   user-demo
+state       blocked
+aspace      user
+el0         ready metadata only
+```
+
+This task receives a validated user address space with controlled code, data,
+and stack descriptors. It is intentionally marked `blocked`, and the scheduler
+runnable selection only chooses `ready` or `running` tasks. This lets SaturnOS
+prove the user-task creation path without entering EL0 or running user code.
+
+Expected diagnostics:
+
+```text
+task N: user-demo state=blocked
+aspace=user-demo kind=user
+user_tables=yes user_desc=yes user_map=yes
+aspace_check=ok errors=0
+switch=ready
+ttbr0_stub=ready
+el0=yes
+user_entry=ready status=ready
+```
+
 ## User Address-Space Validation
 
 Address spaces now report validation status and error counts. The validator
@@ -353,6 +395,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add guarded TTBR0 switch stub.
-2. Add first blocked user-task creation path.
+1. Add user-mode smoke task scaffold.
+2. Add controlled user task unblock path.
 3. Decide when to enable instruction and data caches.

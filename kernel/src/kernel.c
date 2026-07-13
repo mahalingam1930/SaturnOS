@@ -68,6 +68,7 @@ void kernel_main(void)
         thread_demo_init();
     }
     keyboard_input_init();
+    scheduler_create_blocked_user_task("user-demo");
     scheduler_dump_tasks();
 
     timer_start_periodic(100);

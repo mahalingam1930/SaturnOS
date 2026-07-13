@@ -862,6 +862,56 @@ static void vm_dump_kernel_sections(void)
             (unsigned int)(unsigned long)_bss_end);
 }
 
+static void vm_dump_range(const char *name,
+                          unsigned long start,
+                          unsigned long end)
+{
+    if (start >= end)
+    {
+        kprintf("  %s empty\n", name);
+        return;
+    }
+
+    kprintf("  %s 0x%x-0x%x\n",
+            name,
+            (unsigned int)start,
+            (unsigned int)end);
+}
+
+static void vm_dump_named_ranges(void)
+{
+    unsigned long heap_start = heap_region_start();
+    unsigned long heap_end = heap_region_end();
+
+    kprintf("VM ranges:\n");
+    vm_dump_range("kernel.text ",
+                  (unsigned long)_text_start,
+                  (unsigned long)_text_end);
+    vm_dump_range("kernel.ro   ",
+                  (unsigned long)_rodata_start,
+                  (unsigned long)_rodata_end);
+    vm_dump_range("kernel.bss  ",
+                  (unsigned long)_bss_start,
+                  (unsigned long)_bss_end);
+    vm_dump_range("heap        ", heap_start, heap_end);
+    vm_dump_range("stack0      ",
+                  scheduler_stack_start(0),
+                  scheduler_stack_end(0));
+    vm_dump_range("stack.area  ",
+                  scheduler_stack_guard_start(0),
+                  scheduler_stack_guard_end(scheduler_stack_count()));
+    vm_dump_range("guard.first ",
+                  scheduler_stack_guard_start(0),
+                  scheduler_stack_guard_end(0));
+    vm_dump_range("guard.last  ",
+                  scheduler_stack_guard_start(scheduler_stack_count()),
+                  scheduler_stack_guard_end(scheduler_stack_count()));
+    vm_dump_range("framebuffer ", VM_FRAMEBUFFER_BASE, VM_FRAMEBUFFER_END);
+    vm_dump_range("gic         ", VM_GIC_BASE, VM_GIC_END);
+    vm_dump_range("uart        ", VM_UART_BASE, VM_UART_END);
+    vm_dump_range("fw_cfg      ", VM_FW_CFG_BASE, VM_FW_CFG_END);
+}
+
 static const char *vm_desired_permission(int want_xn)
 {
     if (want_xn)
@@ -1196,6 +1246,18 @@ static void vm_dump_permission_goals(void)
     vm_dump_stack_guard_state();
 }
 
+static void vm_dump_security_summary(void)
+{
+    kprintf("VM security:\n");
+    kprintf("  code     exec/ro\n");
+    kprintf("  rodata   xn/ro\n");
+    kprintf("  data     xn/rw\n");
+    kprintf("  heap     xn/rw\n");
+    kprintf("  stacks   xn/rw\n");
+    kprintf("  guards   unmapped\n");
+    kprintf("  mmio     xn/rw\n");
+}
+
 static int range_overlaps_kernel_l3_block(unsigned long start,
                                           unsigned long end)
 {
@@ -1273,6 +1335,8 @@ void vm_dump_plan(void)
             (unsigned int)arm64_mmu_read_tcr(),
             (unsigned int)arm64_mmu_read_ttbr0());
     kprintf("VM sctlr : 0x%x\n", (unsigned int)arm64_mmu_read_sctlr());
+    vm_dump_security_summary();
+    vm_dump_named_ranges();
     vm_dump_kernel_sections();
     vm_dump_permission_goals();
     kprintf("VM regions: %d\n", (int)vm_region_count());

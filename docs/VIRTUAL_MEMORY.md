@@ -33,6 +33,8 @@ map.
 - Read-only executable kernel `.text` pages
 - Unmapped guard pages around scheduler stacks
 - Validation for intentionally unmapped guard pages
+- VM security summary for high-level protection posture
+- VM named range diagnostics for kernel, heap, stacks, framebuffer, and MMIO
 
 ## Planned Identity Map
 
@@ -65,6 +67,28 @@ map.
 The `vm` shell command reports desired and actual permissions:
 
 ```text
+VM security:
+  code     exec/ro
+  rodata   xn/ro
+  data     xn/rw
+  heap     xn/rw
+  stacks   xn/rw
+  guards   unmapped
+  mmio     xn/rw
+
+VM ranges:
+  kernel.text  0x40080000-0x...
+  kernel.ro    0x...-0x...
+  kernel.bss   0x...-0x...
+  heap         0x...-0x...
+  stack0       0x...-0x...
+  stack.area   0x...-0x...
+  guard.first  0x...-0x...
+  guard.last   0x...-0x...
+  framebuffer  0x47000000-0x4712c000
+  gic          0x08000000-0x08020000
+  uart         0x09000000-0x09001000
+
 VM protect: granularity=4 KiB kernel pages
   text exec=exec/exec enforced write=ro/ro enforced
   rodata exec=xn/xn enforced write=ro/ro enforced
@@ -136,5 +160,5 @@ vmwalk 0x20000000
 
 ## Next MMU Work
 
-1. Expand named VM regions as new drivers and memory ranges appear.
+1. Prepare for cleaner task/process memory separation.
 2. Decide when to enable instruction and data caches.

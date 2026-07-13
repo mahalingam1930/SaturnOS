@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.7
+Version: 0.6.8
 
 Codename: Memory
 
@@ -112,6 +112,8 @@ Target: ARM64 QEMU `virt`
 - Read-only executable kernel `.text` pages
 - Unmapped guard pages around scheduler stacks
 - VM validation for mapped pages and unmapped stack guards
+- VM security summary for code, data, heap, stacks, guards, and MMIO
+- VM named range diagnostics for kernel, heap, stacks, framebuffer, and MMIO
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -181,7 +183,7 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Expand named VM regions as new drivers and memory ranges appear
+- Prepare for cleaner task/process memory separation
 - Expand scheduler robustness and task management
 
 ## Vision

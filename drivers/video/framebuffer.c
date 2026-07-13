@@ -23,6 +23,10 @@
 #define FRAMEBUFFER_CONSOLE_SCALE 2U
 #define FRAMEBUFFER_CONSOLE_MARGIN_X 16U
 #define FRAMEBUFFER_CONSOLE_HEADER_HEIGHT 30U
+#define FRAMEBUFFER_CONSOLE_STATUS_HEIGHT 28U
+#define FRAMEBUFFER_CONSOLE_STATUS_Y \
+    (FRAMEBUFFER_HEIGHT - FRAMEBUFFER_CONSOLE_STATUS_HEIGHT)
+#define FRAMEBUFFER_CONSOLE_TEXT_BOTTOM (FRAMEBUFFER_CONSOLE_STATUS_Y - 4U)
 #define FRAMEBUFFER_CONSOLE_MARGIN_Y (FRAMEBUFFER_CONSOLE_HEADER_HEIGHT + 8U)
 #define FRAMEBUFFER_CONSOLE_FG 0x00f8f9faU
 #define FRAMEBUFFER_CONSOLE_BG 0x00101820U
@@ -516,7 +520,7 @@ static unsigned int framebuffer_console_columns(void)
 
 static unsigned int framebuffer_console_rows(void)
 {
-    return (FRAMEBUFFER_HEIGHT - (FRAMEBUFFER_CONSOLE_MARGIN_Y * 2)) /
+    return (FRAMEBUFFER_CONSOLE_TEXT_BOTTOM - FRAMEBUFFER_CONSOLE_MARGIN_Y) /
            framebuffer_console_cell_height();
 }
 
@@ -556,6 +560,16 @@ static void framebuffer_console_draw_layout(void)
                           2,
                           FRAMEBUFFER_CONSOLE_BORDER);
     framebuffer_fill_rect(0,
+                          FRAMEBUFFER_CONSOLE_STATUS_Y - 2,
+                          FRAMEBUFFER_WIDTH,
+                          2,
+                          FRAMEBUFFER_CONSOLE_BORDER);
+    framebuffer_fill_rect(0,
+                          FRAMEBUFFER_CONSOLE_STATUS_Y,
+                          FRAMEBUFFER_WIDTH,
+                          FRAMEBUFFER_CONSOLE_STATUS_HEIGHT,
+                          FRAMEBUFFER_CONSOLE_HEADER_BG);
+    framebuffer_fill_rect(0,
                           FRAMEBUFFER_HEIGHT - 2,
                           FRAMEBUFFER_WIDTH,
                           2,
@@ -576,6 +590,37 @@ static void framebuffer_console_draw_layout(void)
     framebuffer_write_at(FRAMEBUFFER_WIDTH - 160,
                          7,
                          "ARM64 QEMU",
+                         FRAMEBUFFER_CONSOLE_MUTED,
+                         FRAMEBUFFER_CONSOLE_HEADER_BG,
+                         2);
+    framebuffer_console_set_status("BOOTING | RAMFB ONLINE");
+}
+
+void framebuffer_console_set_status(const char *text)
+{
+    if (!framebuffer_ready || !text)
+    {
+        return;
+    }
+
+    framebuffer_fill_rect(0,
+                          FRAMEBUFFER_CONSOLE_STATUS_Y,
+                          FRAMEBUFFER_WIDTH,
+                          FRAMEBUFFER_CONSOLE_STATUS_HEIGHT,
+                          FRAMEBUFFER_CONSOLE_HEADER_BG);
+    framebuffer_fill_rect(0,
+                          FRAMEBUFFER_CONSOLE_STATUS_Y - 2,
+                          FRAMEBUFFER_WIDTH,
+                          2,
+                          FRAMEBUFFER_CONSOLE_BORDER);
+    framebuffer_fill_rect(0,
+                          FRAMEBUFFER_HEIGHT - 2,
+                          FRAMEBUFFER_WIDTH,
+                          2,
+                          FRAMEBUFFER_CONSOLE_BORDER);
+    framebuffer_write_at(FRAMEBUFFER_CONSOLE_MARGIN_X,
+                         FRAMEBUFFER_CONSOLE_STATUS_Y + 7,
+                         text,
                          FRAMEBUFFER_CONSOLE_MUTED,
                          FRAMEBUFFER_CONSOLE_HEADER_BG,
                          2);

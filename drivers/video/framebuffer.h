@@ -31,6 +31,7 @@ void framebuffer_write_at(unsigned int x,
 void framebuffer_console_init(void);
 void framebuffer_console_putc(char c);
 void framebuffer_console_write(const char *text);
+void framebuffer_console_set_status(const char *text);
 void framebuffer_console_show_cursor(void);
 void framebuffer_console_hide_cursor(void);
 void framebuffer_draw_test_pattern(void);

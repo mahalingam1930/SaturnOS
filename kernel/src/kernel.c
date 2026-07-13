@@ -36,6 +36,14 @@ void kernel_main(void)
     scheduler_init();
     keyboard_init();
 
+    if (framebuffer_is_ready())
+    {
+        framebuffer_console_set_status(
+            keyboard_graphical_ready()
+                ? "READY | UART+KBD | MMU ON | VM OK"
+                : "READY | UART | MMU ON | VM OK");
+    }
+
     kprintf("================================\n");
     kprintf("%s %s (%s)\n",
             SATURNOS_NAME,
@@ -77,6 +85,13 @@ void kernel_main(void)
     scheduler_unblock_user_task(user_demo_pid);
     scheduler_dump_tasks();
     scheduler_run_user_smoke_test(user_demo_pid);
+    if (framebuffer_is_ready())
+    {
+        framebuffer_console_set_status(
+            keyboard_graphical_ready()
+                ? "READY | UART+KBD | MMU ON | EL0 SMOKE OK"
+                : "READY | UART | MMU ON | EL0 SMOKE OK");
+    }
     scheduler_dump_tasks();
 
     timer_start_periodic(100);

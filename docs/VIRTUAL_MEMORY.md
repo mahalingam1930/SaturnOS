@@ -403,6 +403,39 @@ el0=yes
 user_entry=ready status=ready
 ```
 
+## Controlled User Task Unblock Path
+
+The scheduler now has an explicit user-task unblock gate:
+
+```text
+scheduler_unblock_user_task(pid)
+```
+
+The gate only succeeds when the task is currently blocked, its EL0 entry state
+is ready, its user smoke image is installed, and the guarded TTBR0 switch stub
+reports `ready`. On success, the task moves to `state=eligible`.
+
+`eligible` is deliberately separate from `ready`:
+
+```text
+ready      scheduler may run this task
+eligible   user task passed checks, but scheduler must not run it yet
+blocked    task is not eligible
+```
+
+Expected diagnostics:
+
+```text
+User task N (user-demo) is eligible; runnable=no
+task N: user-demo state=eligible
+policy=user-eligible runnable=no
+user_image=ready entry=0x100000 size=4
+user_entry=ready status=ready
+```
+
+This proves the user task can pass the controlled admission checks while still
+preventing accidental EL0 entry.
+
 ## User Address-Space Validation
 
 Address spaces now report validation status and error counts. The validator
@@ -422,6 +455,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add controlled user task unblock path.
-2. Add first deliberate EL0 entry/BRK smoke test.
+1. Add first deliberate EL0 entry/BRK smoke test.
+2. Add EL0 exception return-to-kernel recovery path.
 3. Decide when to enable instruction and data caches.

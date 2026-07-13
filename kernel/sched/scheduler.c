@@ -22,6 +22,8 @@ static const char *scheduler_state_name(enum task_state state)
             return "running";
         case TASK_BLOCKED:
             return "blocked";
+        case TASK_ELIGIBLE:
+            return "eligible";
         case TASK_ZOMBIE:
             return "zombie";
         default:
@@ -117,6 +119,31 @@ static int scheduler_task_is_runnable(const struct task *task)
 {
     return task &&
         (task->state == TASK_READY || task->state == TASK_RUNNING);
+}
+
+static const char *scheduler_policy_name(const struct task *task)
+{
+    if (!task)
+    {
+        return "invalid";
+    }
+
+    if (task->state == TASK_ELIGIBLE)
+    {
+        return "user-eligible";
+    }
+
+    if (scheduler_task_is_runnable(task))
+    {
+        return "runnable";
+    }
+
+    if (task->state == TASK_BLOCKED)
+    {
+        return "blocked";
+    }
+
+    return "inactive";
 }
 
 static int scheduler_next_runnable_task(void)
@@ -245,6 +272,50 @@ int scheduler_create_blocked_user_task(const char *name)
 
     kprintf("Created blocked user task %d: %s\n", pid, tasks[pid].name);
     return pid;
+}
+
+int scheduler_unblock_user_task(int pid)
+{
+    struct address_space *space;
+    int status;
+
+    if (pid < 0 || pid >= task_count)
+    {
+        kprintf("Failed to unblock user task %d: bad pid\n", pid);
+        return -1;
+    }
+
+    if (tasks[pid].state != TASK_BLOCKED)
+    {
+        kprintf("Failed to unblock user task %d: state=%s\n",
+                pid,
+                scheduler_state_name(tasks[pid].state));
+        return -1;
+    }
+
+    status = user_mode_prepare(&tasks[pid]);
+    if (status != USER_MODE_READY)
+    {
+        kprintf("Failed to unblock user task %d: user_entry=%s\n",
+                pid,
+                user_mode_status_name(status));
+        return -1;
+    }
+
+    space = tasks[pid].memory.address_space;
+    if (address_space_switch_stub(space) != ADDRESS_SPACE_SWITCH_STUB_READY)
+    {
+        kprintf("Failed to unblock user task %d: ttbr0_stub=%s\n",
+                pid,
+                address_space_switch_stub_state(space));
+        return -1;
+    }
+
+    tasks[pid].state = TASK_ELIGIBLE;
+    kprintf("User task %d (%s) is eligible; runnable=no\n",
+            pid,
+            tasks[pid].name);
+    return 0;
 }
 
 void scheduler_tick(void)
@@ -410,6 +481,9 @@ void scheduler_dump_tasks(void)
                 tasks[i].pid,
                 tasks[i].name,
                 scheduler_state_name(tasks[i].state));
+        kprintf("    policy=%s runnable=%s\n",
+                scheduler_policy_name(&tasks[i]),
+                scheduler_task_is_runnable(&tasks[i]) ? "yes" : "no");
         if (space)
         {
             kprintf("    aspace=%s kind=%s root=0x%x shared=%s "

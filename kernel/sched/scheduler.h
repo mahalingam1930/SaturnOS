@@ -17,6 +17,7 @@ enum task_state
     TASK_READY,
     TASK_RUNNING,
     TASK_BLOCKED,
+    TASK_ELIGIBLE,
     TASK_ZOMBIE
 };
 
@@ -53,6 +54,7 @@ struct task
 void scheduler_init(void);
 int scheduler_create_kernel_thread(const char *name, void (*entry)(void));
 int scheduler_create_blocked_user_task(const char *name);
+int scheduler_unblock_user_task(int pid);
 void scheduler_tick(void);
 void scheduler_yield(void);
 void scheduler_preempt(void);

@@ -16,8 +16,9 @@ SaturnOS also has an early QEMU `ramfb` framebuffer path. When available, the
 kernel configures a 640x480 XRGB8888 framebuffer and mirrors the kernel console
 to both UART and the framebuffer.
 
-The framebuffer console supports basic bitmap text rendering, scrolling,
-line wrapping, and cursor-bound handling.
+The framebuffer console supports basic bitmap text rendering, shell and
+diagnostic punctuation glyphs, scrolling, line wrapping, and cursor-bound
+handling.
 
 The graphical runner also exposes a QEMU virtio keyboard device. When the QEMU
 framebuffer window has focus, printable keys are delivered to the shell through
@@ -28,5 +29,5 @@ the graphical input path. UART input remains available through the terminal.
 The next graphics milestone is improving the framebuffer console presentation:
 
 - keep the QEMU-visible framebuffer stable
-- add a fuller font and cursor
+- improve cursor presentation
 - improve screen layout for longer diagnostics

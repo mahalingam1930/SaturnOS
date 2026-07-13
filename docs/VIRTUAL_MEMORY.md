@@ -287,8 +287,8 @@ ready     whether the task can safely enter EL0 later
 ```
 
 Kernel threads still run in EL1, so their diagnostics report `el0=no`.
-Future user tasks will only become `el0=yes` after they have a user address
-space with installed user mappings and executable user code.
+Future user tasks only become `el0=yes` after they have a user address space
+with installed user mappings and executable user code metadata.
 
 ## EL0 Transition Stub
 
@@ -315,9 +315,8 @@ arm64_enter_el0(pc, sp, spsr)
 ```
 
 The routine writes `ELR_EL1`, `SP_EL0`, and `SPSR_EL1`, then executes `eret`.
-Normal kernel boot does not reach this path because current tasks are kernel
-tasks and fail the guarded readiness checks before the assembly routine can be
-called.
+Normal kernel boot does not reach this path because scheduler diagnostics use
+the prepare/check path only, and the first user-shaped task remains blocked.
 
 ## User Address-Space Switching Preparation
 
@@ -363,12 +362,40 @@ and stack descriptors. It is intentionally marked `blocked`, and the scheduler
 runnable selection only chooses `ready` or `running` tasks. This lets SaturnOS
 prove the user-task creation path without entering EL0 or running user code.
 
+## User-Mode Smoke Task Scaffold
+
+SaturnOS now places a tiny smoke image into the user code page for `user-demo`.
+The image is currently one AArch64 `BRK` instruction. That gives the future
+EL0 entry path a deterministic first instruction while still making accidental
+execution immediately visible through the exception path.
+
+The user-entry readiness check now requires:
+
+```text
+validated user address space
+installed user mappings
+installed user smoke image
+valid EL0 PC/SP/SPSR metadata
+```
+
+Expected diagnostics include:
+
+```text
+user_image=ready entry=0x100000 size=4 checksum=...
+user_entry=ready status=ready
+state=blocked
+```
+
+The task is still blocked, so this milestone prepares the user payload but does
+not schedule it or execute `eret`.
+
 Expected diagnostics:
 
 ```text
 task N: user-demo state=blocked
 aspace=user-demo kind=user
 user_tables=yes user_desc=yes user_map=yes
+user_image=ready entry=0x100000 size=4
 aspace_check=ok errors=0
 switch=ready
 ttbr0_stub=ready
@@ -395,6 +422,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add user-mode smoke task scaffold.
-2. Add controlled user task unblock path.
+1. Add controlled user task unblock path.
+2. Add first deliberate EL0 entry/BRK smoke test.
 3. Decide when to enable instruction and data caches.

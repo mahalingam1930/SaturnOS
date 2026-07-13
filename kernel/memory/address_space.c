@@ -10,6 +10,7 @@
 #define ADDRESS_SPACE_USER_DATA_END 0x00300000UL
 #define ADDRESS_SPACE_USER_STACK_START 0x3fff0000UL
 #define ADDRESS_SPACE_USER_STACK_END 0x40000000UL
+#define ADDRESS_SPACE_USER_SMOKE_BRK 0xd4200000U
 #define ADDRESS_SPACE_USER_CODE_ATTR \
     ((ARM64_NORMAL_MEMORY_ATTR & ~ARM64_DESC_AP_MASK) | \
      ARM64_DESC_AP_RO_EL0 | \
@@ -46,6 +47,27 @@ static void address_space_clear_table(unsigned long *table)
     }
 }
 
+static void address_space_clear_page(unsigned char *page)
+{
+    for (unsigned long i = 0; i < ARM64_PAGE_SIZE; i++)
+    {
+        page[i] = 0;
+    }
+}
+
+static unsigned long address_space_checksum_bytes(const unsigned char *bytes,
+                                                  unsigned long size)
+{
+    unsigned long checksum = 0;
+
+    for (unsigned long i = 0; i < size; i++)
+    {
+        checksum = (checksum << 5) ^ (checksum >> 2) ^ bytes[i];
+    }
+
+    return checksum;
+}
+
 static int address_space_alloc_user_table_slot(void)
 {
     unsigned long slot;
@@ -61,6 +83,7 @@ static int address_space_alloc_user_table_slot(void)
     for (unsigned long i = 0; i < ADDRESS_SPACE_USER_REGION_COUNT; i++)
     {
         address_space_clear_table(user_l3_tables[slot][i]);
+        address_space_clear_page(user_region_pages[slot][i]);
     }
 
     return (int)slot;
@@ -266,6 +289,9 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.user_data_end = 0;
     kernel_address_space.user_stack_start = 0;
     kernel_address_space.user_stack_end = 0;
+    kernel_address_space.user_image_entry = 0;
+    kernel_address_space.user_image_size = 0;
+    kernel_address_space.user_image_checksum = 0;
     kernel_address_space.user_mapping_count = 0;
     kernel_address_space.user_descriptor_count = 0;
     kernel_address_space.user_installed_descriptor_count = 0;
@@ -277,6 +303,7 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.user_tables_ready = 0;
     kernel_address_space.user_descriptors_ready = 0;
     kernel_address_space.user_mappings_ready = 0;
+    kernel_address_space.user_image_ready = 0;
     kernel_address_space.user_execute_ready = 0;
     kernel_address_space.validation_ready = 1;
     kernel_address_space.switch_ready = 1;
@@ -322,6 +349,9 @@ void address_space_init_user(struct address_space *space,
     space->user_data_end = ADDRESS_SPACE_USER_DATA_END;
     space->user_stack_start = ADDRESS_SPACE_USER_STACK_START;
     space->user_stack_end = ADDRESS_SPACE_USER_STACK_END;
+    space->user_image_entry = 0;
+    space->user_image_size = 0;
+    space->user_image_checksum = 0;
     space->user_mapping_count = 3;
     space->user_descriptor_count = ADDRESS_SPACE_USER_REGION_COUNT;
     space->user_installed_descriptor_count = 0;
@@ -360,6 +390,7 @@ void address_space_init_user(struct address_space *space,
         address_space_install_user_descriptors(space);
     space->user_mappings_ready =
         space->user_installed_descriptor_count == space->user_descriptor_count;
+    space->user_image_ready = 0;
     space->user_execute_ready = space->user_mappings_ready;
     space->validation_errors = address_space_validate_user(space);
     space->validation_ready = space->validation_errors == 0;
@@ -373,6 +404,32 @@ void address_space_init_user(struct address_space *space,
     space->switch_stub_status = space->switch_ready ?
         ADDRESS_SPACE_SWITCH_STUB_READY :
         ADDRESS_SPACE_SWITCH_STUB_BLOCKED;
+}
+
+int address_space_install_user_smoke_image(struct address_space *space)
+{
+    unsigned int *code;
+    unsigned long slot;
+
+    if (!space ||
+        space->kind != ADDRESS_SPACE_USER ||
+        space->user_table_slot >= ADDRESS_SPACE_USER_TABLE_SLOTS ||
+        !space->user_mappings_ready)
+    {
+        return 0;
+    }
+
+    slot = space->user_table_slot;
+    code = (unsigned int *)&user_region_pages[slot][0][0];
+    code[0] = ADDRESS_SPACE_USER_SMOKE_BRK;
+
+    space->user_image_entry = space->user_code_start;
+    space->user_image_size = sizeof(code[0]);
+    space->user_image_checksum =
+        address_space_checksum_bytes((const unsigned char *)code,
+                                     space->user_image_size);
+    space->user_image_ready = 1;
+    return 1;
 }
 
 struct address_space *address_space_kernel(void)

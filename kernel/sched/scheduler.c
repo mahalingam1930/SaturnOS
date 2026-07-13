@@ -96,7 +96,9 @@ static void scheduler_init_task_el0(struct task *task)
         return;
     }
 
-    task->el0.pc = space->user_code_start;
+    task->el0.pc = space->user_image_ready ?
+        space->user_image_entry :
+        space->user_code_start;
     task->el0.sp = space->user_stack_end & ~((unsigned long)0xF);
     task->el0.spsr = ARM64_SPSR_EL0T;
     task->el0.ready = 1;
@@ -226,6 +228,7 @@ int scheduler_create_blocked_user_task(const char *name)
     address_space_init_user(&user_demo_address_space,
                             name ? name : "user-demo",
                             address_space_kernel()->root_table);
+    address_space_install_user_smoke_image(&user_demo_address_space);
 
     tasks[task_count].pid = pid;
     tasks[task_count].name = name ? name : "user-demo";
@@ -422,6 +425,14 @@ void scheduler_dump_tasks(void)
                     space->user_tables_ready ? "yes" : "no",
                     space->user_descriptors_ready ? "yes" : "no",
                     space->user_mappings_ready ? "yes" : "no");
+            if (space->kind == ADDRESS_SPACE_USER)
+            {
+                kprintf("    user_image=%s entry=0x%x size=%d checksum=0x%x\n",
+                        space->user_image_ready ? "ready" : "missing",
+                        (unsigned int)space->user_image_entry,
+                        (int)space->user_image_size,
+                        (unsigned int)space->user_image_checksum);
+            }
             if (space->user_descriptor_count)
             {
                 kprintf("    user_desc_count=%d installed=%d\n",

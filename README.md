@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.23
+Version: 0.6.24
 
 Codename: Memory
 
@@ -67,6 +67,7 @@ Target: ARM64 QEMU `virt`
 - EL0 exception-return assembly path
 - Guarded TTBR0 switch stub
 - First blocked user-task creation path
+- User-mode smoke task image scaffold
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -145,6 +146,7 @@ Target: ARM64 QEMU `virt`
 - Guarded `eret` path for future EL0 entry
 - Guarded TTBR0 switch primitive and diagnostics
 - Blocked user task with validated user address-space diagnostics
+- User code page smoke image, entry, size, and checksum diagnostics
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -214,7 +216,7 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Add user-mode smoke task scaffold
+- Add controlled user task unblock path
 - Expand scheduler robustness and task management
 
 ## Vision

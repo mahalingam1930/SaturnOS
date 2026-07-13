@@ -27,6 +27,11 @@ int user_mode_can_enter(const struct task *task)
         return USER_MODE_ADDRESS_SPACE_INVALID;
     }
 
+    if (!space->user_image_ready)
+    {
+        return USER_MODE_NO_IMAGE;
+    }
+
     if (!task->el0.ready)
     {
         return USER_MODE_EL0_NOT_READY;
@@ -80,6 +85,8 @@ const char *user_mode_status_name(int status)
             return "kernel-task";
         case USER_MODE_ADDRESS_SPACE_INVALID:
             return "bad-aspace";
+        case USER_MODE_NO_IMAGE:
+            return "no-image";
         case USER_MODE_EL0_NOT_READY:
             return "no-el0";
         case USER_MODE_BAD_ENTRY_STATE:

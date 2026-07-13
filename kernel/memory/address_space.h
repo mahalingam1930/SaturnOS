@@ -53,6 +53,9 @@ struct address_space
     unsigned long user_data_end;
     unsigned long user_stack_start;
     unsigned long user_stack_end;
+    unsigned long user_image_entry;
+    unsigned long user_image_size;
+    unsigned long user_image_checksum;
     unsigned long user_mapping_count;
     unsigned long user_descriptor_count;
     unsigned long user_installed_descriptor_count;
@@ -65,6 +68,7 @@ struct address_space
     int user_tables_ready;
     int user_descriptors_ready;
     int user_mappings_ready;
+    int user_image_ready;
     int user_execute_ready;
     int validation_ready;
     int switch_ready;
@@ -77,6 +81,7 @@ void address_space_init(unsigned long kernel_root_table);
 void address_space_init_user(struct address_space *space,
                              const char *name,
                              unsigned long kernel_root_table);
+int address_space_install_user_smoke_image(struct address_space *space);
 struct address_space *address_space_kernel(void);
 const char *address_space_kind_name(enum address_space_kind kind);
 const char *address_space_validation_state(const struct address_space *space);

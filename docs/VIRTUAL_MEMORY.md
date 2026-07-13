@@ -35,7 +35,9 @@ map.
 - Validation for intentionally unmapped guard pages
 - VM security summary for high-level protection posture
 - VM named range diagnostics for kernel, heap, stacks, framebuffer, and MMIO
-- Task memory metadata with stack, guard, and root-table diagnostics
+- Shared kernel address-space object
+- Task memory metadata with stack, guard, address-space, and root-table
+  diagnostics
 
 ## Planned Identity Map
 
@@ -163,16 +165,17 @@ vmwalk 0x20000000
 
 Each scheduler task now carries memory metadata:
 
-- shared kernel identity-map root table
+- shared kernel address-space object
+- shared kernel identity-map root table through that object
 - usable stack range
 - lower and upper stack guard ranges
 
 This does not create separate process address spaces yet. It makes the current
 shared kernel map explicit in task diagnostics and prepares the scheduler for
-future per-task address-space objects.
+future per-task user address spaces.
 
 ## Next MMU Work
 
-1. Add task address-space objects.
-2. Prepare task/process memory separation beyond the shared kernel map.
+1. Prepare task/process memory separation beyond the shared kernel map.
+2. Add per-task user address-space page tables.
 3. Decide when to enable instruction and data caches.

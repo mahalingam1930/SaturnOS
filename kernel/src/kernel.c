@@ -11,6 +11,7 @@
 #include "config.h"
 #include "pmm.h"
 #include "heap.h"
+#include "address_space.h"
 #include "vm.h"
 
 void kernel_main(void)
@@ -26,6 +27,7 @@ void kernel_main(void)
     heap_init();
     exception_init();
     vm_init();
+    address_space_init(vm_root_table());
     timer_init();
     irq_init();
     scheduler_init();

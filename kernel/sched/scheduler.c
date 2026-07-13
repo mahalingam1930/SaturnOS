@@ -2,7 +2,6 @@
 #include "config.h"
 #include "irq.h"
 #include "kprintf.h"
-#include "vm.h"
 
 static void idle_task(void);
 static void scheduler_exit_task(int task_id);
@@ -44,7 +43,7 @@ static void scheduler_clear_context(struct cpu_context *context)
 
 static void scheduler_clear_memory(struct task_memory *memory)
 {
-    memory->address_space_root = 0;
+    memory->address_space = 0;
     memory->stack_start = 0;
     memory->stack_end = 0;
     memory->guard_low_start = 0;
@@ -55,7 +54,7 @@ static void scheduler_clear_memory(struct task_memory *memory)
 
 static void scheduler_init_task_memory(struct task *task, int pid)
 {
-    task->memory.address_space_root = vm_root_table();
+    task->memory.address_space = address_space_kernel();
     task->memory.stack_start = scheduler_stack_start((unsigned long)pid);
     task->memory.stack_end = scheduler_stack_end((unsigned long)pid);
     task->memory.guard_low_start =
@@ -327,8 +326,11 @@ void scheduler_dump_tasks(void)
                 tasks[i].pid,
                 tasks[i].name,
                 scheduler_state_name(tasks[i].state));
-        kprintf("    asid=root ttbr0=0x%x\n",
-                (unsigned int)tasks[i].memory.address_space_root);
+        kprintf("    aspace=%s root=0x%x shared=%s\n",
+                tasks[i].memory.address_space->name,
+                (unsigned int)tasks[i].memory.address_space->root_table,
+                tasks[i].memory.address_space->shared_kernel_map ? "yes" :
+                "no");
         kprintf("    stack=0x%x-0x%x\n",
                 (unsigned int)tasks[i].memory.stack_start,
                 (unsigned int)tasks[i].memory.stack_end);

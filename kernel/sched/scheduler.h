@@ -2,6 +2,7 @@
 #define SCHEDULER_H
 
 #include "context.h"
+#include "address_space.h"
 
 #define SCHED_MAX_TASKS 8
 #define SCHED_STACK_SIZE 4096
@@ -20,7 +21,7 @@ enum task_state
 
 struct task_memory
 {
-    unsigned long address_space_root;
+    struct address_space *address_space;
     unsigned long stack_start;
     unsigned long stack_end;
     unsigned long guard_low_start;

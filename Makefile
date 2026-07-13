@@ -83,6 +83,9 @@ $(BUILD)/pmm.o: kernel/memory/pmm.c | $(BUILD)
 $(BUILD)/heap.o: kernel/memory/heap.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/address_space.o: kernel/memory/address_space.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/vm.o: kernel/memory/vm.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -112,6 +115,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/shell.o \
 	$(BUILD)/pmm.o \
 	$(BUILD)/heap.o \
+	$(BUILD)/address_space.o \
 	$(BUILD)/vm.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o

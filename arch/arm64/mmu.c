@@ -105,6 +105,24 @@ const char *arm64_mmu_desc_write_state(unsigned long descriptor)
     return "rw";
 }
 
+int arm64_mmu_desc_has_user_access(unsigned long descriptor)
+{
+    unsigned long access = descriptor & ARM64_DESC_AP_MASK;
+
+    return access == ARM64_DESC_AP_RW_EL0 ||
+           access == ARM64_DESC_AP_RO_EL0;
+}
+
+const char *arm64_mmu_desc_user_access_state(unsigned long descriptor)
+{
+    if (arm64_mmu_desc_has_user_access(descriptor))
+    {
+        return "el0";
+    }
+
+    return "el1";
+}
+
 unsigned long arm64_mmu_l2_block_desc(unsigned long physical,
                                       unsigned long attributes)
 {

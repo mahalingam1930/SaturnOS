@@ -41,6 +41,9 @@ struct address_space
     struct address_space_user_region
         user_regions[ADDRESS_SPACE_USER_REGION_COUNT];
     int shared_kernel_map;
+    int permission_split_ready;
+    int kernel_el0_access;
+    int user_el0_access;
     int user_tables_ready;
     int user_descriptors_ready;
     int user_mappings_ready;

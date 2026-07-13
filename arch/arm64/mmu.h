@@ -92,6 +92,8 @@ int arm64_mmu_desc_is_execute_never(unsigned long descriptor);
 const char *arm64_mmu_desc_execute_state(unsigned long descriptor);
 int arm64_mmu_desc_is_read_only(unsigned long descriptor);
 const char *arm64_mmu_desc_write_state(unsigned long descriptor);
+int arm64_mmu_desc_has_user_access(unsigned long descriptor);
+const char *arm64_mmu_desc_user_access_state(unsigned long descriptor);
 unsigned long arm64_mmu_l2_block_desc(unsigned long physical,
                                       unsigned long attributes);
 unsigned long arm64_mmu_l3_page_desc(unsigned long physical,

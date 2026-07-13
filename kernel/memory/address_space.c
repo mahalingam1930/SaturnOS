@@ -107,6 +107,9 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.user_descriptor_count = 0;
     address_space_clear_user_regions(&kernel_address_space);
     kernel_address_space.shared_kernel_map = 1;
+    kernel_address_space.permission_split_ready = 1;
+    kernel_address_space.kernel_el0_access = 0;
+    kernel_address_space.user_el0_access = 0;
     kernel_address_space.user_tables_ready = 0;
     kernel_address_space.user_descriptors_ready = 0;
     kernel_address_space.user_mappings_ready = 0;
@@ -168,6 +171,9 @@ void address_space_init_user(struct address_space *space,
                                   1,
                                   0);
     space->shared_kernel_map = 1;
+    space->permission_split_ready = 1;
+    space->kernel_el0_access = 0;
+    space->user_el0_access = 1;
     space->user_tables_ready = user_l1_table ? 1 : 0;
     space->user_descriptors_ready = user_l1_table ? 1 : 0;
     space->user_mappings_ready = 0;

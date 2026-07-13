@@ -40,6 +40,7 @@ map.
 - Static user address-space L1 table pool
 - Controlled user code, data, and stack mapping plan
 - User code/data/stack descriptor permission scaffold
+- User/kernel permission split metadata
 - Task memory metadata with stack, guard, address-space, and root-table
   diagnostics
 
@@ -190,6 +191,8 @@ memory:
 - user address spaces reserve controlled code, data, and stack ranges
 - user address spaces carry intended descriptor permissions for each user
   region
+- kernel address spaces explicitly deny EL0 access
+- future user address spaces allow EL0 access only for controlled user regions
 - user page-table mappings are marked as not ready until the real per-process
   tables exist
 
@@ -228,8 +231,24 @@ user stack  readable, writable, execute-never
 The descriptor metadata is attached to address-space objects, but SaturnOS does
 not install those descriptors into active page tables yet.
 
+## User/Kernel Permission Split
+
+SaturnOS now records the intended privilege split in address-space metadata:
+
+```text
+kernel memory  EL1 only, EL0 blocked
+user code      EL0 readable/executable, EL1 execute-never
+user data      EL0 readable/writable, execute-never
+user stack     EL0 readable/writable, execute-never
+```
+
+Current kernel threads still run entirely in the kernel address space, so their
+task diagnostics report `k_el0=no`, `u_el0=no`, and inactive user mappings.
+Future user/process address spaces will set `u_el0=yes` while keeping
+`k_el0=no`.
+
 ## Next MMU Work
 
-1. Add user/kernel permission split for future EL0 mappings.
-2. Attach controlled user descriptors to user page tables.
+1. Attach controlled user descriptors to user page tables.
+2. Add EL0 entry preparation.
 3. Decide when to enable instruction and data caches.

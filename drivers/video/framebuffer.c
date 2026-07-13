@@ -21,11 +21,15 @@
 #define RAMFB_CONFIG_BASE 0x46fff000UL
 #define FRAMEBUFFER_BASE 0x47000000UL
 #define FRAMEBUFFER_CONSOLE_SCALE 2U
-#define FRAMEBUFFER_CONSOLE_MARGIN_X 8U
-#define FRAMEBUFFER_CONSOLE_MARGIN_Y 8U
+#define FRAMEBUFFER_CONSOLE_MARGIN_X 16U
+#define FRAMEBUFFER_CONSOLE_HEADER_HEIGHT 30U
+#define FRAMEBUFFER_CONSOLE_MARGIN_Y (FRAMEBUFFER_CONSOLE_HEADER_HEIGHT + 8U)
 #define FRAMEBUFFER_CONSOLE_FG 0x00f8f9faU
 #define FRAMEBUFFER_CONSOLE_BG 0x00101820U
+#define FRAMEBUFFER_CONSOLE_HEADER_BG 0x0016202cU
 #define FRAMEBUFFER_CONSOLE_DIM 0x004ecdc4U
+#define FRAMEBUFFER_CONSOLE_BORDER 0x00304758U
+#define FRAMEBUFFER_CONSOLE_MUTED 0x009aa7b5U
 #define FRAMEBUFFER_CONSOLE_CURSOR 0x00ffd166U
 #define FRAMEBUFFER_CONSOLE_CURSOR_THICKNESS 2U
 
@@ -538,6 +542,45 @@ static unsigned int framebuffer_console_y(void)
            (console_row * framebuffer_console_cell_height());
 }
 
+static void framebuffer_console_draw_layout(void)
+{
+    framebuffer_clear(FRAMEBUFFER_CONSOLE_BG);
+    framebuffer_fill_rect(0,
+                          0,
+                          FRAMEBUFFER_WIDTH,
+                          FRAMEBUFFER_CONSOLE_HEADER_HEIGHT,
+                          FRAMEBUFFER_CONSOLE_HEADER_BG);
+    framebuffer_fill_rect(0,
+                          FRAMEBUFFER_CONSOLE_HEADER_HEIGHT,
+                          FRAMEBUFFER_WIDTH,
+                          2,
+                          FRAMEBUFFER_CONSOLE_BORDER);
+    framebuffer_fill_rect(0,
+                          FRAMEBUFFER_HEIGHT - 2,
+                          FRAMEBUFFER_WIDTH,
+                          2,
+                          FRAMEBUFFER_CONSOLE_BORDER);
+
+    framebuffer_write_at(FRAMEBUFFER_CONSOLE_MARGIN_X,
+                         7,
+                         SATURNOS_NAME,
+                         FRAMEBUFFER_CONSOLE_FG,
+                         FRAMEBUFFER_CONSOLE_HEADER_BG,
+                         2);
+    framebuffer_write_at(FRAMEBUFFER_CONSOLE_MARGIN_X + 120,
+                         7,
+                         SATURNOS_VERSION,
+                         FRAMEBUFFER_CONSOLE_DIM,
+                         FRAMEBUFFER_CONSOLE_HEADER_BG,
+                         2);
+    framebuffer_write_at(FRAMEBUFFER_WIDTH - 160,
+                         7,
+                         "ARM64 QEMU",
+                         FRAMEBUFFER_CONSOLE_MUTED,
+                         FRAMEBUFFER_CONSOLE_HEADER_BG,
+                         2);
+}
+
 static void framebuffer_console_clamp_cursor(void)
 {
     unsigned int columns = framebuffer_console_columns();
@@ -618,7 +661,7 @@ static void framebuffer_console_scroll(void)
 
     framebuffer_fill_rect(FRAMEBUFFER_CONSOLE_MARGIN_X,
                           end_y - cell_height,
-                          FRAMEBUFFER_WIDTH - (FRAMEBUFFER_CONSOLE_MARGIN_X * 2),
+                          framebuffer_console_text_width(),
                           cell_height,
                           FRAMEBUFFER_CONSOLE_BG);
 }
@@ -676,8 +719,7 @@ void framebuffer_console_init(void)
         return;
     }
 
-    framebuffer_clear(FRAMEBUFFER_CONSOLE_BG);
-    framebuffer_fill_rect(0, 0, FRAMEBUFFER_WIDTH, 4, FRAMEBUFFER_CONSOLE_DIM);
+    framebuffer_console_draw_layout();
     console_column = 0;
     console_row = 0;
     console_cursor_visible = 0;

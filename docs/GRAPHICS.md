@@ -18,7 +18,8 @@ to both UART and the framebuffer.
 
 The framebuffer console supports basic bitmap text rendering, shell and
 diagnostic punctuation glyphs, scrolling, line wrapping, cursor-bound handling,
-and a bounds-safe L-style cursor.
+and a bounds-safe L-style cursor. It also reserves a top identity/status band
+so boot diagnostics scroll in a cleaner text area.
 
 The graphical runner also exposes a QEMU virtio keyboard device. When the QEMU
 framebuffer window has focus, printable keys are delivered to the shell through
@@ -29,4 +30,4 @@ the graphical input path. UART input remains available through the terminal.
 The next graphics milestone is improving the framebuffer console presentation:
 
 - keep the QEMU-visible framebuffer stable
-- improve screen layout for longer diagnostics
+- add a shell status line

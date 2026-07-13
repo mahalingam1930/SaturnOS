@@ -318,6 +318,44 @@ int scheduler_unblock_user_task(int pid)
     return 0;
 }
 
+int scheduler_run_user_smoke_test(int pid)
+{
+    int status;
+
+    if (pid < 0 || pid >= task_count)
+    {
+        kprintf("Failed to run user smoke task %d: bad pid\n", pid);
+        return -1;
+    }
+
+    if (tasks[pid].state != TASK_ELIGIBLE)
+    {
+        kprintf("Failed to run user smoke task %d: state=%s\n",
+                pid,
+                scheduler_state_name(tasks[pid].state));
+        return -1;
+    }
+
+    kprintf("Starting EL0 BRK smoke test for task %d (%s)\n",
+            pid,
+            tasks[pid].name);
+
+    status = user_mode_run_smoke_test(&tasks[pid]);
+    if (status != USER_MODE_READY)
+    {
+        kprintf("User task %d (%s) smoke=failed status=%s\n",
+                pid,
+                tasks[pid].name,
+                user_mode_status_name(status));
+        return -1;
+    }
+
+    kprintf("User task %d (%s) smoke=passed\n",
+            pid,
+            tasks[pid].name);
+    return 0;
+}
+
 void scheduler_tick(void)
 {
     int previous_task = current_task;

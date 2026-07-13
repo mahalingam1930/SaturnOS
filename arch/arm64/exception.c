@@ -1,6 +1,7 @@
 #include "exception.h"
 #include "decoder.h"
 #include "panic.h"
+#include "user.h"
 
 void exception_init(void)
 {
@@ -40,6 +41,11 @@ void exception_handler(void)
 
     struct exception_info info;
     decode_exception_info(esr, &info);
+
+    if (user_mode_handle_exception(esr, elr, far, spsr))
+    {
+        return;
+    }
 
     kernel_panic(
         &info,

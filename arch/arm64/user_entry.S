@@ -1,5 +1,7 @@
 .section .text
 .global arm64_enter_el0
+.global arm64_enter_el0_smoke
+.global arm64_el0_smoke_return
 
 /*
  * void arm64_enter_el0(unsigned long pc, unsigned long sp,
@@ -15,3 +17,13 @@ arm64_enter_el0:
     msr SPSR_EL1, x2
     isb
     eret
+
+arm64_enter_el0_smoke:
+    msr ELR_EL1, x0
+    msr SP_EL0, x1
+    msr SPSR_EL1, x2
+    isb
+    eret
+
+arm64_el0_smoke_return:
+    ret

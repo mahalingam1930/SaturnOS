@@ -73,6 +73,8 @@ void kernel_main(void)
     user_demo_pid = scheduler_create_blocked_user_task("user-demo");
     scheduler_unblock_user_task(user_demo_pid);
     scheduler_dump_tasks();
+    scheduler_run_user_smoke_test(user_demo_pid);
+    scheduler_dump_tasks();
 
     timer_start_periodic(100);
     irq_enable();

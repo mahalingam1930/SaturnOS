@@ -436,6 +436,31 @@ user_entry=ready status=ready
 This proves the user task can pass the controlled admission checks while still
 preventing accidental EL0 entry.
 
+## Deliberate EL0 BRK Smoke Test
+
+SaturnOS now performs its first controlled EL0 entry. The user-demo task enters
+EL0 at its smoke image, executes the expected `BRK`, traps back to EL1, and
+returns to kernel code without a panic.
+
+The user address space now shares the kernel and MMIO mappings as EL1-only
+entries, while the user code, data, and stack pages remain the only EL0-capable
+regions. This lets the lower-EL exception vector, kernel stack, and UART path
+remain reachable after switching `TTBR0_EL1` to the user root table.
+
+Expected boot flow:
+
+```text
+Starting EL0 BRK smoke test for task N (user-demo)
+EL0 smoke: entering user task at 0x100000
+EL0 smoke: caught expected BRK at ELR=0x100000
+EL0 smoke: returned to EL1
+User task N (user-demo) smoke=passed
+SaturnOS shell ready
+```
+
+Only the expected lower-EL BRK is handled this way. Unexpected exceptions still
+fall through to the normal kernel panic diagnostics.
+
 ## User Address-Space Validation
 
 Address spaces now report validation status and error counts. The validator
@@ -455,6 +480,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add first deliberate EL0 entry/BRK smoke test.
-2. Add EL0 exception return-to-kernel recovery path.
+1. Add user task cleanup after EL0 smoke completion.
+2. Add EL0 exception return-to-kernel recovery hardening.
 3. Decide when to enable instruction and data caches.

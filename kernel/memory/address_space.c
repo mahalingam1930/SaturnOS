@@ -68,6 +68,46 @@ static unsigned long address_space_checksum_bytes(const unsigned char *bytes,
     return checksum;
 }
 
+static int address_space_install_shared_kernel_map(
+    struct address_space *space,
+    unsigned long *l1_table,
+    unsigned long *l2_table)
+{
+    unsigned long *kernel_l1_table;
+    unsigned long *kernel_l2_table;
+    unsigned long kernel_l1_descriptor;
+
+    if (!space || !space->kernel_root_table)
+    {
+        return 0;
+    }
+
+    kernel_l1_table = (unsigned long *)space->kernel_root_table;
+    kernel_l1_descriptor = kernel_l1_table[0];
+
+    if (!arm64_mmu_desc_is_table(kernel_l1_descriptor))
+    {
+        return 0;
+    }
+
+    kernel_l2_table =
+        (unsigned long *)arm64_mmu_desc_address(kernel_l1_descriptor);
+
+    for (unsigned long i = 0; i < ARM64_TABLE_ENTRIES; i++)
+    {
+        l2_table[i] = kernel_l2_table[i];
+    }
+
+    l1_table[0] = arm64_mmu_table_desc((unsigned long)l2_table);
+
+    for (unsigned long i = 1; i < ARM64_TABLE_ENTRIES; i++)
+    {
+        l1_table[i] = kernel_l1_table[i];
+    }
+
+    return 1;
+}
+
 static int address_space_alloc_user_table_slot(void)
 {
     unsigned long slot;
@@ -108,7 +148,13 @@ static unsigned long address_space_install_user_descriptors(
 
     address_space_clear_table(l1_table);
     address_space_clear_table(l2_table);
-    l1_table[0] = arm64_mmu_table_desc((unsigned long)l2_table);
+    space->shared_kernel_map =
+        address_space_install_shared_kernel_map(space, l1_table, l2_table);
+
+    if (!space->shared_kernel_map)
+    {
+        l1_table[0] = arm64_mmu_table_desc((unsigned long)l2_table);
+    }
 
     for (unsigned long i = 0; i < space->user_descriptor_count; i++)
     {
@@ -380,7 +426,7 @@ void address_space_init_user(struct address_space *space,
                                   ADDRESS_SPACE_USER_STACK_ATTR,
                                   1,
                                   0);
-    space->shared_kernel_map = 1;
+    space->shared_kernel_map = 0;
     space->permission_split_ready = 1;
     space->kernel_el0_access = 0;
     space->user_el0_access = 1;

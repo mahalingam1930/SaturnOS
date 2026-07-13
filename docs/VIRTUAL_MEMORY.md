@@ -23,6 +23,7 @@ map.
 - Named VM region lookup for page-walk output
 - Linker-provided kernel section ranges for `.text`, `.rodata`, `.data`,
   and `.bss`
+- Permission diagnostics for kernel sections and MMIO
 
 ## Planned Identity Map
 
@@ -46,6 +47,21 @@ map.
   stacks still share coarse 2 MiB mappings
 - Next step: split kernel regions into smaller mappings so text can be
   executable/read-only while data, heap, and stacks are execute-never
+
+The `vm` shell command reports desired and actual permissions:
+
+```text
+VM protect: granularity=2 MiB L2 blocks
+  text want=exec actual=exec status=enforced
+  rodata want=xn actual=exec status=pending-l3
+  data want=xn actual=empty status=empty
+  bss want=xn actual=exec status=pending-l3
+  mmio want=xn actual=xn status=enforced
+```
+
+`pending-l3` means SaturnOS knows the intended hardening policy, but the
+current 2 MiB block mapping is too coarse to enforce it safely. The next step
+is to map kernel sections with 4 KiB L3 pages.
 
 ## Kernel Section Symbols
 
@@ -100,6 +116,7 @@ vmwalk 0x20000000
 
 ## Next MMU Work
 
-1. Split kernel text, rodata, data, heap, and stack permissions.
-2. Expand named VM regions as new drivers and memory ranges appear.
-3. Decide when to enable instruction and data caches.
+1. Add L3 page mappings for finer kernel section permissions.
+2. Mark kernel rodata, data, bss, heap, and stacks execute-never.
+3. Expand named VM regions as new drivers and memory ranges appear.
+4. Decide when to enable instruction and data caches.

@@ -47,6 +47,14 @@ struct vm_named_region
     unsigned long end;
 };
 
+struct vm_permission_goal
+{
+    const char *name;
+    unsigned long start;
+    unsigned long end;
+    int want_xn;
+};
+
 static const struct vm_region vm_regions[] = {
     {
         "mmio",
@@ -77,6 +85,14 @@ static const struct vm_named_region vm_named_regions[] = {
     {"kernel", (unsigned long)_kernel_start, (unsigned long)_kernel_end},
     {"ramfb-control", VM_RAMFB_CONTROL_BASE, VM_FRAMEBUFFER_BASE},
     {"framebuffer", VM_FRAMEBUFFER_BASE, VM_FRAMEBUFFER_END},
+};
+
+static const struct vm_permission_goal vm_permission_goals[] = {
+    {"text", (unsigned long)_text_start, (unsigned long)_text_end, 0},
+    {"rodata", (unsigned long)_rodata_start, (unsigned long)_rodata_end, 1},
+    {"data", (unsigned long)_data_start, (unsigned long)_data_end, 1},
+    {"bss", (unsigned long)_bss_start, (unsigned long)_bss_end, 1},
+    {"mmio", 0x08000000UL, 0x0a000000UL, 1},
 };
 
 static unsigned long vm_l1_table[ARM64_TABLE_ENTRIES]
@@ -226,6 +242,29 @@ static unsigned long *find_l2_table(unsigned long l1_index)
     }
 
     return 0;
+}
+
+static int l2_descriptor_for_address(unsigned long address,
+                                     unsigned long *descriptor)
+{
+    unsigned long l1_index = arm64_mmu_l1_index(address);
+    unsigned long l2_index = arm64_mmu_l2_index(address);
+    unsigned long l1_descriptor = vm_l1_table[l1_index];
+    unsigned long *l2_table;
+
+    if (!arm64_mmu_desc_is_table(l1_descriptor))
+    {
+        return 0;
+    }
+
+    l2_table = find_l2_table(l1_index);
+    if (!l2_table)
+    {
+        return 0;
+    }
+
+    *descriptor = l2_table[l2_index];
+    return arm64_mmu_desc_is_l2_block(*descriptor);
 }
 
 static void validation_error(void)
@@ -457,26 +496,10 @@ const char *vm_region_name_for_address(unsigned long address)
 
 int vm_walk_address(unsigned long virtual_address, unsigned long *physical)
 {
-    unsigned long l1 = arm64_mmu_l1_index(virtual_address);
-    unsigned long l2 = arm64_mmu_l2_index(virtual_address);
     unsigned long offset = virtual_address & (ARM64_L2_BLOCK_SIZE - 1);
-    unsigned long l1_descriptor = vm_l1_table[l1];
-    unsigned long *l2_table;
     unsigned long l2_descriptor;
 
-    if (!arm64_mmu_desc_is_table(l1_descriptor))
-    {
-        return 0;
-    }
-
-    l2_table = find_l2_table(l1);
-    if (!l2_table)
-    {
-        return 0;
-    }
-
-    l2_descriptor = l2_table[l2];
-    if (!arm64_mmu_desc_is_l2_block(l2_descriptor))
+    if (!l2_descriptor_for_address(virtual_address, &l2_descriptor))
     {
         return 0;
     }
@@ -507,8 +530,9 @@ void vm_dump_walk_address(const char *label, unsigned long address)
 
     if (vm_walk_address(address, &physical))
     {
-        unsigned long *l2_table = find_l2_table(l1);
-        unsigned long l2_descriptor = l2_table[l2];
+        unsigned long l2_descriptor;
+
+        l2_descriptor_for_address(address, &l2_descriptor);
 
         kprintf("  l2 desc=0x%x block perm=%s\n",
                 (unsigned int)l2_descriptor,
@@ -557,6 +581,125 @@ static void vm_dump_kernel_sections(void)
     kprintf("  bss    0x%x-0x%x\n",
             (unsigned int)(unsigned long)_bss_start,
             (unsigned int)(unsigned long)_bss_end);
+}
+
+static const char *vm_desired_permission(int want_xn)
+{
+    if (want_xn)
+    {
+        return "xn";
+    }
+
+    return "exec";
+}
+
+static const char *vm_actual_permission_for_range(unsigned long start,
+                                                  unsigned long end)
+{
+    unsigned long block;
+    unsigned long first_block;
+    unsigned long last_block;
+    int saw_exec = 0;
+    int saw_xn = 0;
+
+    if (start >= end)
+    {
+        return "empty";
+    }
+
+    first_block = start & ~(ARM64_L2_BLOCK_SIZE - 1);
+    last_block = (end - 1) & ~(ARM64_L2_BLOCK_SIZE - 1);
+
+    for (block = first_block;
+         block <= last_block;
+         block += ARM64_L2_BLOCK_SIZE)
+    {
+        unsigned long descriptor;
+
+        if (!l2_descriptor_for_address(block, &descriptor))
+        {
+            return "unmapped";
+        }
+
+        if (arm64_mmu_desc_is_execute_never(descriptor))
+        {
+            saw_xn = 1;
+        }
+        else
+        {
+            saw_exec = 1;
+        }
+
+        if (saw_exec && saw_xn)
+        {
+            return "mixed";
+        }
+    }
+
+    if (saw_xn)
+    {
+        return "xn";
+    }
+
+    return "exec";
+}
+
+static const char *vm_permission_status(const struct vm_permission_goal *goal)
+{
+    const char *actual = vm_actual_permission_for_range(goal->start, goal->end);
+
+    if (actual[0] == 'e' && actual[1] == 'm')
+    {
+        return "empty";
+    }
+
+    if (actual[0] == 'u')
+    {
+        return "unmapped";
+    }
+
+    if (actual[0] == 'm')
+    {
+        return "mixed";
+    }
+
+    if (goal->want_xn)
+    {
+        if (actual[0] == 'x')
+        {
+            return "enforced";
+        }
+
+        return "pending-l3";
+    }
+
+    if (actual[0] == 'e')
+    {
+        return "enforced";
+    }
+
+    return "too-strict";
+}
+
+static void vm_dump_permission_goal(const struct vm_permission_goal *goal)
+{
+    kprintf("  %s want=%s actual=%s status=%s\n",
+            goal->name,
+            vm_desired_permission(goal->want_xn),
+            vm_actual_permission_for_range(goal->start, goal->end),
+            vm_permission_status(goal));
+}
+
+static void vm_dump_permission_goals(void)
+{
+    kprintf("VM protect: granularity=2 MiB L2 blocks\n");
+
+    for (unsigned long i = 0;
+         i < sizeof(vm_permission_goals) / sizeof(vm_permission_goals[0]);
+         i++)
+    {
+        vm_dump_permission_goal(&vm_permission_goals[i]);
+    }
 }
 
 static void vm_dump_region(const struct vm_region *region)
@@ -617,6 +760,7 @@ void vm_dump_plan(void)
             (unsigned int)arm64_mmu_read_ttbr0());
     kprintf("VM sctlr : 0x%x\n", (unsigned int)arm64_mmu_read_sctlr());
     vm_dump_kernel_sections();
+    vm_dump_permission_goals();
     kprintf("VM regions: %d\n", (int)vm_region_count());
 
     for (unsigned long i = 0; i < vm_region_count(); i++)

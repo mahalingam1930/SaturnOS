@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.1
+Version: 0.6.2
 
 Codename: Memory
 
@@ -101,6 +101,8 @@ Target: ARM64 QEMU `virt`
 - Named VM region lookup for `vmwalk`
 - Kernel section linker symbols for `.text`, `.rodata`, `.data`, and `.bss`
 - VM diagnostics for kernel section ranges
+- VM permission diagnostics for kernel sections and MMIO
+- Permission hardening status reporting for pending finer-grained mappings
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -170,7 +172,8 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Split kernel text, rodata, data, heap, and stacks into finer permissions
+- Add L3 page mappings for finer kernel section permissions
+- Mark kernel rodata, data, bss, heap, and stacks execute-never
 - Expand named VM regions as new drivers and memory ranges appear
 - Expand scheduler robustness and task management
 

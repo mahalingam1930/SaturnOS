@@ -21,7 +21,7 @@ enum user_mode_status
 int user_mode_can_enter(const struct task *task);
 int user_mode_prepare(const struct task *task);
 int user_mode_enter_stub(const struct task *task);
-int user_mode_run_smoke_test(const struct task *task);
+int user_mode_run_smoke_test(struct task *task);
 int user_mode_handle_exception(unsigned long esr,
                                unsigned long elr,
                                unsigned long far,

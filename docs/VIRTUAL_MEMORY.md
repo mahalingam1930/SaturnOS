@@ -499,11 +499,35 @@ the `user-demo` task:
 task N: user-demo state=zombie
 policy=inactive runnable=no
 user_smoke=completed result=passed
+user_counts admit=1 enter=1 trap=1 recover=1 reject=0 complete=1 fail=0
 ```
 
 This prevents the same smoke task from being re-entered accidentally while
 preserving the diagnostic trail that it entered EL0, trapped back to EL1, and
 completed successfully.
+
+## User Lifecycle Counters
+
+Each user-shaped task now carries lifecycle counters:
+
+```text
+admit     controlled unblock/admission successes
+enter     deliberate EL0 entries
+trap      expected lower-EL traps
+recover   returns from EL0 back to EL1
+reject    rejected recovery attempts
+complete  completed smoke runs
+fail      failed smoke runs
+```
+
+The current smoke path should end with:
+
+```text
+user_counts admit=1 enter=1 trap=1 recover=1 reject=0 complete=1 fail=0
+```
+
+These counters make the EL0 path auditable instead of relying only on the boot
+log sequence.
 
 ## User Address-Space Validation
 
@@ -524,6 +548,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add per-user-task lifecycle counters.
-2. Add user exception statistics.
+1. Add user exception statistics.
+2. Add shell command for user-task diagnostics.
 3. Decide when to enable instruction and data caches.

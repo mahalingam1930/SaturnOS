@@ -28,6 +28,7 @@ struct user_smoke_state
     volatile int handled;
     volatile int last_reject_reason;
     volatile unsigned long reject_count;
+    struct task *task;
     unsigned long expected_elr;
     unsigned long expected_iss;
     unsigned long return_pc;
@@ -82,6 +83,10 @@ static int user_smoke_reject(int reason,
 
     user_smoke.last_reject_reason = reason;
     user_smoke.reject_count++;
+    if (user_smoke.task)
+    {
+        user_smoke.task->user_status.rejects++;
+    }
     user_smoke.active = 0;
 
     kprintf("EL0 smoke: recovery rejected reason=%s ec=0x%x iss=0x%x "
@@ -164,7 +169,7 @@ int user_mode_enter_stub(const struct task *task)
     return USER_MODE_READY;
 }
 
-int user_mode_run_smoke_test(const struct task *task)
+int user_mode_run_smoke_test(struct task *task)
 {
     const struct address_space *space;
     int status = user_mode_prepare(task);
@@ -190,6 +195,7 @@ int user_mode_run_smoke_test(const struct task *task)
     user_smoke.active = 1;
     user_smoke.handled = 0;
     user_smoke.last_reject_reason = USER_SMOKE_REJECT_NONE;
+    user_smoke.task = task;
     user_smoke.expected_elr = task->el0.pc;
     user_smoke.expected_iss = ESR_BRK_IMM0;
     user_smoke.return_pc = (unsigned long)arm64_el0_smoke_return;
@@ -204,15 +210,19 @@ int user_mode_run_smoke_test(const struct task *task)
             (unsigned int)user_smoke.expected_elr);
 
     arm64_mmu_switch_ttbr0(user_smoke.user_root);
+    task->user_status.el0_entries++;
     arm64_enter_el0_smoke(task->el0.pc, task->el0.sp, task->el0.spsr);
 
     if (user_smoke.handled)
     {
+        task->user_status.recoveries++;
+        user_smoke.task = 0;
         kprintf("EL0 smoke: returned to EL1\n");
         return USER_MODE_READY;
     }
 
     user_smoke.active = 0;
+    user_smoke.task = 0;
     arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
     return USER_MODE_SMOKE_FAILED;
 }
@@ -281,6 +291,10 @@ int user_mode_handle_exception(unsigned long esr,
     }
 
     arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
+    if (user_smoke.task)
+    {
+        user_smoke.task->user_status.expected_traps++;
+    }
     user_smoke.handled = 1;
     user_smoke.active = 0;
 

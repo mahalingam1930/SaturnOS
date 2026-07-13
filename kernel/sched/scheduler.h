@@ -44,6 +44,13 @@ struct task_user_status
 {
     int smoke_completed;
     int smoke_passed;
+    unsigned long admissions;
+    unsigned long el0_entries;
+    unsigned long expected_traps;
+    unsigned long recoveries;
+    unsigned long rejects;
+    unsigned long completions;
+    unsigned long failures;
 };
 
 struct task

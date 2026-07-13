@@ -71,6 +71,13 @@ static void scheduler_clear_user_status(struct task_user_status *status)
 {
     status->smoke_completed = 0;
     status->smoke_passed = 0;
+    status->admissions = 0;
+    status->el0_entries = 0;
+    status->expected_traps = 0;
+    status->recoveries = 0;
+    status->rejects = 0;
+    status->completions = 0;
+    status->failures = 0;
 }
 
 static void scheduler_init_task_memory(struct task *task, int pid)
@@ -320,6 +327,7 @@ int scheduler_unblock_user_task(int pid)
     }
 
     tasks[pid].state = TASK_ELIGIBLE;
+    tasks[pid].user_status.admissions++;
     kprintf("User task %d (%s) is eligible; runnable=no\n",
             pid,
             tasks[pid].name);
@@ -353,6 +361,7 @@ int scheduler_run_user_smoke_test(int pid)
     {
         tasks[pid].user_status.smoke_completed = 1;
         tasks[pid].user_status.smoke_passed = 0;
+        tasks[pid].user_status.failures++;
         kprintf("User task %d (%s) smoke=failed status=%s\n",
                 pid,
                 tasks[pid].name,
@@ -362,6 +371,7 @@ int scheduler_run_user_smoke_test(int pid)
 
     tasks[pid].user_status.smoke_completed = 1;
     tasks[pid].user_status.smoke_passed = 1;
+    tasks[pid].user_status.completions++;
     tasks[pid].state = TASK_ZOMBIE;
 
     kprintf("User task %d (%s) smoke=passed\n",
@@ -569,6 +579,15 @@ void scheduler_dump_tasks(void)
                             (tasks[i].user_status.smoke_passed ?
                                 "passed" : "failed") :
                             "none");
+                kprintf("    user_counts admit=%d enter=%d trap=%d "
+                        "recover=%d reject=%d complete=%d fail=%d\n",
+                        (int)tasks[i].user_status.admissions,
+                        (int)tasks[i].user_status.el0_entries,
+                        (int)tasks[i].user_status.expected_traps,
+                        (int)tasks[i].user_status.recoveries,
+                        (int)tasks[i].user_status.rejects,
+                        (int)tasks[i].user_status.completions,
+                        (int)tasks[i].user_status.failures);
             }
             if (space->user_descriptor_count)
             {

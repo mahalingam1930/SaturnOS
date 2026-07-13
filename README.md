@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.35
+Version: 0.6.36
 
 Codename: Memory
 
@@ -101,6 +101,8 @@ Target: ARM64 QEMU `virt`
 ### Shell
 
 - Line-based kernel shell
+- Cursor-aware shell line editing with insert, backspace, delete, home/end,
+  and left/right movement
 - Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `vm`,
   `vmwalk`, `ticks`, `clear`, `panic`, and `fault` commands
 
@@ -233,9 +235,9 @@ docs/              Architecture, roadmap, and graphics notes
 
 ## Next Milestones
 
-- Add line editing for keyboard input
 - Add user exception statistics
 - Add framebuffer status updates for runtime shell activity
+- Add shell command history
 - Expand scheduler robustness and task management
 
 ## Vision

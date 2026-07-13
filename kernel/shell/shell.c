@@ -2,6 +2,7 @@
 #include "exception.h"
 #include "framebuffer.h"
 #include "heap.h"
+#include "keyboard.h"
 #include "kprintf.h"
 #include "pmm.h"
 #include "scheduler.h"
@@ -10,9 +11,13 @@
 #include "vm.h"
 
 #define SHELL_BUFFER_SIZE 64
+#define SHELL_PROMPT "saturn> "
 
 static char command_buffer[SHELL_BUFFER_SIZE];
 static unsigned int command_length;
+static unsigned int command_cursor;
+static unsigned int rendered_length;
+static unsigned int escape_state;
 
 static int string_equals(const char *left, const char *right)
 {
@@ -139,7 +144,202 @@ static int parse_number(const char *text, unsigned long *value)
 
 static void shell_prompt(void)
 {
-    kprintf("saturn> ");
+    kprintf(SHELL_PROMPT);
+    rendered_length = 0;
+}
+
+static void shell_move_left(unsigned int count)
+{
+    while (count > 0)
+    {
+        kprintf("\b");
+        count--;
+    }
+}
+
+static void shell_move_right(unsigned int count)
+{
+    while (count > 0 && command_cursor < command_length)
+    {
+        kprintf("%c", command_buffer[command_cursor]);
+        command_cursor++;
+        count--;
+    }
+}
+
+static void shell_redraw_from_cursor(unsigned int old_length)
+{
+    unsigned int printed = 0;
+    unsigned int erase_count;
+
+    for (unsigned int i = command_cursor; i < command_length; i++)
+    {
+        kprintf("%c", command_buffer[i]);
+        printed++;
+    }
+
+    if (old_length > command_length)
+    {
+        erase_count = old_length - command_length;
+        for (unsigned int i = 0; i < erase_count; i++)
+        {
+            kprintf(" ");
+        }
+        printed += erase_count;
+    }
+
+    shell_move_left(printed);
+    rendered_length = command_length;
+}
+
+static void shell_insert_char(char c)
+{
+    if (command_length >= SHELL_BUFFER_SIZE - 1)
+    {
+        kprintf("\nCommand too long\n");
+        command_length = 0;
+        command_cursor = 0;
+        rendered_length = 0;
+        shell_prompt();
+        return;
+    }
+
+    for (unsigned int i = command_length; i > command_cursor; i--)
+    {
+        command_buffer[i] = command_buffer[i - 1];
+    }
+
+    command_buffer[command_cursor] = c;
+    command_length++;
+    kprintf("%c", c);
+    command_cursor++;
+
+    if (command_cursor < command_length)
+    {
+        unsigned int saved_cursor = command_cursor;
+
+        for (unsigned int i = command_cursor; i < command_length; i++)
+        {
+            kprintf("%c", command_buffer[i]);
+        }
+
+        shell_move_left(command_length - saved_cursor);
+    }
+
+    rendered_length = command_length;
+}
+
+static void shell_backspace(void)
+{
+    unsigned int old_length = command_length;
+
+    if (command_cursor == 0)
+    {
+        return;
+    }
+
+    command_cursor--;
+    kprintf("\b");
+
+    for (unsigned int i = command_cursor; i < command_length - 1; i++)
+    {
+        command_buffer[i] = command_buffer[i + 1];
+    }
+
+    command_length--;
+    shell_redraw_from_cursor(old_length);
+}
+
+static void shell_delete(void)
+{
+    unsigned int old_length = command_length;
+
+    if (command_cursor >= command_length)
+    {
+        return;
+    }
+
+    for (unsigned int i = command_cursor; i < command_length - 1; i++)
+    {
+        command_buffer[i] = command_buffer[i + 1];
+    }
+
+    command_length--;
+    shell_redraw_from_cursor(old_length);
+}
+
+static void shell_home(void)
+{
+    shell_move_left(command_cursor);
+    command_cursor = 0;
+}
+
+static void shell_end(void)
+{
+    shell_move_right(command_length - command_cursor);
+}
+
+static int shell_handle_escape_char(char c)
+{
+    if (escape_state == 0)
+    {
+        return 0;
+    }
+
+    if (escape_state == 1)
+    {
+        escape_state = (c == '[') ? 2 : 0;
+        return 1;
+    }
+
+    if (escape_state == 2)
+    {
+        escape_state = 0;
+
+        if (c == 'D')
+        {
+            if (command_cursor > 0)
+            {
+                command_cursor--;
+                kprintf("\b");
+            }
+            return 1;
+        }
+
+        if (c == 'C')
+        {
+            shell_move_right(1);
+            return 1;
+        }
+
+        if (c == 'H')
+        {
+            shell_home();
+            return 1;
+        }
+
+        if (c == 'F')
+        {
+            shell_end();
+            return 1;
+        }
+
+        if (c == '3')
+        {
+            escape_state = 3;
+            return 1;
+        }
+
+        return 1;
+    }
+
+    escape_state = 0;
+    if (c == '~')
+    {
+        shell_delete();
+    }
+
+    return 1;
 }
 
 static void shell_help(void)
@@ -248,6 +448,9 @@ static void shell_execute(const char *command)
 void shell_init(void)
 {
     command_length = 0;
+    command_cursor = 0;
+    rendered_length = 0;
+    escape_state = 0;
     kprintf("SaturnOS shell ready\n");
     shell_prompt();
 }
@@ -259,23 +462,67 @@ void shell_handle_char(char c)
         c = '\n';
     }
 
+    if (shell_handle_escape_char(c))
+    {
+        return;
+    }
+
+    if (c == 0x1b)
+    {
+        escape_state = 1;
+        return;
+    }
+
+    if (c == KEYBOARD_CHAR_HOME)
+    {
+        shell_home();
+        return;
+    }
+
+    if (c == KEYBOARD_CHAR_LEFT)
+    {
+        if (command_cursor > 0)
+        {
+            command_cursor--;
+            kprintf("\b");
+        }
+        return;
+    }
+
+    if (c == KEYBOARD_CHAR_DELETE)
+    {
+        shell_delete();
+        return;
+    }
+
+    if (c == KEYBOARD_CHAR_END)
+    {
+        shell_end();
+        return;
+    }
+
+    if (c == KEYBOARD_CHAR_RIGHT)
+    {
+        shell_move_right(1);
+        return;
+    }
+
     if (c == '\n')
     {
         command_buffer[command_length] = '\0';
         kprintf("\n");
         shell_execute(command_buffer);
         command_length = 0;
+        command_cursor = 0;
+        rendered_length = 0;
+        escape_state = 0;
         shell_prompt();
         return;
     }
 
     if (c == '\b' || c == 0x7f)
     {
-        if (command_length > 0)
-        {
-            command_length--;
-            kprintf("\b \b");
-        }
+        shell_backspace();
         return;
     }
 
@@ -284,14 +531,5 @@ void shell_handle_char(char c)
         return;
     }
 
-    if (command_length >= SHELL_BUFFER_SIZE - 1)
-    {
-        kprintf("\nCommand too long\n");
-        command_length = 0;
-        shell_prompt();
-        return;
-    }
-
-    command_buffer[command_length++] = c;
-    kprintf("%c", c);
+    shell_insert_char(c);
 }

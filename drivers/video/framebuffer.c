@@ -735,26 +735,12 @@ static void framebuffer_console_advance(void)
 
 static void framebuffer_console_backspace(void)
 {
-    unsigned int x;
-    unsigned int y;
-
     if (console_column == 0)
     {
         return;
     }
 
     console_column--;
-
-    x = FRAMEBUFFER_CONSOLE_MARGIN_X +
-        (console_column * framebuffer_console_cell_width());
-    y = FRAMEBUFFER_CONSOLE_MARGIN_Y +
-        (console_row * framebuffer_console_cell_height());
-
-    framebuffer_fill_rect(x,
-                          y,
-                          framebuffer_console_cell_width(),
-                          framebuffer_console_cell_height(),
-                          FRAMEBUFFER_CONSOLE_BG);
 }
 
 void framebuffer_console_init(void)

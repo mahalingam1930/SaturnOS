@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.10
+Version: 0.6.11
 
 Codename: Memory
 
@@ -54,6 +54,7 @@ Target: ARM64 QEMU `virt`
 - Shared kernel address-space object
 - Per-task stack and guard range diagnostics
 - Per-task address-space diagnostics
+- User/process address-space scaffold
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -119,6 +120,7 @@ Target: ARM64 QEMU `virt`
 - VM security summary for code, data, heap, stacks, guards, and MMIO
 - VM named range diagnostics for kernel, heap, stacks, framebuffer, and MMIO
 - Shared kernel address-space object for scheduler tasks
+- User/process address-space object scaffold
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -188,8 +190,8 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Prepare task/process memory separation beyond the shared kernel map
 - Add per-task user address-space tables
+- Add user/kernel permission split for future EL0 mappings
 - Expand scheduler robustness and task management
 
 ## Vision

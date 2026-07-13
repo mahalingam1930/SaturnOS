@@ -36,6 +36,7 @@ map.
 - VM security summary for high-level protection posture
 - VM named range diagnostics for kernel, heap, stacks, framebuffer, and MMIO
 - Shared kernel address-space object
+- User/process address-space object scaffold
 - Task memory metadata with stack, guard, address-space, and root-table
   diagnostics
 
@@ -174,8 +175,23 @@ This does not create separate process address spaces yet. It makes the current
 shared kernel map explicit in task diagnostics and prepares the scheduler for
 future per-task user address spaces.
 
+## User Address-Space Scaffold
+
+SaturnOS now has a first-class address-space type for future user/process
+memory:
+
+- kernel address spaces represent the current shared kernel identity map
+- user address spaces carry a planned user range
+- user address spaces still share the protected kernel map
+- user page-table mappings are marked as not ready until the real per-process
+  tables exist
+
+Current kernel threads continue to use the shared kernel address space. The
+scaffold is intentionally structural: it gives future process creation, syscall,
+and EL0 work a place to attach isolated user mappings.
+
 ## Next MMU Work
 
-1. Prepare task/process memory separation beyond the shared kernel map.
-2. Add per-task user address-space page tables.
+1. Add per-task user address-space page tables.
+2. Add user/kernel permission split for future EL0 mappings.
 3. Decide when to enable instruction and data caches.

@@ -313,6 +313,7 @@ void scheduler_start_threads(void)
 
 void scheduler_dump_tasks(void)
 {
+    struct address_space *space;
     int i;
 
     kprintf("Scheduler state: ticks=%d tasks=%d current=%d\n",
@@ -322,15 +323,24 @@ void scheduler_dump_tasks(void)
 
     for (i = 0; i < task_count; i++)
     {
+        space = tasks[i].memory.address_space;
+
         kprintf("  task %d: %s state=%s\n",
                 tasks[i].pid,
                 tasks[i].name,
                 scheduler_state_name(tasks[i].state));
-        kprintf("    aspace=%s root=0x%x shared=%s\n",
-                tasks[i].memory.address_space->name,
-                (unsigned int)tasks[i].memory.address_space->root_table,
-                tasks[i].memory.address_space->shared_kernel_map ? "yes" :
-                "no");
+        if (space)
+        {
+            kprintf("    aspace=%s kind=%s root=0x%x shared=%s\n",
+                    space->name,
+                    address_space_kind_name(space->kind),
+                    (unsigned int)space->root_table,
+                    space->shared_kernel_map ? "yes" : "no");
+        }
+        else
+        {
+            kprintf("    aspace=none kind=none root=0x0 shared=no\n");
+        }
         kprintf("    stack=0x%x-0x%x\n",
                 (unsigned int)tasks[i].memory.stack_start,
                 (unsigned int)tasks[i].memory.stack_end);

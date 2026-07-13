@@ -455,11 +455,27 @@ EL0 smoke: entering user task at 0x100000
 EL0 smoke: caught expected BRK at ELR=0x100000
 EL0 smoke: returned to EL1
 User task N (user-demo) smoke=passed
+User task N (user-demo) completed; state=zombie runnable=no
 SaturnOS shell ready
 ```
 
 Only the expected lower-EL BRK is handled this way. Unexpected exceptions still
 fall through to the normal kernel panic diagnostics.
+
+## User Smoke Task Cleanup
+
+After the EL0 smoke test passes, the scheduler records the result and retires
+the `user-demo` task:
+
+```text
+task N: user-demo state=zombie
+policy=inactive runnable=no
+user_smoke=completed result=passed
+```
+
+This prevents the same smoke task from being re-entered accidentally while
+preserving the diagnostic trail that it entered EL0, trapped back to EL1, and
+completed successfully.
 
 ## User Address-Space Validation
 
@@ -480,6 +496,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add user task cleanup after EL0 smoke completion.
-2. Add EL0 exception return-to-kernel recovery hardening.
+1. Add EL0 exception return-to-kernel recovery hardening.
+2. Add per-user-task lifecycle counters.
 3. Decide when to enable instruction and data caches.

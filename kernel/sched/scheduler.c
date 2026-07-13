@@ -67,6 +67,12 @@ static void scheduler_clear_el0(struct task_el0_state *el0)
     el0->ready = 0;
 }
 
+static void scheduler_clear_user_status(struct task_user_status *status)
+{
+    status->smoke_completed = 0;
+    status->smoke_passed = 0;
+}
+
 static void scheduler_init_task_memory(struct task *task, int pid)
 {
     task->memory.address_space = address_space_kernel();
@@ -188,6 +194,7 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
     scheduler_clear_context(&tasks[task_count].context);
     scheduler_clear_memory(&tasks[task_count].memory);
     scheduler_clear_el0(&tasks[task_count].el0);
+    scheduler_clear_user_status(&tasks[task_count].user_status);
     scheduler_init_task_memory(&tasks[task_count], pid);
     scheduler_init_task_el0(&tasks[task_count]);
 
@@ -264,6 +271,7 @@ int scheduler_create_blocked_user_task(const char *name)
     scheduler_clear_context(&tasks[task_count].context);
     scheduler_clear_memory(&tasks[task_count].memory);
     scheduler_clear_el0(&tasks[task_count].el0);
+    scheduler_clear_user_status(&tasks[task_count].user_status);
     scheduler_init_task_memory(&tasks[task_count], pid);
     tasks[task_count].memory.address_space = &user_demo_address_space;
     scheduler_init_task_el0(&tasks[task_count]);
@@ -343,6 +351,8 @@ int scheduler_run_user_smoke_test(int pid)
     status = user_mode_run_smoke_test(&tasks[pid]);
     if (status != USER_MODE_READY)
     {
+        tasks[pid].user_status.smoke_completed = 1;
+        tasks[pid].user_status.smoke_passed = 0;
         kprintf("User task %d (%s) smoke=failed status=%s\n",
                 pid,
                 tasks[pid].name,
@@ -350,9 +360,17 @@ int scheduler_run_user_smoke_test(int pid)
         return -1;
     }
 
+    tasks[pid].user_status.smoke_completed = 1;
+    tasks[pid].user_status.smoke_passed = 1;
+    tasks[pid].state = TASK_ZOMBIE;
+
     kprintf("User task %d (%s) smoke=passed\n",
             pid,
             tasks[pid].name);
+    kprintf("User task %d (%s) completed; state=%s runnable=no\n",
+            pid,
+            tasks[pid].name,
+            scheduler_state_name(tasks[pid].state));
     return 0;
 }
 
@@ -544,6 +562,13 @@ void scheduler_dump_tasks(void)
                         (unsigned int)space->user_image_entry,
                         (int)space->user_image_size,
                         (unsigned int)space->user_image_checksum);
+                kprintf("    user_smoke=%s result=%s\n",
+                        tasks[i].user_status.smoke_completed ?
+                            "completed" : "pending",
+                        tasks[i].user_status.smoke_completed ?
+                            (tasks[i].user_status.smoke_passed ?
+                                "passed" : "failed") :
+                            "none");
             }
             if (space->user_descriptor_count)
             {

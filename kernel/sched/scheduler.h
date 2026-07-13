@@ -40,6 +40,12 @@ struct task_el0_state
     int ready;
 };
 
+struct task_user_status
+{
+    int smoke_completed;
+    int smoke_passed;
+};
+
 struct task
 {
     int pid;
@@ -49,6 +55,7 @@ struct task
     struct cpu_context context;
     struct task_memory memory;
     struct task_el0_state el0;
+    struct task_user_status user_status;
 };
 
 void scheduler_init(void);

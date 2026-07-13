@@ -305,6 +305,22 @@ then returns a status string. It does not execute `eret`, switch TTBR0, or
 leave EL1. Kernel threads report `user_entry=blocked` with status
 `kernel-task`, which is the expected safe state.
 
+## User Address-Space Switching Preparation
+
+Address spaces now track switching metadata:
+
+```text
+active_root  currently safe root table
+target_root  future root table for the address space
+switch       active, ready, or blocked
+ready        whether switching can be attempted later
+```
+
+Kernel address spaces report `switch=active` because they already run on the
+kernel root. Future validated user address spaces can report `switch=ready`
+when their user root table is prepared and differs from the active kernel root.
+SaturnOS still does not write TTBR0 for user spaces in this milestone.
+
 ## User Address-Space Validation
 
 Address spaces now report validation status and error counts. The validator
@@ -324,6 +340,6 @@ switching or EL0 entry.
 
 ## Next MMU Work
 
-1. Add user address-space switching preparation.
-2. Add EL0 exception-return implementation.
+1. Add EL0 exception-return implementation.
+2. Add guarded TTBR0 switch stub.
 3. Decide when to enable instruction and data caches.

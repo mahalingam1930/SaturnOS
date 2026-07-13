@@ -9,6 +9,13 @@ enum address_space_kind
     ADDRESS_SPACE_USER,
 };
 
+enum address_space_switch_status
+{
+    ADDRESS_SPACE_SWITCH_ACTIVE = 0,
+    ADDRESS_SPACE_SWITCH_READY,
+    ADDRESS_SPACE_SWITCH_BLOCKED,
+};
+
 struct address_space_user_region
 {
     const char *name;
@@ -27,6 +34,8 @@ struct address_space
     unsigned long root_table;
     unsigned long kernel_root_table;
     unsigned long user_root_table;
+    unsigned long active_root_table;
+    unsigned long target_root_table;
     unsigned long user_table_slot;
     unsigned long user_table_count;
     unsigned long user_start;
@@ -51,6 +60,8 @@ struct address_space
     int user_mappings_ready;
     int user_execute_ready;
     int validation_ready;
+    int switch_ready;
+    enum address_space_switch_status switch_status;
     unsigned long validation_errors;
 };
 
@@ -61,5 +72,6 @@ void address_space_init_user(struct address_space *space,
 struct address_space *address_space_kernel(void);
 const char *address_space_kind_name(enum address_space_kind kind);
 const char *address_space_validation_state(const struct address_space *space);
+const char *address_space_switch_state(const struct address_space *space);
 
 #endif

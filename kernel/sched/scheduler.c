@@ -387,6 +387,11 @@ void scheduler_dump_tasks(void)
             kprintf("    aspace_check=%s errors=%d\n",
                     address_space_validation_state(space),
                     (int)space->validation_errors);
+            kprintf("    switch=%s active=0x%x target=0x%x ready=%s\n",
+                    address_space_switch_state(space),
+                    (unsigned int)space->active_root_table,
+                    (unsigned int)space->target_root_table,
+                    space->switch_ready ? "yes" : "no");
         }
         else
         {
@@ -394,6 +399,7 @@ void scheduler_dump_tasks(void)
                     "split=no k_el0=no u_el0=no\n");
             kprintf("    user_tables=no user_desc=no user_map=no\n");
             kprintf("    aspace_check=errors errors=1\n");
+            kprintf("    switch=blocked active=0x0 target=0x0 ready=no\n");
         }
         kprintf("    el0=%s pc=0x%x sp=0x%x spsr=0x%x\n",
                 tasks[i].el0.ready ? "yes" : "no",

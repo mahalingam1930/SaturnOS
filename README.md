@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.19
+Version: 0.6.20
 
 Codename: Memory
 
@@ -63,6 +63,7 @@ Target: ARM64 QEMU `virt`
 - EL0 entry state preparation metadata
 - User address-space validation diagnostics
 - Guarded EL0 transition stub
+- User address-space switching preparation metadata
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -137,6 +138,7 @@ Target: ARM64 QEMU `virt`
 - Task EL0 PC, SP, SPSR, and readiness diagnostics
 - Address-space validation status and error diagnostics
 - User-mode transition status diagnostics without `eret`
+- Active and target root-table switching diagnostics
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -206,8 +208,8 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Add user address-space switching preparation
 - Add EL0 exception-return implementation
+- Add guarded TTBR0 switch stub
 - Expand scheduler robustness and task management
 
 ## Vision

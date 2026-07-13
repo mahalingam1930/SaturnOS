@@ -254,6 +254,8 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.root_table = kernel_root_table;
     kernel_address_space.kernel_root_table = kernel_root_table;
     kernel_address_space.user_root_table = 0;
+    kernel_address_space.active_root_table = kernel_root_table;
+    kernel_address_space.target_root_table = kernel_root_table;
     kernel_address_space.user_table_slot = ADDRESS_SPACE_USER_TABLE_SLOTS;
     kernel_address_space.user_table_count = 0;
     kernel_address_space.user_start = 0;
@@ -277,6 +279,8 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.user_mappings_ready = 0;
     kernel_address_space.user_execute_ready = 0;
     kernel_address_space.validation_ready = 1;
+    kernel_address_space.switch_ready = 1;
+    kernel_address_space.switch_status = ADDRESS_SPACE_SWITCH_ACTIVE;
     kernel_address_space.validation_errors = 0;
 }
 
@@ -300,6 +304,10 @@ void address_space_init_user(struct address_space *space,
     space->user_root_table =
         user_table_slot >= 0 ? (unsigned long)user_l1_tables[user_table_slot] :
         0;
+    space->active_root_table = kernel_root_table;
+    space->target_root_table =
+        user_table_slot >= 0 ? (unsigned long)user_l1_tables[user_table_slot] :
+        kernel_root_table;
     space->user_table_slot =
         user_table_slot >= 0 ? (unsigned long)user_table_slot :
         ADDRESS_SPACE_USER_TABLE_SLOTS;
@@ -353,6 +361,13 @@ void address_space_init_user(struct address_space *space,
     space->user_execute_ready = space->user_mappings_ready;
     space->validation_errors = address_space_validate_user(space);
     space->validation_ready = space->validation_errors == 0;
+    space->switch_ready =
+        space->validation_ready &&
+        space->target_root_table &&
+        space->target_root_table != space->active_root_table;
+    space->switch_status = space->switch_ready ?
+        ADDRESS_SPACE_SWITCH_READY :
+        ADDRESS_SPACE_SWITCH_BLOCKED;
 }
 
 struct address_space *address_space_kernel(void)
@@ -381,4 +396,24 @@ const char *address_space_validation_state(const struct address_space *space)
     }
 
     return "ok";
+}
+
+const char *address_space_switch_state(const struct address_space *space)
+{
+    if (!space)
+    {
+        return "blocked";
+    }
+
+    switch (space->switch_status)
+    {
+        case ADDRESS_SPACE_SWITCH_ACTIVE:
+            return "active";
+        case ADDRESS_SPACE_SWITCH_READY:
+            return "ready";
+        case ADDRESS_SPACE_SWITCH_BLOCKED:
+            return "blocked";
+        default:
+            return "unknown";
+    }
 }

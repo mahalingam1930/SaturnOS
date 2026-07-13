@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.16
+Version: 0.6.17
 
 Codename: Memory
 
@@ -60,6 +60,7 @@ Target: ARM64 QEMU `virt`
 - User code/data/stack descriptor permission scaffold
 - User/kernel permission split metadata
 - Controlled user descriptor installation scaffold
+- EL0 entry state preparation metadata
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -131,6 +132,7 @@ Target: ARM64 QEMU `virt`
 - User descriptor policy for code, data, and stack permissions
 - Explicit EL1-only kernel and EL0-capable user permission policy
 - User-owned L1/L2/L3 table hierarchy for controlled descriptors
+- Task EL0 PC, SP, SPSR, and readiness diagnostics
 - Shell `vm` and `vmwalk` commands for virtual-memory diagnostics
 
 ## Build
@@ -200,8 +202,8 @@ docs/              Architecture, roadmap, and graphics notes
 
 - Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
-- Add EL0 entry preparation
 - Add user address-space validation diagnostics
+- Add EL0 transition stub
 - Expand scheduler robustness and task management
 
 ## Vision

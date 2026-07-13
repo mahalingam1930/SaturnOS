@@ -1,5 +1,6 @@
 #include "scheduler.h"
 #include "config.h"
+#include "cpu.h"
 #include "irq.h"
 #include "kprintf.h"
 
@@ -52,6 +53,14 @@ static void scheduler_clear_memory(struct task_memory *memory)
     memory->guard_high_end = 0;
 }
 
+static void scheduler_clear_el0(struct task_el0_state *el0)
+{
+    el0->pc = 0;
+    el0->sp = 0;
+    el0->spsr = 0;
+    el0->ready = 0;
+}
+
 static void scheduler_init_task_memory(struct task *task, int pid)
 {
     task->memory.address_space = address_space_kernel();
@@ -65,6 +74,28 @@ static void scheduler_init_task_memory(struct task *task, int pid)
         scheduler_stack_guard_start((unsigned long)pid + 1);
     task->memory.guard_high_end =
         scheduler_stack_guard_end((unsigned long)pid + 1);
+}
+
+static void scheduler_init_task_el0(struct task *task)
+{
+    struct address_space *space = task->memory.address_space;
+
+    scheduler_clear_el0(&task->el0);
+
+    if (!space || space->kind != ADDRESS_SPACE_USER)
+    {
+        return;
+    }
+
+    if (!space->user_mappings_ready || !space->user_execute_ready)
+    {
+        return;
+    }
+
+    task->el0.pc = space->user_code_start;
+    task->el0.sp = space->user_stack_end & ~((unsigned long)0xF);
+    task->el0.spsr = ARM64_SPSR_EL0T;
+    task->el0.ready = 1;
 }
 
 static struct task tasks[SCHED_MAX_TASKS];
@@ -117,7 +148,9 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
     tasks[task_count].entry = entry;
     scheduler_clear_context(&tasks[task_count].context);
     scheduler_clear_memory(&tasks[task_count].memory);
+    scheduler_clear_el0(&tasks[task_count].el0);
     scheduler_init_task_memory(&tasks[task_count], pid);
+    scheduler_init_task_el0(&tasks[task_count]);
 
     if (entry)
     {
@@ -357,6 +390,11 @@ void scheduler_dump_tasks(void)
                     "split=no k_el0=no u_el0=no\n");
             kprintf("    user_tables=no user_desc=no user_map=no\n");
         }
+        kprintf("    el0=%s pc=0x%x sp=0x%x spsr=0x%x\n",
+                tasks[i].el0.ready ? "yes" : "no",
+                (unsigned int)tasks[i].el0.pc,
+                (unsigned int)tasks[i].el0.sp,
+                (unsigned int)tasks[i].el0.spsr);
         kprintf("    stack=0x%x-0x%x\n",
                 (unsigned int)tasks[i].memory.stack_start,
                 (unsigned int)tasks[i].memory.stack_end);

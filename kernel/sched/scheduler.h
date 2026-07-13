@@ -30,6 +30,14 @@ struct task_memory
     unsigned long guard_high_end;
 };
 
+struct task_el0_state
+{
+    unsigned long pc;
+    unsigned long sp;
+    unsigned long spsr;
+    int ready;
+};
+
 struct task
 {
     int pid;
@@ -38,6 +46,7 @@ struct task
     void (*entry)(void);
     struct cpu_context context;
     struct task_memory memory;
+    struct task_el0_state el0;
 };
 
 void scheduler_init(void);

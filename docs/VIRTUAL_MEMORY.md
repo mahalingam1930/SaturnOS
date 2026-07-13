@@ -42,6 +42,7 @@ map.
 - User code/data/stack descriptor permission scaffold
 - User/kernel permission split metadata
 - Controlled user descriptor installation scaffold
+- EL0 entry state preparation metadata
 - Task memory metadata with stack, guard, address-space, and root-table
   diagnostics
 
@@ -273,8 +274,23 @@ This proves that SaturnOS can build the table hierarchy and attach descriptors
 with the planned permissions. The active scheduler still uses the safe kernel
 root table until EL0 entry and address-space switching are ready.
 
+## EL0 Entry Preparation
+
+Scheduler tasks now carry future user-entry state:
+
+```text
+EL0 PC    first user code address
+EL0 SP    top of user stack, 16-byte aligned
+SPSR_EL1  EL0t return mode
+ready     whether the task can safely enter EL0 later
+```
+
+Kernel threads still run in EL1, so their diagnostics report `el0=no`.
+Future user tasks will only become `el0=yes` after they have a user address
+space with installed user mappings and executable user code.
+
 ## Next MMU Work
 
-1. Add EL0 entry preparation.
-2. Add user address-space validation diagnostics.
+1. Add user address-space validation diagnostics.
+2. Add EL0 transition stub.
 3. Decide when to enable instruction and data caches.

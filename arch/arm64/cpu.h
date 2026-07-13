@@ -1,0 +1,12 @@
+#ifndef ARM64_CPU_H
+#define ARM64_CPU_H
+
+#define ARM64_SPSR_MODE_EL0T 0x0UL
+#define ARM64_SPSR_DAIF_DEBUG (1UL << 9)
+#define ARM64_SPSR_DAIF_ASYNC (1UL << 8)
+#define ARM64_SPSR_DAIF_IRQ (1UL << 7)
+#define ARM64_SPSR_DAIF_FIQ (1UL << 6)
+
+#define ARM64_SPSR_EL0T ARM64_SPSR_MODE_EL0T
+
+#endif

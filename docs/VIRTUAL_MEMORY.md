@@ -37,6 +37,7 @@ map.
 - VM named range diagnostics for kernel, heap, stacks, framebuffer, and MMIO
 - Shared kernel address-space object
 - User/process address-space object scaffold
+- Static user address-space L1 table pool
 - Task memory metadata with stack, guard, address-space, and root-table
   diagnostics
 
@@ -183,6 +184,7 @@ memory:
 - kernel address spaces represent the current shared kernel identity map
 - user address spaces carry a planned user range
 - user address spaces still share the protected kernel map
+- user address spaces can own L1 page-table storage
 - user page-table mappings are marked as not ready until the real per-process
   tables exist
 
@@ -190,8 +192,16 @@ Current kernel threads continue to use the shared kernel address space. The
 scaffold is intentionally structural: it gives future process creation, syscall,
 and EL0 work a place to attach isolated user mappings.
 
+User address spaces keep two roots during this phase:
+
+- `root_table`: the safe active kernel root used until switching is ready
+- `user_root_table`: private L1 table storage for future user mappings
+
+This prevents an empty user table from being activated too early while still
+making page-table ownership explicit in the address-space model.
+
 ## Next MMU Work
 
-1. Add per-task user address-space page tables.
+1. Populate user address-space tables with controlled user mappings.
 2. Add user/kernel permission split for future EL0 mappings.
 3. Decide when to enable instruction and data caches.

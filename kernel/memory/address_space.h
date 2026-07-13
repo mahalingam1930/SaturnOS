@@ -17,9 +17,17 @@ struct address_space
     unsigned long user_table_count;
     unsigned long user_start;
     unsigned long user_end;
+    unsigned long user_code_start;
+    unsigned long user_code_end;
+    unsigned long user_data_start;
+    unsigned long user_data_end;
+    unsigned long user_stack_start;
+    unsigned long user_stack_end;
+    unsigned long user_mapping_count;
     int shared_kernel_map;
     int user_tables_ready;
     int user_mappings_ready;
+    int user_execute_ready;
 };
 
 void address_space_init(unsigned long kernel_root_table);

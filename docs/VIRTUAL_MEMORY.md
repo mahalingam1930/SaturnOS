@@ -38,6 +38,7 @@ map.
 - Shared kernel address-space object
 - User/process address-space object scaffold
 - Static user address-space L1 table pool
+- Controlled user code, data, and stack mapping plan
 - Task memory metadata with stack, guard, address-space, and root-table
   diagnostics
 
@@ -185,6 +186,7 @@ memory:
 - user address spaces carry a planned user range
 - user address spaces still share the protected kernel map
 - user address spaces can own L1 page-table storage
+- user address spaces reserve controlled code, data, and stack ranges
 - user page-table mappings are marked as not ready until the real per-process
   tables exist
 
@@ -200,8 +202,20 @@ User address spaces keep two roots during this phase:
 This prevents an empty user table from being activated too early while still
 making page-table ownership explicit in the address-space model.
 
+The planned user layout is:
+
+```text
+0x00100000 - 0x00200000  user code
+0x00200000 - 0x00300000  user data
+0x3fff0000 - 0x40000000  user stack
+```
+
+These ranges are policy metadata only in this milestone. SaturnOS reports the
+plan through address-space diagnostics, but the mappings are still inactive
+until real user descriptors and EL0 permissions are added.
+
 ## Next MMU Work
 
-1. Populate user address-space tables with controlled user mappings.
+1. Build user page descriptors for controlled user mappings.
 2. Add user/kernel permission split for future EL0 mappings.
 3. Decide when to enable instruction and data caches.

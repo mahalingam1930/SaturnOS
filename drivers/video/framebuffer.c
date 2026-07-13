@@ -481,6 +481,16 @@ static unsigned int framebuffer_console_rows(void)
            framebuffer_console_cell_height();
 }
 
+static unsigned int framebuffer_console_text_width(void)
+{
+    return framebuffer_console_columns() * framebuffer_console_cell_width();
+}
+
+static unsigned int framebuffer_console_text_height(void)
+{
+    return framebuffer_console_rows() * framebuffer_console_cell_height();
+}
+
 static unsigned int framebuffer_console_x(void)
 {
     return FRAMEBUFFER_CONSOLE_MARGIN_X +
@@ -515,15 +525,22 @@ void framebuffer_console_show_cursor(void)
 {
     unsigned int cell_width = framebuffer_console_cell_width();
     unsigned int cell_height = framebuffer_console_cell_height();
+    unsigned int columns = framebuffer_console_columns();
+    unsigned int rows = framebuffer_console_rows();
 
     if (!framebuffer_ready)
     {
         return;
     }
 
-    if (console_column >= framebuffer_console_columns())
+    if (console_column >= columns)
     {
-        console_column = framebuffer_console_columns() - 1;
+        console_column = columns - 1;
+    }
+
+    if (console_row >= rows)
+    {
+        console_row = rows - 1;
     }
 
     framebuffer_fill_rect(framebuffer_console_x(),
@@ -538,12 +555,12 @@ static void framebuffer_console_scroll(void)
 {
     unsigned int cell_height = framebuffer_console_cell_height();
     unsigned int start_y = FRAMEBUFFER_CONSOLE_MARGIN_Y;
-    unsigned int end_y = FRAMEBUFFER_HEIGHT - FRAMEBUFFER_CONSOLE_MARGIN_Y;
+    unsigned int end_y = start_y + framebuffer_console_text_height();
 
     for (unsigned int y = start_y; y < end_y - cell_height; y++)
     {
         for (unsigned int x = FRAMEBUFFER_CONSOLE_MARGIN_X;
-             x < FRAMEBUFFER_WIDTH - FRAMEBUFFER_CONSOLE_MARGIN_X;
+             x < FRAMEBUFFER_CONSOLE_MARGIN_X + framebuffer_console_text_width();
              x++)
         {
             framebuffer[y * FRAMEBUFFER_WIDTH + x] =
@@ -567,6 +584,16 @@ static void framebuffer_console_newline(void)
     {
         framebuffer_console_scroll();
         console_row = framebuffer_console_rows() - 1;
+    }
+}
+
+static void framebuffer_console_advance(void)
+{
+    console_column++;
+
+    if (console_column >= framebuffer_console_columns())
+    {
+        framebuffer_console_newline();
     }
 }
 
@@ -668,7 +695,7 @@ void framebuffer_console_putc(char c)
                           FRAMEBUFFER_CONSOLE_FG,
                           FRAMEBUFFER_CONSOLE_BG,
                           FRAMEBUFFER_CONSOLE_SCALE);
-    console_column++;
+    framebuffer_console_advance();
     framebuffer_console_show_cursor();
 }
 

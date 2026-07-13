@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.29
+Version: 0.6.30
 
 Codename: Memory
 
@@ -85,6 +85,7 @@ Target: ARM64 QEMU `virt`
 - Built-in bitmap text rendering
 - Kernel console output mirrored to both UART and framebuffer
 - Basic framebuffer scrolling
+- Framebuffer console line wrapping and cursor-bound handling
 
 ### Input
 
@@ -225,8 +226,8 @@ docs/              Architecture, roadmap, and graphics notes
 
 ## Next Milestones
 
-- Improve framebuffer console text wrapping and cursor behavior
 - Add line editing for keyboard input
+- Add graphical framebuffer keyboard input focus
 - Add user exception statistics
 - Expand scheduler robustness and task management
 

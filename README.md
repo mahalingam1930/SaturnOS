@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.45
+Version: 0.6.46
 
 Codename: Memory
 
@@ -56,6 +56,7 @@ Target: ARM64 QEMU `virt`
 - Per-task address-space diagnostics
 - Focused scheduler task summary and per-task status diagnostics
 - Shell command for voluntary scheduler yields
+- Shell command for bounded timer-backed sleeps
 - User/process address-space scaffold
 - User address-space page-table storage scaffold
 - Controlled user code, data, and stack mapping plan
@@ -113,8 +114,8 @@ Target: ARM64 QEMU `virt`
 - Short shell aliases for common diagnostics
 - Per-command usage details through `help <command>`
 - Built-in `help`, `version`, `task`, `tasks`, `mem`, `heap`, `heaptest`,
-  `vm`, `vmwalk`, `ticks`, `yield`, `fb`, `user`, `clear`, `panic`, and
-  `fault` commands
+  `vm`, `vmwalk`, `ticks`, `yield`, `sleep`, `fb`, `user`, `clear`, `panic`,
+  and `fault` commands
 
 ### Memory Management
 

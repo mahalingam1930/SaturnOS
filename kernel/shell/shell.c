@@ -13,6 +13,7 @@
 #define SHELL_BUFFER_SIZE 64
 #define SHELL_HISTORY_SIZE 8
 #define SHELL_PROMPT "saturn> "
+#define SHELL_MAX_SLEEP_MS 10000UL
 
 struct shell_command
 {
@@ -54,6 +55,7 @@ static const struct shell_command shell_commands[] = {
     {"vmwalk", "vmwalk [address]", "walk sample or given virtual address", "vmwalk 0x40080000"},
     {"ticks", "ticks", "show scheduler/timer ticks", 0},
     {"yield", "yield", "voluntarily yield the current scheduler task", 0},
+    {"sleep", "sleep <ms>", "sleep the current shell task for milliseconds", "sleep 100"},
     {"fb", "fb", "show framebuffer runtime status", 0},
     {"user", "user", "show user/EL0 exception stats", 0},
     {"clear", "clear", "clear framebuffer console", 0},
@@ -70,6 +72,7 @@ static const struct shell_alias shell_aliases[] = {
     {"top", "tasks", "show scheduler tasks"},
     {"uptime", "ticks", "show scheduler/timer ticks"},
     {"y", "yield", "voluntarily yield the current scheduler task"},
+    {"nap", "sleep", "sleep the current shell task"},
     {"video", "fb", "show framebuffer runtime status"},
     {"ustats", "user", "show user/EL0 exception stats"},
     {"cls", "clear", "clear framebuffer console"},
@@ -819,6 +822,7 @@ static void shell_execute(const char *command)
         selected_command &&
         !string_equals(selected_command->name, "help") &&
         !string_equals(selected_command->name, "task") &&
+        !string_equals(selected_command->name, "sleep") &&
         !string_equals(selected_command->name, "vmwalk"))
     {
         kprintf("Unexpected argument: %s\n", arg);
@@ -915,6 +919,26 @@ static void shell_execute(const char *command)
         kprintf("Yielding scheduler task\n");
         scheduler_yield();
         kprintf("Scheduler task resumed\n");
+    }
+    else if (command_equals(effective_command, "sleep"))
+    {
+        unsigned long ms;
+
+        if (*arg == '\0' || !parse_number(arg, &ms))
+        {
+            shell_command_help("sleep");
+        }
+        else if (ms > SHELL_MAX_SLEEP_MS)
+        {
+            kprintf("Sleep too long: %d ms\n", (int)ms);
+            kprintf("Max sleep: %d ms\n", (int)SHELL_MAX_SLEEP_MS);
+        }
+        else
+        {
+            kprintf("Sleeping %d ms\n", (int)ms);
+            timer_sleep_ms(ms);
+            kprintf("Sleep done\n");
+        }
     }
     else if (string_equals(effective_command, "fb"))
     {

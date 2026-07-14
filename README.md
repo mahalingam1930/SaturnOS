@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.41
+Version: 0.6.42
 
 Codename: Memory
 
@@ -90,6 +90,7 @@ Target: ARM64 QEMU `virt`
 - Polished framebuffer L-cursor with bounds-safe hide/show behavior
 - Framebuffer console header and cleaner diagnostic layout
 - Framebuffer shell/status line for input, VM, and EL0 smoke state
+- Shell framebuffer runtime status command
 
 ### Input
 
@@ -109,7 +110,7 @@ Target: ARM64 QEMU `virt`
 - Short shell aliases for common diagnostics
 - Per-command usage details through `help <command>`
 - Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `vm`,
-  `vmwalk`, `ticks`, `clear`, `panic`, and `fault` commands
+  `vmwalk`, `ticks`, `fb`, `clear`, `panic`, and `fault` commands
 
 ### Memory Management
 
@@ -241,7 +242,6 @@ docs/              Architecture, roadmap, and graphics notes
 ## Next Milestones
 
 - Add user exception statistics
-- Add framebuffer status updates for runtime shell activity
 - Expand scheduler robustness and task management
 
 ## Vision

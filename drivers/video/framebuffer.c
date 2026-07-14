@@ -244,6 +244,52 @@ int framebuffer_status(void)
     return framebuffer_status_code;
 }
 
+const char *framebuffer_status_name(void)
+{
+    switch (framebuffer_status_code)
+    {
+        case 0:
+            return "ready";
+        case 1:
+            return "ramfb file missing";
+        case 2:
+            return "fw_cfg dma timeout";
+        case 3:
+            return "fw_cfg dma error";
+        case 4:
+            return "fw_cfg directory read failed";
+        case 5:
+            return "fw_cfg directory reread failed";
+        default:
+            return "unknown";
+    }
+}
+
+unsigned long framebuffer_base(void)
+{
+    return FRAMEBUFFER_BASE;
+}
+
+unsigned int framebuffer_width(void)
+{
+    return FRAMEBUFFER_WIDTH;
+}
+
+unsigned int framebuffer_height(void)
+{
+    return FRAMEBUFFER_HEIGHT;
+}
+
+unsigned int framebuffer_pitch(void)
+{
+    return FRAMEBUFFER_WIDTH * sizeof(uint32_t);
+}
+
+const char *framebuffer_format(void)
+{
+    return "XRGB8888";
+}
+
 void framebuffer_clear(uint32_t color)
 {
     framebuffer_fill_rect(0, 0, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT, color);
@@ -512,13 +558,13 @@ static unsigned int framebuffer_console_cell_height(void)
     return 8 * FRAMEBUFFER_CONSOLE_SCALE;
 }
 
-static unsigned int framebuffer_console_columns(void)
+unsigned int framebuffer_console_columns(void)
 {
     return (FRAMEBUFFER_WIDTH - (FRAMEBUFFER_CONSOLE_MARGIN_X * 2)) /
            framebuffer_console_cell_width();
 }
 
-static unsigned int framebuffer_console_rows(void)
+unsigned int framebuffer_console_rows(void)
 {
     return (FRAMEBUFFER_CONSOLE_TEXT_BOTTOM - FRAMEBUFFER_CONSOLE_MARGIN_Y) /
            framebuffer_console_cell_height();

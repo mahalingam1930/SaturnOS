@@ -22,6 +22,9 @@ and a bounds-safe L-style cursor. It also reserves top and bottom status bands
 so boot diagnostics scroll in a cleaner text area while core state remains
 visible.
 
+The shell `fb` command reports the live framebuffer state, status code,
+address, mode, pitch, pixel format, and text console dimensions.
+
 The graphical runner also exposes a QEMU virtio keyboard device. When the QEMU
 framebuffer window has focus, printable keys are delivered to the shell through
 the graphical input path. UART input remains available through the terminal.
@@ -31,4 +34,4 @@ the graphical input path. UART input remains available through the terminal.
 The next graphics milestone is improving the framebuffer console presentation:
 
 - keep the QEMU-visible framebuffer stable
-- add live status updates for shell activity
+- add richer live status updates for shell activity

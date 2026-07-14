@@ -52,6 +52,7 @@ static const struct shell_command shell_commands[] = {
     {"vm", "vm", "show virtual memory plan", 0},
     {"vmwalk", "vmwalk [address]", "walk sample or given virtual address", "vmwalk 0x40080000"},
     {"ticks", "ticks", "show scheduler/timer ticks", 0},
+    {"fb", "fb", "show framebuffer runtime status", 0},
     {"clear", "clear", "clear framebuffer console", 0},
     {"panic", "panic", "trigger test exception", 0},
     {"fault", "fault", "trigger test page fault", 0},
@@ -64,6 +65,7 @@ static const struct shell_alias shell_aliases[] = {
     {"free", "mem", "show physical memory stats"},
     {"top", "tasks", "show scheduler tasks"},
     {"uptime", "ticks", "show scheduler/timer ticks"},
+    {"video", "fb", "show framebuffer runtime status"},
     {"cls", "clear", "clear framebuffer console"},
 };
 
@@ -769,6 +771,27 @@ static void shell_usage(const char *name)
     }
 }
 
+static void shell_framebuffer_status(void)
+{
+    kprintf("Framebuffer:\n");
+    kprintf("  state   : %s\n",
+            framebuffer_is_ready() ? "ready" : "offline");
+    kprintf("  status  : %d (%s)\n",
+            framebuffer_status(),
+            framebuffer_status_name());
+    kprintf("  base    : 0x%x\n",
+            (unsigned int)framebuffer_base());
+    kprintf("  mode    : %dx%d %s\n",
+            (int)framebuffer_width(),
+            (int)framebuffer_height(),
+            framebuffer_format());
+    kprintf("  pitch   : %d bytes\n",
+            (int)framebuffer_pitch());
+    kprintf("  console : %d cols x %d rows\n",
+            (int)framebuffer_console_columns(),
+            (int)framebuffer_console_rows());
+}
+
 static void shell_execute(const char *command)
 {
     const char *effective_command = command_alias_target(command);
@@ -859,6 +882,10 @@ static void shell_execute(const char *command)
         kprintf("scheduler ticks=%d timer irqs=%d\n",
                 (int)scheduler_get_ticks(),
                 (int)timer_get_irq_ticks());
+    }
+    else if (string_equals(effective_command, "fb"))
+    {
+        shell_framebuffer_status();
     }
     else if (string_equals(effective_command, "clear"))
     {

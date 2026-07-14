@@ -9,6 +9,14 @@
 int framebuffer_init(void);
 int framebuffer_is_ready(void);
 int framebuffer_status(void);
+const char *framebuffer_status_name(void);
+unsigned long framebuffer_base(void);
+unsigned int framebuffer_width(void);
+unsigned int framebuffer_height(void);
+unsigned int framebuffer_pitch(void);
+const char *framebuffer_format(void);
+unsigned int framebuffer_console_columns(void);
+unsigned int framebuffer_console_rows(void);
 void framebuffer_clear(uint32_t color);
 void framebuffer_put_pixel(unsigned int x, unsigned int y, uint32_t color);
 void framebuffer_fill_rect(unsigned int x,

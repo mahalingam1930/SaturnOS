@@ -14,6 +14,8 @@
 #define ADDRESS_SPACE_USER_SMOKE_MOV_X0_STDOUT 0xd2800020U
 #define ADDRESS_SPACE_USER_SMOKE_MOV_X1_DATA 0xd2a00401U
 #define ADDRESS_SPACE_USER_SMOKE_MOV_X2_LEN 0xd28002e2U
+#define ADDRESS_SPACE_USER_SMOKE_MOV_X8_EXIT 0xd2800048U
+#define ADDRESS_SPACE_USER_SMOKE_MOV_X0_EXIT_CODE 0xd28000e0U
 #define ADDRESS_SPACE_USER_SMOKE_SVC 0xd4000001U
 #define ADDRESS_SPACE_USER_SMOKE_BRK 0xd4200000U
 #define ADDRESS_SPACE_USER_SMOKE_MESSAGE_LEN 23UL
@@ -522,7 +524,10 @@ int address_space_install_user_smoke_image(struct address_space *space)
     code[2] = ADDRESS_SPACE_USER_SMOKE_MOV_X1_DATA;
     code[3] = ADDRESS_SPACE_USER_SMOKE_MOV_X2_LEN;
     code[4] = ADDRESS_SPACE_USER_SMOKE_SVC;
-    code[5] = ADDRESS_SPACE_USER_SMOKE_BRK;
+    code[5] = ADDRESS_SPACE_USER_SMOKE_MOV_X8_EXIT;
+    code[6] = ADDRESS_SPACE_USER_SMOKE_MOV_X0_EXIT_CODE;
+    code[7] = ADDRESS_SPACE_USER_SMOKE_SVC;
+    code[8] = ADDRESS_SPACE_USER_SMOKE_BRK;
 
     for (unsigned long i = 0; i < ADDRESS_SPACE_USER_SMOKE_MESSAGE_LEN; i++)
     {
@@ -530,7 +535,7 @@ int address_space_install_user_smoke_image(struct address_space *space)
     }
 
     space->user_image_entry = space->user_code_start;
-    space->user_image_size = sizeof(code[0]) * 6;
+    space->user_image_size = sizeof(code[0]) * 9;
     space->user_image_checksum =
         address_space_checksum_bytes((const unsigned char *)code,
                                      space->user_image_size);

@@ -79,6 +79,8 @@ static void scheduler_clear_user_status(struct task_user_status *status)
     status->expected_traps = 0;
     status->recoveries = 0;
     status->rejects = 0;
+    status->exits = 0;
+    status->last_exit_code = 0;
     status->completions = 0;
     status->failures = 0;
 }
@@ -869,12 +871,15 @@ void scheduler_dump_tasks(void)
                                 "passed" : "failed") :
                             "none");
                 kprintf("    user_counts admit=%d enter=%d trap=%d "
-                        "recover=%d reject=%d complete=%d fail=%d\n",
+                        "recover=%d reject=%d exit=%d code=%d "
+                        "complete=%d fail=%d\n",
                         (int)tasks[i].user_status.admissions,
                         (int)tasks[i].user_status.el0_entries,
                         (int)tasks[i].user_status.expected_traps,
                         (int)tasks[i].user_status.recoveries,
                         (int)tasks[i].user_status.rejects,
+                        (int)tasks[i].user_status.exits,
+                        (int)tasks[i].user_status.last_exit_code,
                         (int)tasks[i].user_status.completions,
                         (int)tasks[i].user_status.failures);
             }
@@ -1029,8 +1034,11 @@ int scheduler_dump_task_status(int pid)
                 (int)status->el0_entries,
                 (int)status->expected_traps,
                 (int)status->recoveries);
-        kprintf("  user_counts reject=%d complete=%d fail=%d\n",
+        kprintf("  user_counts reject=%d exit=%d code=%d complete=%d "
+                "fail=%d\n",
                 (int)status->rejects,
+                (int)status->exits,
+                (int)status->last_exit_code,
                 (int)status->completions,
                 (int)status->failures);
     }
@@ -1070,8 +1078,10 @@ void scheduler_dump_user_stats(void)
                 (int)status->el0_entries,
                 (int)status->expected_traps,
                 (int)status->recoveries);
-        kprintf("    reject=%d complete=%d fail=%d\n",
+        kprintf("    reject=%d exit=%d code=%d complete=%d fail=%d\n",
                 (int)status->rejects,
+                (int)status->exits,
+                (int)status->last_exit_code,
                 (int)status->completions,
                 (int)status->failures);
         kprintf("    entry=%s status=%s\n",

@@ -18,12 +18,13 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `write` accepts file descriptors `1` and `2`, validates a bounded user
   buffer, writes bytes to the kernel console, and returns the number of bytes
   written.
-- `exit` records the requested exit code and currently returns success.
+- `exit` records the requested exit code and completes the active controlled
+  EL0 smoke run back to EL1.
 - `yield` records the call and performs a scheduler yield.
 - unknown syscall numbers are rejected with `-1`.
 
-`exit` is still intentionally minimal; the next step is to connect it to real
-user-task lifecycle handling.
+`exit` is still intentionally scoped to the guarded smoke path; the next step is
+normal scheduler-driven user-task execution.
 
 ## EL0 ABI
 
@@ -49,12 +50,16 @@ mov x0, #1      arg0: fd
 mov x1, #0x200000 arg1: user data buffer
 mov x2, #23        arg2: length
 svc #0
-brk #0
+mov x8, #2         syscall: exit
+mov x0, #7         arg0: exit code
+svc #0
+brk #0             fallback if exit returns to EL0
 ```
 
 The SVC prints `hello from EL0 syscall`, proving the EL0 syscall path can pass
-a user buffer to the kernel and return to the next user instruction. The BRK is
-still used as the controlled completion trap back to EL1.
+a user buffer to the kernel and return to the next user instruction. The exit
+syscall then completes the smoke run back to EL1 with exit code `7`. The final
+BRK remains as a fallback if exit ever incorrectly returns to EL0.
 
 ## Shell Diagnostics
 
@@ -78,6 +83,5 @@ to test dispatching the `yield` syscall stub.
 
 ## Next Work
 
-The next syscall milestone is to add real user-task exit lifecycle behavior and
-then run user tasks through the normal scheduler instead of only the guarded
-boot smoke path.
+The next syscall milestone is to run user tasks through the normal scheduler
+instead of only the guarded boot smoke path.

@@ -136,6 +136,7 @@ long syscall_dispatch(unsigned long number,
             stats.exit_calls++;
             stats.handled++;
             stats.last_exit_code = arg0;
+            user_mode_handle_exit_syscall(arg0);
             result = 0;
             break;
         case SYSCALL_YIELD:

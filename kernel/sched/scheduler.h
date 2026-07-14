@@ -50,6 +50,8 @@ struct task_user_status
     unsigned long expected_traps;
     unsigned long recoveries;
     unsigned long rejects;
+    unsigned long exits;
+    unsigned long last_exit_code;
     unsigned long completions;
     unsigned long failures;
 };

@@ -25,7 +25,7 @@ Current scheduler capabilities:
 - per-task address-space metadata
 - blocked user-task creation path
 - controlled user-task admission checks
-- EL0 BRK smoke test and recovery counters
+- EL0 syscall smoke test, exit code, and recovery counters
 
 ## Task States
 
@@ -203,7 +203,7 @@ User exception stats:
   task 2: user-demo state=zombie
     smoke=completed result=passed
     admit=1 enter=1 trap=1 recover=1
-    reject=0 complete=1 fail=0
+    reject=0 exit=1 code=7 complete=1 fail=0
     entry=ready status=ready
 ```
 
@@ -230,4 +230,4 @@ The `task` command shows compact switch and run-tick counters. `task <pid>` and
 
 ## Next Scheduler Work
 
-- Add syscall-backed yield and exit once user programs are real.
+- Run user tasks through the normal scheduler.

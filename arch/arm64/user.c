@@ -9,7 +9,7 @@
 #define ESR_ISS_MASK 0x01ffffffUL
 #define ESR_EC_BRK 0x3CUL
 #define ESR_BRK_IMM0 0x0UL
-#define USER_SMOKE_BRK_OFFSET 20UL
+#define USER_SMOKE_BRK_OFFSET 32UL
 #define SPSR_MODE_MASK 0xFUL
 
 enum user_smoke_reject_reason
@@ -205,7 +205,7 @@ int user_mode_run_smoke_test(struct task *task)
 
     kprintf("EL0 smoke: entering user task at 0x%x\n",
             (unsigned int)task->el0.pc);
-    kprintf("EL0 smoke: SVC write then BRK recovery\n");
+    kprintf("EL0 smoke: SVC write, exit, then BRK fallback\n");
     kprintf("EL0 smoke: recovery armed ec=0x%x iss=0x%x elr=0x%x\n",
             (unsigned int)ESR_EC_BRK,
             (unsigned int)user_smoke.expected_iss,
@@ -304,6 +304,41 @@ int user_mode_handle_exception(unsigned long esr,
             (unsigned int)ec,
             (unsigned int)iss,
             (unsigned int)elr);
+
+    __asm__ volatile(
+        "msr ELR_EL1, %0\n"
+        "msr SPSR_EL1, %1\n"
+        "isb\n"
+        :
+        : "r"(user_smoke.return_pc), "r"(ARM64_SPSR_EL1H)
+        : "memory");
+
+    return 1;
+}
+
+int user_mode_handle_exit_syscall(unsigned long code)
+{
+    if (!user_smoke.active || !user_smoke.return_pc)
+    {
+        return 0;
+    }
+
+    if (user_smoke.kernel_root)
+    {
+        arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
+    }
+
+    if (user_smoke.task)
+    {
+        user_smoke.task->user_status.expected_traps++;
+        user_smoke.task->user_status.exits++;
+        user_smoke.task->user_status.last_exit_code = code;
+    }
+
+    user_smoke.handled = 1;
+    user_smoke.active = 0;
+
+    kprintf("EL0 smoke: exit syscall code=%d\n", (int)code);
 
     __asm__ volatile(
         "msr ELR_EL1, %0\n"

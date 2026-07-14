@@ -27,6 +27,7 @@ int user_mode_handle_exception(unsigned long esr,
                                unsigned long elr,
                                unsigned long far,
                                unsigned long spsr);
+int user_mode_handle_exit_syscall(unsigned long code);
 const struct address_space *user_mode_active_address_space(void);
 const char *user_mode_status_name(int status);
 const char *user_mode_entry_state(const struct task *task);

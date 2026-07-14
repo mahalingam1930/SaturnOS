@@ -368,9 +368,10 @@ prove the user-task creation path without entering EL0 or running user code.
 
 SaturnOS now places a tiny smoke image into the user code page for `user-demo`.
 The image now performs one AArch64 `SVC` write syscall using a message in the
-user data page and then executes a controlled `BRK` instruction. That gives the
-EL0 entry path a deterministic syscall trap, a user-buffer read, a return to
-the next user instruction, and a final completion trap back to EL1.
+user data page, then performs an `exit` syscall. A final `BRK` instruction is
+kept as a fallback if exit ever returns to EL0. That gives the EL0 entry path a
+deterministic syscall trap, a user-buffer read, a return to the next user
+instruction, and a syscall-driven completion path back to EL1.
 
 The user-entry readiness check now requires:
 
@@ -384,7 +385,7 @@ valid EL0 PC/SP/SPSR metadata
 Expected diagnostics include:
 
 ```text
-user_image=ready entry=0x100000 size=24 checksum=...
+user_image=ready entry=0x100000 size=36 checksum=...
 user_entry=ready status=ready
 state=blocked
 ```
@@ -398,7 +399,7 @@ Expected diagnostics:
 task N: user-demo state=blocked
 aspace=user-demo kind=user
 user_tables=yes user_desc=yes user_map=yes
-user_image=ready entry=0x100000 size=24
+user_image=ready entry=0x100000 size=36
 aspace_check=ok errors=0
 switch=ready
 ttbr0_stub=ready
@@ -432,20 +433,19 @@ Expected diagnostics:
 User task N (user-demo) is eligible; runnable=no
 task N: user-demo state=eligible
 policy=user-eligible runnable=no
-user_image=ready entry=0x100000 size=24
+user_image=ready entry=0x100000 size=36
 user_entry=ready status=ready
 ```
 
 This proves the user task can pass the controlled admission checks while still
 preventing accidental EL0 entry.
 
-## Deliberate EL0 SVC/BRK Smoke Test
+## Deliberate EL0 Syscall Smoke Test
 
 SaturnOS now performs its first controlled EL0 entry. The user-demo task enters
 EL0 at its smoke image, executes a `write` syscall through `svc #0`, prints a
 message from the user data page, resumes at the next EL0 instruction, executes
-the expected `BRK`, traps back to EL1, and returns to kernel code without a
-panic.
+an `exit` syscall through `svc #0`, and returns to kernel code without a panic.
 
 The user address space now shares the kernel and MMIO mappings as EL1-only
 entries, while the user code, data, and stack pages remain the only EL0-capable
@@ -457,17 +457,17 @@ Expected boot flow:
 ```text
 Starting EL0 SVC/BRK smoke test for task N (user-demo)
 EL0 smoke: entering user task at 0x100000
-EL0 smoke: SVC write then BRK recovery
-EL0 smoke: recovery armed ec=0x3c iss=0x0 elr=0x100014
+EL0 smoke: SVC write, exit, then BRK fallback
+EL0 smoke: recovery armed ec=0x3c iss=0x0 elr=0x100020
 hello from EL0 syscall
-EL0 smoke: caught expected BRK ec=0x3c iss=0x0 ELR=0x100014
+EL0 smoke: exit syscall code=7
 EL0 smoke: returned to EL1
 User task N (user-demo) smoke=passed
 User task N (user-demo) completed; state=zombie runnable=no
 SaturnOS shell ready
 ```
 
-Only lower-EL SVC dispatch and the expected lower-EL BRK are handled this way.
+Only lower-EL SVC dispatch and the fallback lower-EL BRK are handled this way.
 Unexpected exceptions still fall through to the normal kernel panic diagnostics.
 
 ## EL0 Recovery Hardening
@@ -479,7 +479,7 @@ returns to kernel code:
 EC    BRK instruction, 0x3c
 ISS   BRK immediate 0
 mode  EL0t
-ELR   expected user smoke BRK address
+ELR   expected user smoke BRK fallback address
 roots kernel and user TTBR0 roots present
 ret   explicit EL1 recovery label present
 ```
@@ -494,8 +494,8 @@ EL0 smoke: recovery rejected reason=unexpected-mode ...
 EL0 smoke: recovery rejected reason=unexpected-elr ...
 ```
 
-This keeps the deliberate smoke path narrow: only lower-EL SVC dispatch and the
-exact expected lower-EL BRK can recover.
+This keeps the deliberate smoke path narrow: only lower-EL SVC dispatch, the
+exit completion path, and the exact fallback lower-EL BRK can recover.
 
 ## User Smoke Task Cleanup
 
@@ -506,11 +506,11 @@ the `user-demo` task:
 task N: user-demo state=zombie
 policy=inactive runnable=no
 user_smoke=completed result=passed
-user_counts admit=1 enter=1 trap=1 recover=1 reject=0 complete=1 fail=0
+user_counts admit=1 enter=1 trap=1 recover=1 reject=0 exit=1 code=7 complete=1 fail=0
 ```
 
 This prevents the same smoke task from being re-entered accidentally while
-preserving the diagnostic trail that it entered EL0, trapped back to EL1, and
+preserving the diagnostic trail that it entered EL0, exited back to EL1, and
 completed successfully.
 
 ## User Lifecycle Counters
@@ -520,9 +520,11 @@ Each user-shaped task now carries lifecycle counters:
 ```text
 admit     controlled unblock/admission successes
 enter     deliberate EL0 entries
-trap      expected lower-EL traps
+trap      expected lower-EL traps or syscall exits
 recover   returns from EL0 back to EL1
 reject    rejected recovery attempts
+exit      user exit syscalls
+code      last user exit code
 complete  completed smoke runs
 fail      failed smoke runs
 ```
@@ -530,7 +532,7 @@ fail      failed smoke runs
 The current smoke path should end with:
 
 ```text
-user_counts admit=1 enter=1 trap=1 recover=1 reject=0 complete=1 fail=0
+user_counts admit=1 enter=1 trap=1 recover=1 reject=0 exit=1 code=7 complete=1 fail=0
 ```
 
 These counters make the EL0 path auditable instead of relying only on the boot

@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.54
+Version: 0.6.55
 
 Codename: Memory
 
@@ -76,16 +76,17 @@ Target: ARM64 QEMU `virt`
 - First blocked user-task creation path
 - User-mode smoke task image scaffold
 - Controlled user task unblock path
-- Deliberate EL0 BRK smoke test and recovery
+- Deliberate EL0 syscall smoke test and recovery
 - User smoke task completion cleanup
 - Hardened EL0 recovery tuple validation
 - Per-user-task lifecycle counters
 - Focused shell diagnostics for user/EL0 exception statistics
 - Syscall dispatcher foundation with write, exit, and yield syscall IDs
 - EL0 SVC exception path wired into the syscall dispatcher
-- User smoke image that writes a user-buffer message through SVC before BRK
+- User smoke image that writes a user-buffer message through SVC before exit
   recovery
 - Bounded syscall `write` validation and console output for user buffers
+- User `exit` syscall completion path with tracked exit code
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -183,7 +184,7 @@ Target: ARM64 QEMU `virt`
 - User code page SVC/BRK smoke image, entry, size, and checksum diagnostics
 - User task eligibility state that remains non-runnable
 - Shared EL1-only kernel mappings inside user address spaces
-- Expected lower-EL SVC dispatch and BRK recovery back to EL1
+- Expected lower-EL SVC write and exit recovery back to EL1
 - User smoke completion result diagnostics
 - Named EL0 recovery rejection diagnostics
 - User admission, entry, trap, recovery, completion, and failure counters
@@ -262,7 +263,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add real user exit lifecycle and normal scheduled user-task execution
+- Run user tasks through the normal scheduler
 - Add VFS and RAM filesystem foundation
 
 ## Vision

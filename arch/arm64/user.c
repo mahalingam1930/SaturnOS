@@ -180,7 +180,7 @@ int user_mode_run_smoke_test(struct task *task)
         return status;
     }
 
-    if (task->state != TASK_ELIGIBLE)
+    if (task->state != TASK_ELIGIBLE && task->state != TASK_RUNNING)
     {
         return USER_MODE_NOT_ELIGIBLE;
     }

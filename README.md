@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.56
+Version: 0.6.57
 
 Codename: Memory
 
@@ -87,7 +87,7 @@ Target: ARM64 QEMU `virt`
   recovery
 - Bounded syscall `write` validation and console output for user buffers
 - User `exit` syscall completion path with tracked exit code
-- Scheduler-driven user smoke runner that enters EL0 after threads start
+- Direct scheduler-runnable user task context for the EL0 smoke path
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -264,7 +264,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Promote user tasks to direct scheduler-runnable EL0 contexts
+- Add in-memory user program loading
 - Add VFS and RAM filesystem foundation
 
 ## Vision

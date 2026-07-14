@@ -83,5 +83,5 @@ to test dispatching the `yield` syscall stub.
 
 ## Next Work
 
-The next syscall milestone is to promote user tasks from scheduler-driven
-runner execution to direct scheduler-runnable EL0 contexts.
+The next syscall milestone is to load user programs from an in-memory image
+instead of using the built-in smoke image only.

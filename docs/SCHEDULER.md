@@ -26,7 +26,7 @@ Current scheduler capabilities:
 - blocked user-task creation path
 - controlled user-task admission checks
 - EL0 syscall smoke test, exit code, and recovery counters
-- scheduled user-demo runner thread
+- direct scheduler-runnable user-demo task context
 
 ## Task States
 
@@ -40,11 +40,9 @@ eligible   user task passed checks but is not scheduler-runnable yet
 zombie     task has completed and should not run again
 ```
 
-The scheduler currently only selects `ready` and `running` tasks. The
-`eligible` state is used for controlled user-mode smoke testing without making
-the user-shaped task part of normal runnable selection. A scheduled kernel
-runner thread can consume an eligible user task and enter EL0 for the guarded
-smoke path after preemptive scheduling starts.
+The scheduler currently selects `ready` and `running` tasks. User tasks still
+pass through controlled admission checks, then the user-demo task becomes
+`ready` and enters EL0 from its own scheduled task context.
 
 ## Shell Commands
 
@@ -233,4 +231,4 @@ The `task` command shows compact switch and run-tick counters. `task <pid>` and
 
 ## Next Scheduler Work
 
-- Promote user tasks to direct scheduler-runnable EL0 contexts.
+- Add in-memory user program loading.

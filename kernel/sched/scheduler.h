@@ -83,7 +83,6 @@ struct task
 void scheduler_init(void);
 int scheduler_create_kernel_thread(const char *name, void (*entry)(void));
 int scheduler_create_blocked_user_task(const char *name);
-int scheduler_create_user_smoke_runner(int pid);
 int scheduler_unblock_user_task(int pid);
 int scheduler_block_task(int pid);
 int scheduler_unblock_task(int pid);

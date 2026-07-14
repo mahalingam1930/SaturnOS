@@ -417,9 +417,11 @@ scheduler_unblock_user_task(pid)
 
 The gate only succeeds when the task is currently blocked, its EL0 entry state
 is ready, its user smoke image is installed, and the guarded TTBR0 switch stub
-reports `ready`. On success, the task moves to `state=eligible`.
+reports `ready`. On success, the task moves to `state=ready`.
 
-`eligible` is deliberately separate from `ready`:
+`eligible` remains distinct from `ready` in the task-state model, but the
+current admission path promotes the smoke task all the way to `ready` after the
+EL0 checks pass:
 
 ```text
 ready      scheduler may run this task
@@ -430,23 +432,23 @@ blocked    task is not eligible
 Expected diagnostics:
 
 ```text
-User task N (user-demo) is eligible; runnable=no
-task N: user-demo state=eligible
-policy=user-eligible runnable=no
+User task N (user-demo) is ready; runnable=yes
+task N: user-demo state=ready
+policy=runnable runnable=yes
 user_image=ready entry=0x100000 size=36
 user_entry=ready status=ready
 ```
 
-This proves the user task can pass the controlled admission checks while still
-preventing accidental EL0 entry.
+This proves the user task can pass the controlled admission checks and become a
+normal scheduler-runnable task.
 
 ## Deliberate EL0 Syscall Smoke Test
 
-SaturnOS performs controlled EL0 entry through a scheduled kernel runner. The
-user-demo task enters EL0 at its smoke image, executes a `write` syscall through
-`svc #0`, prints a message from the user data page, resumes at the next EL0
-instruction, executes an `exit` syscall through `svc #0`, and returns to kernel
-code without a panic.
+SaturnOS performs controlled EL0 entry from the scheduled `user-demo` task
+context. The user-demo task enters EL0 at its smoke image, executes a `write`
+syscall through `svc #0`, prints a message from the user data page, resumes at
+the next EL0 instruction, executes an `exit` syscall through `svc #0`, and
+returns to kernel code without a panic.
 
 The user address space now shares the kernel and MMIO mappings as EL1-only
 entries, while the user code, data, and stack pages remain the only EL0-capable
@@ -458,7 +460,7 @@ Expected boot flow:
 ```text
 Starting preemptive kernel threads...
 SaturnOS shell ready
-saturn> Scheduled user runner: task N
+saturn> Scheduled user task entry: task N
 Starting EL0 SVC/BRK smoke test for task N (user-demo)
 EL0 smoke: entering user task at 0x100000
 EL0 smoke: SVC write, exit, then BRK fallback
@@ -468,7 +470,7 @@ EL0 smoke: exit syscall code=7
 EL0 smoke: returned to EL1
 User task N (user-demo) smoke=passed
 User task N (user-demo) completed; state=zombie runnable=no
-Scheduled user runner: done
+Scheduled user task entry: done
 ```
 
 Only lower-EL SVC dispatch and the fallback lower-EL BRK are handled this way.

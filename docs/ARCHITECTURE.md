@@ -6,7 +6,7 @@ SaturnOS
 
 ## Version
 
-0.6.56
+0.6.57
 
 ## Target Architecture
 
@@ -48,10 +48,10 @@ Monolithic Kernel
 5. Initialize exceptions, timer, IRQ, scheduler, keyboard, and VM state.
 6. Create the keyboard input thread.
 7. Create and validate the controlled user-demo task.
-8. Create a scheduled user-demo runner thread.
+8. Admit the user-demo task as a scheduler-runnable task.
 9. Start periodic timer interrupts.
 10. Enter preemptive kernel-thread scheduling.
-11. The scheduled runner enters EL0 for the user-demo smoke path.
+11. The scheduled user-demo task enters EL0 from its task context.
 
 ## Scheduler Model
 
@@ -67,9 +67,10 @@ can be admitted and smoke-tested. The syscall dispatcher exists with initial
 write, exit, and yield IDs. Lower-EL SVC exceptions are routed into the
 dispatcher using `x8` as the syscall number and `x0`-`x3` as arguments, but
 the `write` syscall can validate and print bounded user buffers, and `exit`
-can complete the controlled EL0 smoke run with a tracked exit code. A scheduled
-kernel runner now performs the user-demo entry after threading starts; direct
-EL0 task context scheduling is still future work.
+can complete the controlled EL0 smoke run with a tracked exit code. The
+user-demo task is now admitted as a direct scheduler-runnable context that
+enters EL0 from its own task entry; loading arbitrary user programs is still
+future work.
 
 See `docs/SCHEDULER.md` for scheduler shell commands and task-management notes.
 

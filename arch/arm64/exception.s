@@ -68,7 +68,8 @@ exception_sync_entry:
     stp x28, x29, [sp, #-16]!
     str x30, [sp, #-16]!
 
-    bl exception_handler
+    mov x0, sp
+    bl exception_sync_handler
 
     ldr x30, [sp], #16
     ldp x28, x29, [sp], #16

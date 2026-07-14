@@ -9,6 +9,7 @@
 #define ESR_ISS_MASK 0x01ffffffUL
 #define ESR_EC_BRK 0x3CUL
 #define ESR_BRK_IMM0 0x0UL
+#define USER_SMOKE_BRK_OFFSET 20UL
 #define SPSR_MODE_MASK 0xFUL
 
 enum user_smoke_reject_reason
@@ -196,7 +197,7 @@ int user_mode_run_smoke_test(struct task *task)
     user_smoke.handled = 0;
     user_smoke.last_reject_reason = USER_SMOKE_REJECT_NONE;
     user_smoke.task = task;
-    user_smoke.expected_elr = task->el0.pc;
+    user_smoke.expected_elr = task->el0.pc + USER_SMOKE_BRK_OFFSET;
     user_smoke.expected_iss = ESR_BRK_IMM0;
     user_smoke.return_pc = (unsigned long)arm64_el0_smoke_return;
     user_smoke.kernel_root = space->kernel_root_table;
@@ -204,6 +205,7 @@ int user_mode_run_smoke_test(struct task *task)
 
     kprintf("EL0 smoke: entering user task at 0x%x\n",
             (unsigned int)task->el0.pc);
+    kprintf("EL0 smoke: SVC write stub then BRK recovery\n");
     kprintf("EL0 smoke: recovery armed ec=0x%x iss=0x%x elr=0x%x\n",
             (unsigned int)ESR_EC_BRK,
             (unsigned int)user_smoke.expected_iss,

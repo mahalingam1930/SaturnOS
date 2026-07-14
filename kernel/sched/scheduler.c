@@ -595,7 +595,7 @@ int scheduler_run_user_smoke_test(int pid)
         return -1;
     }
 
-    kprintf("Starting EL0 BRK smoke test for task %d (%s)\n",
+    kprintf("Starting EL0 SVC/BRK smoke test for task %d (%s)\n",
             pid,
             tasks[pid].name);
 

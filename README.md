@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.52
+Version: 0.6.53
 
 Codename: Memory
 
@@ -82,6 +82,8 @@ Target: ARM64 QEMU `virt`
 - Per-user-task lifecycle counters
 - Focused shell diagnostics for user/EL0 exception statistics
 - Syscall dispatcher foundation with write, exit, and yield syscall IDs
+- EL0 SVC exception path wired into the syscall dispatcher
+- User smoke image that executes an SVC syscall before BRK recovery
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -176,10 +178,10 @@ Target: ARM64 QEMU `virt`
 - Guarded `eret` path for future EL0 entry
 - Guarded TTBR0 switch primitive and diagnostics
 - Blocked user task with validated user address-space diagnostics
-- User code page smoke image, entry, size, and checksum diagnostics
+- User code page SVC/BRK smoke image, entry, size, and checksum diagnostics
 - User task eligibility state that remains non-runnable
 - Shared EL1-only kernel mappings inside user address spaces
-- Expected lower-EL BRK recovery back to EL1
+- Expected lower-EL SVC dispatch and BRK recovery back to EL1
 - User smoke completion result diagnostics
 - Named EL0 recovery rejection diagnostics
 - User admission, entry, trap, recovery, completion, and failure counters
@@ -258,7 +260,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Wire EL0 SVC exceptions into the syscall dispatcher
+- Replace syscall stubs with real user-visible write, exit, and yield behavior
 - Add VFS and RAM filesystem foundation
 
 ## Vision

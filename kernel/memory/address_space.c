@@ -10,6 +10,11 @@
 #define ADDRESS_SPACE_USER_DATA_END 0x00300000UL
 #define ADDRESS_SPACE_USER_STACK_START 0x3fff0000UL
 #define ADDRESS_SPACE_USER_STACK_END 0x40000000UL
+#define ADDRESS_SPACE_USER_SMOKE_MOV_X8_WRITE 0xd2800028U
+#define ADDRESS_SPACE_USER_SMOKE_MOV_X0_STDOUT 0xd2800020U
+#define ADDRESS_SPACE_USER_SMOKE_MOV_X1_ZERO 0xd2800001U
+#define ADDRESS_SPACE_USER_SMOKE_MOV_X2_ZERO 0xd2800002U
+#define ADDRESS_SPACE_USER_SMOKE_SVC 0xd4000001U
 #define ADDRESS_SPACE_USER_SMOKE_BRK 0xd4200000U
 #define ADDRESS_SPACE_USER_CODE_ATTR \
     ((ARM64_NORMAL_MEMORY_ATTR & ~ARM64_DESC_AP_MASK) | \
@@ -467,10 +472,15 @@ int address_space_install_user_smoke_image(struct address_space *space)
 
     slot = space->user_table_slot;
     code = (unsigned int *)&user_region_pages[slot][0][0];
-    code[0] = ADDRESS_SPACE_USER_SMOKE_BRK;
+    code[0] = ADDRESS_SPACE_USER_SMOKE_MOV_X8_WRITE;
+    code[1] = ADDRESS_SPACE_USER_SMOKE_MOV_X0_STDOUT;
+    code[2] = ADDRESS_SPACE_USER_SMOKE_MOV_X1_ZERO;
+    code[3] = ADDRESS_SPACE_USER_SMOKE_MOV_X2_ZERO;
+    code[4] = ADDRESS_SPACE_USER_SMOKE_SVC;
+    code[5] = ADDRESS_SPACE_USER_SMOKE_BRK;
 
     space->user_image_entry = space->user_code_start;
-    space->user_image_size = sizeof(code[0]);
+    space->user_image_size = sizeof(code[0]) * 6;
     space->user_image_checksum =
         address_space_checksum_bytes((const unsigned char *)code,
                                      space->user_image_size);

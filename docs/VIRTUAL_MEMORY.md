@@ -367,9 +367,9 @@ prove the user-task creation path without entering EL0 or running user code.
 ## User-Mode Smoke Task Scaffold
 
 SaturnOS now places a tiny smoke image into the user code page for `user-demo`.
-The image is currently one AArch64 `BRK` instruction. That gives the future
-EL0 entry path a deterministic first instruction while still making accidental
-execution immediately visible through the exception path.
+The image now performs one AArch64 `SVC` syscall and then executes a controlled
+`BRK` instruction. That gives the EL0 entry path a deterministic syscall trap,
+a return to the next user instruction, and a final completion trap back to EL1.
 
 The user-entry readiness check now requires:
 
@@ -383,7 +383,7 @@ valid EL0 PC/SP/SPSR metadata
 Expected diagnostics include:
 
 ```text
-user_image=ready entry=0x100000 size=4 checksum=...
+user_image=ready entry=0x100000 size=24 checksum=...
 user_entry=ready status=ready
 state=blocked
 ```
@@ -397,7 +397,7 @@ Expected diagnostics:
 task N: user-demo state=blocked
 aspace=user-demo kind=user
 user_tables=yes user_desc=yes user_map=yes
-user_image=ready entry=0x100000 size=4
+user_image=ready entry=0x100000 size=24
 aspace_check=ok errors=0
 switch=ready
 ttbr0_stub=ready
@@ -431,17 +431,18 @@ Expected diagnostics:
 User task N (user-demo) is eligible; runnable=no
 task N: user-demo state=eligible
 policy=user-eligible runnable=no
-user_image=ready entry=0x100000 size=4
+user_image=ready entry=0x100000 size=24
 user_entry=ready status=ready
 ```
 
 This proves the user task can pass the controlled admission checks while still
 preventing accidental EL0 entry.
 
-## Deliberate EL0 BRK Smoke Test
+## Deliberate EL0 SVC/BRK Smoke Test
 
 SaturnOS now performs its first controlled EL0 entry. The user-demo task enters
-EL0 at its smoke image, executes the expected `BRK`, traps back to EL1, and
+EL0 at its smoke image, executes a `write` syscall through `svc #0`, resumes at
+the next EL0 instruction, executes the expected `BRK`, traps back to EL1, and
 returns to kernel code without a panic.
 
 The user address space now shares the kernel and MMIO mappings as EL1-only
@@ -452,18 +453,19 @@ remain reachable after switching `TTBR0_EL1` to the user root table.
 Expected boot flow:
 
 ```text
-Starting EL0 BRK smoke test for task N (user-demo)
+Starting EL0 SVC/BRK smoke test for task N (user-demo)
 EL0 smoke: entering user task at 0x100000
-EL0 smoke: recovery armed ec=0x3c iss=0x0 elr=0x100000
-EL0 smoke: caught expected BRK ec=0x3c iss=0x0 ELR=0x100000
+EL0 smoke: SVC write stub then BRK recovery
+EL0 smoke: recovery armed ec=0x3c iss=0x0 elr=0x100014
+EL0 smoke: caught expected BRK ec=0x3c iss=0x0 ELR=0x100014
 EL0 smoke: returned to EL1
 User task N (user-demo) smoke=passed
 User task N (user-demo) completed; state=zombie runnable=no
 SaturnOS shell ready
 ```
 
-Only the expected lower-EL BRK is handled this way. Unexpected exceptions still
-fall through to the normal kernel panic diagnostics.
+Only lower-EL SVC dispatch and the expected lower-EL BRK are handled this way.
+Unexpected exceptions still fall through to the normal kernel panic diagnostics.
 
 ## EL0 Recovery Hardening
 
@@ -474,7 +476,7 @@ returns to kernel code:
 EC    BRK instruction, 0x3c
 ISS   BRK immediate 0
 mode  EL0t
-ELR   expected user smoke entry
+ELR   expected user smoke BRK address
 roots kernel and user TTBR0 roots present
 ret   explicit EL1 recovery label present
 ```
@@ -489,8 +491,8 @@ EL0 smoke: recovery rejected reason=unexpected-mode ...
 EL0 smoke: recovery rejected reason=unexpected-elr ...
 ```
 
-This keeps the deliberate smoke path narrow: only the exact expected lower-EL
-BRK can recover.
+This keeps the deliberate smoke path narrow: only lower-EL SVC dispatch and the
+exact expected lower-EL BRK can recover.
 
 ## User Smoke Task Cleanup
 

@@ -6,7 +6,7 @@ SaturnOS
 
 ## Version
 
-0.6.52
+0.6.53
 
 ## Target Architecture
 
@@ -48,7 +48,7 @@ Monolithic Kernel
 5. Initialize exceptions, timer, IRQ, scheduler, keyboard, and VM state.
 6. Create the keyboard input thread.
 7. Create and validate the controlled user-demo task.
-8. Run the EL0 BRK smoke test.
+8. Run the EL0 SVC/BRK smoke test.
 9. Start periodic timer interrupts.
 10. Enter preemptive kernel-thread scheduling.
 
@@ -63,8 +63,9 @@ unused, ready, running, blocked, eligible, zombie
 It supports an idle task, kernel thread creation, timer-driven preemption,
 cooperative yield, task exit, and shell-visible diagnostics. User-shaped tasks
 can be admitted and smoke-tested. The syscall dispatcher exists with initial
-write, exit, and yield IDs, but normal user process scheduling and the EL0 SVC
-entry ABI are still future work.
+write, exit, and yield IDs. Lower-EL SVC exceptions are routed into the
+dispatcher using `x8` as the syscall number and `x0`-`x3` as arguments, but
+normal user process scheduling and real syscall behavior are still future work.
 
 See `docs/SCHEDULER.md` for scheduler shell commands and task-management notes.
 
@@ -75,8 +76,8 @@ has page-level permission diagnostics for text, rodata, data, bss, heap,
 scheduler stacks, stack guards, framebuffer, and MMIO regions.
 
 User/process address spaces exist as a scaffold with controlled code, data, and
-stack descriptors. The EL0 smoke path proves controlled entry and exception
-recovery, but not yet general-purpose user programs.
+stack descriptors. The EL0 smoke path proves controlled entry, SVC dispatch,
+and exception recovery, but not yet general-purpose user programs.
 
 ## Graphics And Input
 

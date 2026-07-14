@@ -1,9 +1,9 @@
 # SaturnOS Syscalls
 
-SaturnOS has an early syscall dispatcher foundation for future EL0 programs.
-The current implementation is intentionally kernel-side first: it defines
-syscall numbers, dispatches them through one kernel function, records basic
-statistics, and exposes shell diagnostics.
+SaturnOS has an early syscall path for future EL0 programs. The current
+implementation defines syscall numbers, dispatches them through one kernel
+function, records basic statistics, exposes shell diagnostics, and routes
+lower-EL AArch64 `svc` exceptions into the dispatcher.
 
 ## Current Syscall Numbers
 
@@ -22,6 +22,36 @@ statistics, and exposes shell diagnostics.
 
 These are stubs. They give the kernel a stable dispatch point before real user
 program ABI plumbing is connected.
+
+## EL0 ABI
+
+For lower-EL AArch64 `svc #0` traps:
+
+```text
+x8      syscall number
+x0-x3   syscall arguments
+x0      return value
+```
+
+The exception vector saves general-purpose registers, passes the saved frame to
+C, dispatches the syscall, writes the result into saved `x0`, and returns to
+the `ELR_EL1` address supplied by the CPU for the SVC trap.
+
+## Boot Smoke Test
+
+The `user-demo` smoke image now executes:
+
+```text
+mov x8, #1      syscall: write
+mov x0, #1      arg0: fd
+mov x1, #0      arg1: buffer
+mov x2, #0      arg2: length
+svc #0
+brk #0
+```
+
+The SVC proves the EL0 syscall path returns to the next user instruction. The
+BRK is still used as the controlled completion trap back to EL1.
 
 ## Shell Diagnostics
 
@@ -45,9 +75,5 @@ to test dispatching the `yield` syscall stub.
 
 ## Next Work
 
-The lower-EL exception path already decodes SVC exceptions, but the exception
-entry code still needs to pass a saved register frame into C so the kernel can
-read EL0 syscall arguments from `x0`-`x7` and return a result to `x0`.
-
-The next syscall milestone is to wire EL0 `svc` exceptions into
-`syscall_dispatch()`, then replace the stubs with real user-visible behavior.
+The next syscall milestone is to replace the dispatcher stubs with real
+user-visible behavior for `write`, `exit`, and `yield`.

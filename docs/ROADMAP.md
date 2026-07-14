@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.52` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.53` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -43,6 +43,7 @@ SaturnOS is currently at `0.6.52` and targets ARM64 QEMU `virt`.
 - EL0 BRK smoke test and recovery
 - user lifecycle counters
 - syscall dispatcher foundation for write, exit, and yield
+- EL0 SVC exception path wired into syscall dispatch
 
 ### Graphics And Input
 
@@ -68,7 +69,6 @@ SaturnOS is currently at `0.6.52` and targets ARM64 QEMU `virt`.
 
 ### User Space
 
-- wire EL0 SVC exceptions into the syscall dispatcher
 - replace syscall stubs with real write, exit, and yield behavior
 - run a user program through the normal scheduler
 - load user programs from an in-memory source

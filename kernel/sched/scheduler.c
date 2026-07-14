@@ -635,6 +635,53 @@ void scheduler_dump_tasks(void)
     }
 }
 
+void scheduler_dump_user_stats(void)
+{
+    const struct task_user_status *status;
+    const struct address_space *space;
+    int user_tasks = 0;
+
+    kprintf("User exception stats:\n");
+
+    for (int i = 0; i < task_count; i++)
+    {
+        space = tasks[i].memory.address_space;
+        if (!space || space->kind != ADDRESS_SPACE_USER)
+        {
+            continue;
+        }
+
+        user_tasks++;
+        status = &tasks[i].user_status;
+        kprintf("  task %d: %s state=%s\n",
+                tasks[i].pid,
+                tasks[i].name,
+                scheduler_state_name(tasks[i].state));
+        kprintf("    smoke=%s result=%s\n",
+                status->smoke_completed ? "completed" : "pending",
+                status->smoke_completed ?
+                    (status->smoke_passed ? "passed" : "failed") :
+                    "none");
+        kprintf("    admit=%d enter=%d trap=%d recover=%d\n",
+                (int)status->admissions,
+                (int)status->el0_entries,
+                (int)status->expected_traps,
+                (int)status->recoveries);
+        kprintf("    reject=%d complete=%d fail=%d\n",
+                (int)status->rejects,
+                (int)status->completions,
+                (int)status->failures);
+        kprintf("    entry=%s status=%s\n",
+                user_mode_entry_state(&tasks[i]),
+                user_mode_status_name(user_mode_prepare(&tasks[i])));
+    }
+
+    if (!user_tasks)
+    {
+        kprintf("  no user tasks\n");
+    }
+}
+
 static void thread_trampoline(void)
 {
     int task_id = current_task;

@@ -53,6 +53,7 @@ static const struct shell_command shell_commands[] = {
     {"vmwalk", "vmwalk [address]", "walk sample or given virtual address", "vmwalk 0x40080000"},
     {"ticks", "ticks", "show scheduler/timer ticks", 0},
     {"fb", "fb", "show framebuffer runtime status", 0},
+    {"user", "user", "show user/EL0 exception stats", 0},
     {"clear", "clear", "clear framebuffer console", 0},
     {"panic", "panic", "trigger test exception", 0},
     {"fault", "fault", "trigger test page fault", 0},
@@ -66,6 +67,7 @@ static const struct shell_alias shell_aliases[] = {
     {"top", "tasks", "show scheduler tasks"},
     {"uptime", "ticks", "show scheduler/timer ticks"},
     {"video", "fb", "show framebuffer runtime status"},
+    {"ustats", "user", "show user/EL0 exception stats"},
     {"cls", "clear", "clear framebuffer console"},
 };
 
@@ -886,6 +888,10 @@ static void shell_execute(const char *command)
     else if (string_equals(effective_command, "fb"))
     {
         shell_framebuffer_status();
+    }
+    else if (string_equals(effective_command, "user"))
+    {
+        scheduler_dump_user_stats();
     }
     else if (string_equals(effective_command, "clear"))
     {

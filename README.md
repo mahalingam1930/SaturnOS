@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.42
+Version: 0.6.43
 
 Codename: Memory
 
@@ -73,6 +73,7 @@ Target: ARM64 QEMU `virt`
 - User smoke task completion cleanup
 - Hardened EL0 recovery tuple validation
 - Per-user-task lifecycle counters
+- Focused shell diagnostics for user/EL0 exception statistics
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -110,7 +111,7 @@ Target: ARM64 QEMU `virt`
 - Short shell aliases for common diagnostics
 - Per-command usage details through `help <command>`
 - Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `vm`,
-  `vmwalk`, `ticks`, `fb`, `clear`, `panic`, and `fault` commands
+  `vmwalk`, `ticks`, `fb`, `user`, `clear`, `panic`, and `fault` commands
 
 ### Memory Management
 
@@ -241,7 +242,6 @@ docs/              Architecture, roadmap, and graphics notes
 
 ## Next Milestones
 
-- Add user exception statistics
 - Expand scheduler robustness and task management
 
 ## Vision

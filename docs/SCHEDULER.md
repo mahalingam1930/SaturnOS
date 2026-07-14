@@ -19,6 +19,7 @@ Current scheduler capabilities:
 - scheduler-backed sleeping task state
 - guarded kernel-task block and unblock APIs
 - zombie task cleanup and tail slot reuse
+- per-task scheduler accounting
 - task exit to zombie state
 - per-task stack and guard metadata
 - per-task address-space metadata
@@ -51,9 +52,9 @@ Prints a compact scheduler summary:
 ```text
 saturn> task
 Task summary: ticks=64 tasks=3 current=1
-  pid=0 name=idle state=ready run=yes kind=kernel
-  pid=1 name=keyboard state=running run=yes kind=kernel
-  pid=2 name=user-demo state=zombie run=no kind=user
+  pid=0 name=idle state=ready run=yes kind=kernel sw=1 ticks=0
+  pid=1 name=keyboard state=running run=yes kind=kernel sw=8 ticks=6
+  pid=2 name=user-demo state=zombie run=no kind=user sw=0 ticks=0
 ```
 
 ### `task <pid>`
@@ -70,6 +71,7 @@ Task 2:
   guards=0x4009c000-0x4009d000 0x4009e000-0x4009f000
   el0=yes pc=0x100000 sp=0x40000000 spsr=0x0
   user_entry=ready status=ready
+  account switches=0 run_ticks=0 yields=0 preempt=0 wakeups=0
 ```
 
 Alias:
@@ -211,7 +213,21 @@ Alias:
 ustats -> user
 ```
 
+## Accounting
+
+Each task tracks:
+
+```text
+switches    times the scheduler selected the task to run
+run_ticks   timer ticks charged while the task was current
+yields      yield-driven switches away from the task
+preempt     timer preemptions charged to the task
+wakeups     timer wakeups from scheduler sleep
+```
+
+The `task` command shows compact switch and run-tick counters. `task <pid>` and
+`tasks` show the full accounting tuple.
+
 ## Next Scheduler Work
 
-- Add scheduler accounting, such as per-task runtime and switches.
 - Add syscall-backed yield and exit once user programs are real.

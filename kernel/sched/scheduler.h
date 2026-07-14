@@ -54,6 +54,15 @@ struct task_user_status
     unsigned long failures;
 };
 
+struct task_accounting
+{
+    unsigned long switches;
+    unsigned long run_ticks;
+    unsigned long yields;
+    unsigned long preemptions;
+    unsigned long sleep_wakeups;
+};
+
 struct task
 {
     int pid;
@@ -63,6 +72,7 @@ struct task
     struct cpu_context context;
     unsigned long sleep_until_tick;
     unsigned long sleep_requested_ms;
+    struct task_accounting accounting;
     struct task_memory memory;
     struct task_el0_state el0;
     struct task_user_status user_status;

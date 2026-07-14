@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.50` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.51` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -37,6 +37,7 @@ SaturnOS is currently at `0.6.50` and targets ARM64 QEMU `virt`.
 - real scheduler sleeping task state
 - safe kernel-task block and unblock APIs
 - zombie task cleanup and tail slot reuse
+- per-task scheduler accounting
 - task summary and per-task status shell commands
 - user-shaped task scaffold
 - EL0 BRK smoke test and recovery
@@ -63,10 +64,6 @@ SaturnOS is currently at `0.6.50` and targets ARM64 QEMU `virt`.
 - memory, heap, VM, scheduler, framebuffer, and user diagnostics
 
 ## Next
-
-### Scheduler
-
-- add per-task scheduling counters
 
 ### User Space
 

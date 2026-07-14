@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.50
+Version: 0.6.51
 
 Codename: Memory
 
@@ -60,6 +60,7 @@ Target: ARM64 QEMU `virt`
 - Scheduler-backed sleeping task state with timer wakeups
 - Safe scheduler block and unblock APIs for kernel tasks
 - Zombie task cleanup and tail slot reuse
+- Per-task scheduler accounting for switches and run ticks
 - User/process address-space scaffold
 - User address-space page-table storage scaffold
 - Controlled user code, data, and stack mapping plan

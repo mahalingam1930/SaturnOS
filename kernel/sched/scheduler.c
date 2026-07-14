@@ -83,6 +83,15 @@ static void scheduler_clear_user_status(struct task_user_status *status)
     status->failures = 0;
 }
 
+static void scheduler_clear_accounting(struct task_accounting *accounting)
+{
+    accounting->switches = 0;
+    accounting->run_ticks = 0;
+    accounting->yields = 0;
+    accounting->preemptions = 0;
+    accounting->sleep_wakeups = 0;
+}
+
 static void scheduler_init_task_memory(struct task *task, int pid)
 {
     task->memory.address_space = address_space_kernel();
@@ -140,6 +149,7 @@ static void scheduler_clear_task_slot(int pid)
     tasks[pid].sleep_until_tick = 0;
     tasks[pid].sleep_requested_ms = 0;
     scheduler_clear_context(&tasks[pid].context);
+    scheduler_clear_accounting(&tasks[pid].accounting);
     scheduler_clear_memory(&tasks[pid].memory);
     scheduler_clear_el0(&tasks[pid].el0);
     scheduler_clear_user_status(&tasks[pid].user_status);
@@ -157,6 +167,12 @@ static int scheduler_task_is_runnable(const struct task *task)
 {
     return task &&
         (task->state == TASK_READY || task->state == TASK_RUNNING);
+}
+
+static void scheduler_set_running_task(int pid)
+{
+    tasks[pid].state = TASK_RUNNING;
+    tasks[pid].accounting.switches++;
 }
 
 static int scheduler_task_is_kernel_task(const struct task *task)
@@ -206,6 +222,7 @@ static void scheduler_wake_sleeping_tasks(void)
             tasks[i].state = TASK_READY;
             tasks[i].sleep_until_tick = 0;
             tasks[i].sleep_requested_ms = 0;
+            tasks[i].accounting.sleep_wakeups++;
         }
     }
 }
@@ -266,6 +283,7 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
     tasks[pid].entry = entry;
     tasks[pid].sleep_until_tick = 0;
     tasks[pid].sleep_requested_ms = 0;
+    scheduler_clear_accounting(&tasks[pid].accounting);
     scheduler_clear_context(&tasks[pid].context);
     scheduler_clear_memory(&tasks[pid].memory);
     scheduler_clear_el0(&tasks[pid].el0);
@@ -365,6 +383,7 @@ int scheduler_create_blocked_user_task(const char *name)
     tasks[pid].entry = 0;
     tasks[pid].sleep_until_tick = 0;
     tasks[pid].sleep_requested_ms = 0;
+    scheduler_clear_accounting(&tasks[pid].accounting);
     scheduler_clear_context(&tasks[pid].context);
     scheduler_clear_memory(&tasks[pid].memory);
     scheduler_clear_el0(&tasks[pid].el0);
@@ -614,6 +633,7 @@ void scheduler_tick(void)
 
     scheduler_ticks++;
     scheduler_wake_sleeping_tasks();
+    tasks[previous_task].accounting.run_ticks++;
 
     if (tasks[current_task].state == TASK_RUNNING)
     {
@@ -621,7 +641,8 @@ void scheduler_tick(void)
     }
     current_task = scheduler_next_runnable_task();
 
-    tasks[current_task].state = TASK_RUNNING;
+    tasks[previous_task].accounting.preemptions++;
+    scheduler_set_running_task(current_task);
 
     if (CONFIG_SCHED_DEBUG)
     {
@@ -664,9 +685,10 @@ void scheduler_yield(void)
     if (tasks[previous_task].state == TASK_RUNNING)
     {
         tasks[previous_task].state = TASK_READY;
+        tasks[previous_task].accounting.yields++;
     }
 
-    tasks[next_task].state = TASK_RUNNING;
+    scheduler_set_running_task(next_task);
     current_task = next_task;
 
     if (CONFIG_SCHED_DEBUG)
@@ -718,6 +740,7 @@ void scheduler_preempt(void)
     scheduler_wake_sleeping_tasks();
 
     previous_task = current_task;
+    tasks[previous_task].accounting.run_ticks++;
     next_task = scheduler_next_runnable_task();
 
     if (next_task == previous_task)
@@ -729,8 +752,9 @@ void scheduler_preempt(void)
     {
         tasks[previous_task].state = TASK_READY;
     }
+    tasks[previous_task].accounting.preemptions++;
 
-    tasks[next_task].state = TASK_RUNNING;
+    scheduler_set_running_task(next_task);
     current_task = next_task;
 
     if (CONFIG_SCHED_DEBUG)
@@ -771,7 +795,7 @@ void scheduler_start_threads(void)
     threads_started = 1;
 
     current_task = 0;
-    tasks[current_task].state = TASK_RUNNING;
+    scheduler_set_running_task(current_task);
 
     cpu_switch_to(&bootstrap_context, &tasks[current_task].context);
 
@@ -801,6 +825,13 @@ void scheduler_dump_tasks(void)
         kprintf("    policy=%s runnable=%s\n",
                 scheduler_policy_name(&tasks[i]),
                 scheduler_task_is_runnable(&tasks[i]) ? "yes" : "no");
+        kprintf("    account switches=%d run_ticks=%d yields=%d "
+                "preempt=%d wakeups=%d\n",
+                (int)tasks[i].accounting.switches,
+                (int)tasks[i].accounting.run_ticks,
+                (int)tasks[i].accounting.yields,
+                (int)tasks[i].accounting.preemptions,
+                (int)tasks[i].accounting.sleep_wakeups);
         if (tasks[i].state == TASK_SLEEPING)
         {
             kprintf("    sleep requested=%dms until_tick=%d now=%d\n",
@@ -905,12 +936,14 @@ void scheduler_dump_task_summary(void)
     for (int i = 0; i < task_count; i++)
     {
         space = tasks[i].memory.address_space;
-        kprintf("  pid=%d name=%s state=%s run=%s kind=%s\n",
+        kprintf("  pid=%d name=%s state=%s run=%s kind=%s sw=%d ticks=%d\n",
                 tasks[i].pid,
                 tasks[i].name,
                 scheduler_state_name(tasks[i].state),
                 scheduler_task_is_runnable(&tasks[i]) ? "yes" : "no",
-                space ? address_space_kind_name(space->kind) : "none");
+                space ? address_space_kind_name(space->kind) : "none",
+                (int)tasks[i].accounting.switches,
+                (int)tasks[i].accounting.run_ticks);
     }
 }
 
@@ -927,7 +960,7 @@ int scheduler_dump_task_status(int pid)
 
     space = tasks[pid].memory.address_space;
     kprintf("Task %d:\n", tasks[pid].pid);
-        kprintf("  name=%s state=%s policy=%s runnable=%s current=%s\n",
+    kprintf("  name=%s state=%s policy=%s runnable=%s current=%s\n",
             tasks[pid].name,
             scheduler_state_name(tasks[pid].state),
             scheduler_policy_name(&tasks[pid]),
@@ -940,6 +973,13 @@ int scheduler_dump_task_status(int pid)
                 (int)tasks[pid].sleep_until_tick,
                 (int)scheduler_ticks);
     }
+    kprintf("  account switches=%d run_ticks=%d yields=%d preempt=%d "
+            "wakeups=%d\n",
+            (int)tasks[pid].accounting.switches,
+            (int)tasks[pid].accounting.run_ticks,
+            (int)tasks[pid].accounting.yields,
+            (int)tasks[pid].accounting.preemptions,
+            (int)tasks[pid].accounting.sleep_wakeups);
 
     if (space)
     {

@@ -17,7 +17,9 @@
 struct shell_command
 {
     const char *name;
+    const char *usage;
     const char *description;
+    const char *example;
 };
 
 struct shell_alias
@@ -41,18 +43,18 @@ static void shell_home(void);
 static void shell_end(void);
 
 static const struct shell_command shell_commands[] = {
-    {"help", "show commands"},
-    {"version", "show kernel version"},
-    {"tasks", "show scheduler tasks"},
-    {"mem", "show physical memory stats"},
-    {"heap", "show kernel heap stats"},
-    {"heaptest", "run heap allocation test"},
-    {"vm", "show virtual memory plan"},
-    {"vmwalk", "walk sample or given virtual address"},
-    {"ticks", "show scheduler/timer ticks"},
-    {"clear", "clear framebuffer console"},
-    {"panic", "trigger test exception"},
-    {"fault", "trigger test page fault"},
+    {"help", "help [command]", "show commands or detailed command help", "help vmwalk"},
+    {"version", "version", "show kernel version", 0},
+    {"tasks", "tasks", "show scheduler tasks", 0},
+    {"mem", "mem", "show physical memory stats", 0},
+    {"heap", "heap", "show kernel heap stats", 0},
+    {"heaptest", "heaptest", "run heap allocation test", 0},
+    {"vm", "vm", "show virtual memory plan", 0},
+    {"vmwalk", "vmwalk [address]", "walk sample or given virtual address", "vmwalk 0x40080000"},
+    {"ticks", "ticks", "show scheduler/timer ticks", 0},
+    {"clear", "clear", "clear framebuffer console", 0},
+    {"panic", "panic", "trigger test exception", 0},
+    {"fault", "fault", "trigger test page fault", 0},
 };
 
 static const struct shell_alias shell_aliases[] = {
@@ -149,6 +151,45 @@ static const char *command_arg(const char *command)
     }
 
     return skip_spaces(command);
+}
+
+static const struct shell_command *find_shell_command(const char *name)
+{
+    for (unsigned int i = 0; i < shell_command_count; i++)
+    {
+        if (string_equals(name, shell_commands[i].name))
+        {
+            return &shell_commands[i];
+        }
+    }
+
+    return 0;
+}
+
+static const struct shell_command *find_shell_command_token(const char *text)
+{
+    for (unsigned int i = 0; i < shell_command_count; i++)
+    {
+        if (command_equals(text, shell_commands[i].name))
+        {
+            return &shell_commands[i];
+        }
+    }
+
+    return 0;
+}
+
+static const struct shell_alias *find_shell_alias(const char *name)
+{
+    for (unsigned int i = 0; i < shell_alias_count; i++)
+    {
+        if (string_equals(name, shell_aliases[i].name))
+        {
+            return &shell_aliases[i];
+        }
+    }
+
+    return 0;
 }
 
 static int hex_digit_value(char c, unsigned long *value)
@@ -690,18 +731,81 @@ static void shell_help(void)
     }
 }
 
+static void shell_command_help(const char *name)
+{
+    const struct shell_alias *alias = find_shell_alias(name);
+    const struct shell_command *command;
+
+    if (alias)
+    {
+        kprintf("Alias: %s -> %s\n", alias->name, alias->target);
+        name = alias->target;
+    }
+
+    command = find_shell_command(name);
+    if (!command)
+    {
+        kprintf("No help for: %s\n", name);
+        kprintf("Type 'help' for commands\n");
+        return;
+    }
+
+    kprintf("Command: %s\n", command->name);
+    kprintf("Usage: %s\n", command->usage);
+    kprintf("About: %s\n", command->description);
+    if (command->example)
+    {
+        kprintf("Example: %s\n", command->example);
+    }
+}
+
+static void shell_usage(const char *name)
+{
+    const struct shell_command *command = find_shell_command(name);
+
+    if (command)
+    {
+        kprintf("Usage: %s\n", command->usage);
+    }
+}
+
 static void shell_execute(const char *command)
 {
     const char *effective_command = command_alias_target(command);
+    const char *arg = command_arg(command);
+    const struct shell_command *selected_command;
 
     if (command[0] == '\0')
     {
         return;
     }
 
-    if (string_equals(effective_command, "help"))
+    selected_command = find_shell_command(effective_command);
+    if (!selected_command)
     {
-        shell_help();
+        selected_command = find_shell_command_token(effective_command);
+    }
+
+    if (*arg != '\0' &&
+        selected_command &&
+        !string_equals(selected_command->name, "help") &&
+        !string_equals(selected_command->name, "vmwalk"))
+    {
+        kprintf("Unexpected argument: %s\n", arg);
+        shell_usage(selected_command->name);
+        return;
+    }
+
+    if (command_equals(effective_command, "help"))
+    {
+        if (*arg == '\0')
+        {
+            shell_help();
+        }
+        else
+        {
+            shell_command_help(arg);
+        }
     }
     else if (string_equals(effective_command, "version"))
     {
@@ -732,8 +836,6 @@ static void shell_execute(const char *command)
     }
     else if (command_equals(effective_command, "vmwalk"))
     {
-        const char *arg = command_arg(command);
-
         if (*arg == '\0')
         {
             vm_dump_walk_examples();
@@ -748,8 +850,7 @@ static void shell_execute(const char *command)
             }
             else
             {
-                kprintf("Usage: vmwalk [address]\n");
-                kprintf("Example: vmwalk 0x40080000\n");
+                shell_command_help("vmwalk");
             }
         }
     }
@@ -773,8 +874,16 @@ static void shell_execute(const char *command)
     }
     else
     {
-        kprintf("Unknown command: %s\n", command);
-        kprintf("Type 'help' for commands\n");
+        if (*arg != '\0' && selected_command)
+        {
+            kprintf("Unexpected argument: %s\n", arg);
+            shell_usage(effective_command);
+        }
+        else
+        {
+            kprintf("Unknown command: %s\n", command);
+            kprintf("Type 'help' for commands\n");
+        }
     }
 }
 

@@ -935,8 +935,8 @@ static void shell_execute(const char *command)
         }
         else
         {
-            kprintf("Sleeping %d ms\n", (int)ms);
-            timer_sleep_ms(ms);
+            kprintf("Sleeping %d ms (blocked)\n", (int)ms);
+            scheduler_sleep_ms(ms);
             kprintf("Sleep done\n");
         }
     }

@@ -2,6 +2,7 @@
 #include "scheduler.h"
 
 static unsigned long timer_frequency;
+static unsigned long timer_interval_ms;
 static unsigned long timer_interval_ticks;
 static unsigned long timer_irq_ticks;
 
@@ -41,8 +42,14 @@ unsigned long timer_get_irq_ticks(void)
     return timer_irq_ticks;
 }
 
+unsigned long timer_get_interval_ms(void)
+{
+    return timer_interval_ms;
+}
+
 void timer_start_periodic(unsigned long interval_ms)
 {
+    timer_interval_ms = interval_ms;
     timer_interval_ticks = (timer_frequency / 1000) * interval_ms;
     timer_irq_ticks = 0;
 

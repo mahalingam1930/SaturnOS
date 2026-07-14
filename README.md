@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.47
+Version: 0.6.48
 
 Codename: Memory
 
@@ -57,6 +57,7 @@ Target: ARM64 QEMU `virt`
 - Focused scheduler task summary and per-task status diagnostics
 - Shell command for voluntary scheduler yields
 - Shell command for bounded timer-backed sleeps
+- Scheduler-backed sleeping task state with timer wakeups
 - User/process address-space scaffold
 - User address-space page-table storage scaffold
 - Controlled user code, data, and stack mapping plan
@@ -250,7 +251,6 @@ Additional docs:
 
 ## Next Milestones
 
-- Add real blocked sleep state for scheduler tasks
 - Add syscall foundation for user programs
 - Add VFS and RAM filesystem foundation
 

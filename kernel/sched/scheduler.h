@@ -17,6 +17,7 @@ enum task_state
     TASK_READY,
     TASK_RUNNING,
     TASK_BLOCKED,
+    TASK_SLEEPING,
     TASK_ELIGIBLE,
     TASK_ZOMBIE
 };
@@ -60,6 +61,8 @@ struct task
     enum task_state state;
     void (*entry)(void);
     struct cpu_context context;
+    unsigned long sleep_until_tick;
+    unsigned long sleep_requested_ms;
     struct task_memory memory;
     struct task_el0_state el0;
     struct task_user_status user_status;
@@ -72,6 +75,7 @@ int scheduler_unblock_user_task(int pid);
 int scheduler_run_user_smoke_test(int pid);
 void scheduler_tick(void);
 void scheduler_yield(void);
+void scheduler_sleep_ms(unsigned long ms);
 void scheduler_preempt(void);
 void scheduler_exit(void);
 void scheduler_start_threads(void);

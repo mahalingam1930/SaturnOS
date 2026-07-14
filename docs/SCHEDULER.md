@@ -16,6 +16,7 @@ Current scheduler capabilities:
 - ARM64 context switching
 - timer-driven preemption
 - cooperative `scheduler_yield()`
+- scheduler-backed sleeping task state
 - task exit to zombie state
 - per-task stack and guard metadata
 - per-task address-space metadata
@@ -30,6 +31,7 @@ unused     task slot is unused
 ready      runnable task waiting for CPU time
 running    currently selected task
 blocked    task is not eligible to run
+sleeping   task is blocked until a scheduler tick reaches its wake time
 eligible   user task passed checks but is not scheduler-runnable yet
 zombie     task has completed and should not run again
 ```
@@ -104,11 +106,11 @@ y -> yield
 
 ### `sleep <ms>`
 
-Sleeps the current shell task using the timer path:
+Blocks the current shell task until the scheduler tick reaches its wake time:
 
 ```text
 saturn> sleep 100
-Sleeping 100 ms
+Sleeping 100 ms (blocked)
 Sleep done
 ```
 
@@ -161,7 +163,6 @@ ustats -> user
 
 ## Next Scheduler Work
 
-- Add real task sleep states instead of timer busy-wait sleep.
 - Add blocking and unblocking APIs for kernel tasks.
 - Add task cleanup or slot reuse for zombie tasks.
 - Add scheduler accounting, such as per-task runtime and switches.

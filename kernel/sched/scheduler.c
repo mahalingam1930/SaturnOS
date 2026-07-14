@@ -3,6 +3,7 @@
 #include "cpu.h"
 #include "irq.h"
 #include "kprintf.h"
+#include "timer.h"
 #include "user.h"
 
 static void idle_task(void);
@@ -22,6 +23,8 @@ static const char *scheduler_state_name(enum task_state state)
             return "running";
         case TASK_BLOCKED:
             return "blocked";
+        case TASK_SLEEPING:
+            return "sleeping";
         case TASK_ELIGIBLE:
             return "eligible";
         case TASK_ZOMBIE:
@@ -156,7 +159,26 @@ static const char *scheduler_policy_name(const struct task *task)
         return "blocked";
     }
 
+    if (task->state == TASK_SLEEPING)
+    {
+        return "sleeping";
+    }
+
     return "inactive";
+}
+
+static void scheduler_wake_sleeping_tasks(void)
+{
+    for (int i = 0; i < task_count; i++)
+    {
+        if (tasks[i].state == TASK_SLEEPING &&
+            scheduler_ticks >= tasks[i].sleep_until_tick)
+        {
+            tasks[i].state = TASK_READY;
+            tasks[i].sleep_until_tick = 0;
+            tasks[i].sleep_requested_ms = 0;
+        }
+    }
 }
 
 static int scheduler_next_runnable_task(void)
@@ -198,6 +220,8 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
     tasks[task_count].name = name;
     tasks[task_count].state = TASK_READY;
     tasks[task_count].entry = entry;
+    tasks[task_count].sleep_until_tick = 0;
+    tasks[task_count].sleep_requested_ms = 0;
     scheduler_clear_context(&tasks[task_count].context);
     scheduler_clear_memory(&tasks[task_count].memory);
     scheduler_clear_el0(&tasks[task_count].el0);
@@ -275,6 +299,8 @@ int scheduler_create_blocked_user_task(const char *name)
     tasks[task_count].name = name ? name : "user-demo";
     tasks[task_count].state = TASK_BLOCKED;
     tasks[task_count].entry = 0;
+    tasks[task_count].sleep_until_tick = 0;
+    tasks[task_count].sleep_requested_ms = 0;
     scheduler_clear_context(&tasks[task_count].context);
     scheduler_clear_memory(&tasks[task_count].memory);
     scheduler_clear_el0(&tasks[task_count].el0);
@@ -389,6 +415,7 @@ void scheduler_tick(void)
     int previous_task = current_task;
 
     scheduler_ticks++;
+    scheduler_wake_sleeping_tasks();
 
     if (tasks[current_task].state == TASK_RUNNING)
     {
@@ -419,6 +446,7 @@ void scheduler_yield(void)
     }
 
     previous_task = current_task;
+    scheduler_wake_sleeping_tasks();
     next_task = scheduler_next_runnable_task();
 
     if (next_task == previous_task)
@@ -454,6 +482,30 @@ void scheduler_yield(void)
     cpu_switch_to(&tasks[previous_task].context, &tasks[next_task].context);
 }
 
+void scheduler_sleep_ms(unsigned long ms)
+{
+    unsigned long interval_ms = timer_get_interval_ms();
+    unsigned long sleep_ticks;
+
+    if (!threads_started || current_task == 0 || !interval_ms)
+    {
+        timer_sleep_ms(ms);
+        return;
+    }
+
+    sleep_ticks = (ms + interval_ms - 1) / interval_ms;
+    if (sleep_ticks == 0)
+    {
+        sleep_ticks = 1;
+    }
+
+    tasks[current_task].sleep_requested_ms = ms;
+    tasks[current_task].sleep_until_tick = scheduler_ticks + sleep_ticks;
+    tasks[current_task].state = TASK_SLEEPING;
+
+    scheduler_yield();
+}
+
 void scheduler_preempt(void)
 {
     int previous_task;
@@ -465,6 +517,7 @@ void scheduler_preempt(void)
     }
 
     scheduler_ticks++;
+    scheduler_wake_sleeping_tasks();
 
     previous_task = current_task;
     next_task = scheduler_next_runnable_task();
@@ -550,6 +603,13 @@ void scheduler_dump_tasks(void)
         kprintf("    policy=%s runnable=%s\n",
                 scheduler_policy_name(&tasks[i]),
                 scheduler_task_is_runnable(&tasks[i]) ? "yes" : "no");
+        if (tasks[i].state == TASK_SLEEPING)
+        {
+            kprintf("    sleep requested=%dms until_tick=%d now=%d\n",
+                    (int)tasks[i].sleep_requested_ms,
+                    (int)tasks[i].sleep_until_tick,
+                    (int)scheduler_ticks);
+        }
         if (space)
         {
             kprintf("    aspace=%s kind=%s root=0x%x shared=%s "
@@ -669,12 +729,19 @@ int scheduler_dump_task_status(int pid)
 
     space = tasks[pid].memory.address_space;
     kprintf("Task %d:\n", tasks[pid].pid);
-    kprintf("  name=%s state=%s policy=%s runnable=%s current=%s\n",
+        kprintf("  name=%s state=%s policy=%s runnable=%s current=%s\n",
             tasks[pid].name,
             scheduler_state_name(tasks[pid].state),
             scheduler_policy_name(&tasks[pid]),
             scheduler_task_is_runnable(&tasks[pid]) ? "yes" : "no",
             pid == current_task ? "yes" : "no");
+    if (tasks[pid].state == TASK_SLEEPING)
+    {
+        kprintf("  sleep requested=%dms until_tick=%d now=%d\n",
+                (int)tasks[pid].sleep_requested_ms,
+                (int)tasks[pid].sleep_until_tick,
+                (int)scheduler_ticks);
+    }
 
     if (space)
     {

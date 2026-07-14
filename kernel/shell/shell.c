@@ -53,6 +53,7 @@ static const struct shell_command shell_commands[] = {
     {"vm", "vm", "show virtual memory plan", 0},
     {"vmwalk", "vmwalk [address]", "walk sample or given virtual address", "vmwalk 0x40080000"},
     {"ticks", "ticks", "show scheduler/timer ticks", 0},
+    {"yield", "yield", "voluntarily yield the current scheduler task", 0},
     {"fb", "fb", "show framebuffer runtime status", 0},
     {"user", "user", "show user/EL0 exception stats", 0},
     {"clear", "clear", "clear framebuffer console", 0},
@@ -68,6 +69,7 @@ static const struct shell_alias shell_aliases[] = {
     {"free", "mem", "show physical memory stats"},
     {"top", "tasks", "show scheduler tasks"},
     {"uptime", "ticks", "show scheduler/timer ticks"},
+    {"y", "yield", "voluntarily yield the current scheduler task"},
     {"video", "fb", "show framebuffer runtime status"},
     {"ustats", "user", "show user/EL0 exception stats"},
     {"cls", "clear", "clear framebuffer console"},
@@ -907,6 +909,12 @@ static void shell_execute(const char *command)
         kprintf("scheduler ticks=%d timer irqs=%d\n",
                 (int)scheduler_get_ticks(),
                 (int)timer_get_irq_ticks());
+    }
+    else if (string_equals(effective_command, "yield"))
+    {
+        kprintf("Yielding scheduler task\n");
+        scheduler_yield();
+        kprintf("Scheduler task resumed\n");
     }
     else if (string_equals(effective_command, "fb"))
     {

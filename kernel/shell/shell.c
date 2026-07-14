@@ -56,6 +56,8 @@ static const struct shell_command shell_commands[] = {
     {"ticks", "ticks", "show scheduler/timer ticks", 0},
     {"yield", "yield", "voluntarily yield the current scheduler task", 0},
     {"sleep", "sleep <ms>", "sleep the current shell task for milliseconds", "sleep 100"},
+    {"block", "block <pid>", "block a safe kernel scheduler task", "block 3"},
+    {"unblock", "unblock <pid>", "unblock a blocked kernel scheduler task", "unblock 3"},
     {"fb", "fb", "show framebuffer runtime status", 0},
     {"user", "user", "show user/EL0 exception stats", 0},
     {"clear", "clear", "clear framebuffer console", 0},
@@ -73,6 +75,8 @@ static const struct shell_alias shell_aliases[] = {
     {"uptime", "ticks", "show scheduler/timer ticks"},
     {"y", "yield", "voluntarily yield the current scheduler task"},
     {"nap", "sleep", "sleep the current shell task"},
+    {"blk", "block", "block a safe kernel scheduler task"},
+    {"unblk", "unblock", "unblock a blocked kernel scheduler task"},
     {"video", "fb", "show framebuffer runtime status"},
     {"ustats", "user", "show user/EL0 exception stats"},
     {"cls", "clear", "clear framebuffer console"},
@@ -823,6 +827,8 @@ static void shell_execute(const char *command)
         !string_equals(selected_command->name, "help") &&
         !string_equals(selected_command->name, "task") &&
         !string_equals(selected_command->name, "sleep") &&
+        !string_equals(selected_command->name, "block") &&
+        !string_equals(selected_command->name, "unblock") &&
         !string_equals(selected_command->name, "vmwalk"))
     {
         kprintf("Unexpected argument: %s\n", arg);
@@ -938,6 +944,32 @@ static void shell_execute(const char *command)
             kprintf("Sleeping %d ms (blocked)\n", (int)ms);
             scheduler_sleep_ms(ms);
             kprintf("Sleep done\n");
+        }
+    }
+    else if (command_equals(effective_command, "block"))
+    {
+        unsigned long pid;
+
+        if (*arg == '\0' || !parse_number(arg, &pid))
+        {
+            shell_command_help("block");
+        }
+        else
+        {
+            scheduler_block_task((int)pid);
+        }
+    }
+    else if (command_equals(effective_command, "unblock"))
+    {
+        unsigned long pid;
+
+        if (*arg == '\0' || !parse_number(arg, &pid))
+        {
+            shell_command_help("unblock");
+        }
+        else
+        {
+            scheduler_unblock_task((int)pid);
         }
     }
     else if (string_equals(effective_command, "fb"))

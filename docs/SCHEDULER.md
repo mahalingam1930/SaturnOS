@@ -17,6 +17,7 @@ Current scheduler capabilities:
 - timer-driven preemption
 - cooperative `scheduler_yield()`
 - scheduler-backed sleeping task state
+- guarded kernel-task block and unblock APIs
 - task exit to zombie state
 - per-task stack and guard metadata
 - per-task address-space metadata
@@ -126,6 +127,38 @@ Alias:
 nap -> sleep
 ```
 
+### `block <pid>`
+
+Blocks a safe kernel task by pid. The command refuses to block the idle task,
+the current shell task, user tasks, sleeping tasks, and zombie tasks.
+
+```text
+saturn> block 0
+Failed to block task 0: idle task is protected
+```
+
+Alias:
+
+```text
+blk -> block
+```
+
+### `unblock <pid>`
+
+Returns a manually blocked kernel task to `ready`. The command refuses idle,
+user tasks, and tasks that are not currently blocked.
+
+```text
+saturn> unblock 1
+Failed to unblock task 1: state=running
+```
+
+Alias:
+
+```text
+unblk -> unblock
+```
+
 ### `ticks`
 
 Shows scheduler and timer interrupt counters:
@@ -163,7 +196,6 @@ ustats -> user
 
 ## Next Scheduler Work
 
-- Add blocking and unblocking APIs for kernel tasks.
 - Add task cleanup or slot reuse for zombie tasks.
 - Add scheduler accounting, such as per-task runtime and switches.
 - Add syscall-backed yield and exit once user programs are real.

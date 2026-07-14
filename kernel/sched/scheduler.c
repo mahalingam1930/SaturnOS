@@ -137,6 +137,13 @@ static int scheduler_task_is_runnable(const struct task *task)
         (task->state == TASK_READY || task->state == TASK_RUNNING);
 }
 
+static int scheduler_task_is_kernel_task(const struct task *task)
+{
+    return task &&
+        task->memory.address_space &&
+        task->memory.address_space->kind == ADDRESS_SPACE_KERNEL;
+}
+
 static const char *scheduler_policy_name(const struct task *task)
 {
     if (!task)
@@ -357,6 +364,84 @@ int scheduler_unblock_user_task(int pid)
     kprintf("User task %d (%s) is eligible; runnable=no\n",
             pid,
             tasks[pid].name);
+    return 0;
+}
+
+int scheduler_block_task(int pid)
+{
+    if (pid < 0 || pid >= task_count)
+    {
+        kprintf("Failed to block task %d: bad pid\n", pid);
+        return -1;
+    }
+
+    if (pid == 0)
+    {
+        kprintf("Failed to block task %d: idle task is protected\n", pid);
+        return -1;
+    }
+
+    if (pid == current_task)
+    {
+        kprintf("Failed to block task %d: current task is protected\n", pid);
+        return -1;
+    }
+
+    if (!scheduler_task_is_kernel_task(&tasks[pid]))
+    {
+        kprintf("Failed to block task %d: only kernel tasks are supported\n",
+                pid);
+        return -1;
+    }
+
+    if (tasks[pid].state != TASK_READY)
+    {
+        kprintf("Failed to block task %d: state=%s\n",
+                pid,
+                scheduler_state_name(tasks[pid].state));
+        return -1;
+    }
+
+    tasks[pid].state = TASK_BLOCKED;
+    tasks[pid].sleep_until_tick = 0;
+    tasks[pid].sleep_requested_ms = 0;
+
+    kprintf("Blocked task %d (%s)\n", pid, tasks[pid].name);
+    return 0;
+}
+
+int scheduler_unblock_task(int pid)
+{
+    if (pid < 0 || pid >= task_count)
+    {
+        kprintf("Failed to unblock task %d: bad pid\n", pid);
+        return -1;
+    }
+
+    if (pid == 0)
+    {
+        kprintf("Failed to unblock task %d: idle task is protected\n", pid);
+        return -1;
+    }
+
+    if (!scheduler_task_is_kernel_task(&tasks[pid]))
+    {
+        kprintf("Failed to unblock task %d: only kernel tasks are supported\n",
+                pid);
+        return -1;
+    }
+
+    if (tasks[pid].state != TASK_BLOCKED)
+    {
+        kprintf("Failed to unblock task %d: state=%s\n",
+                pid,
+                scheduler_state_name(tasks[pid].state));
+        return -1;
+    }
+
+    tasks[pid].state = TASK_READY;
+
+    kprintf("Unblocked task %d (%s)\n", pid, tasks[pid].name);
     return 0;
 }
 

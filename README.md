@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.43
+Version: 0.6.44
 
 Codename: Memory
 
@@ -54,6 +54,7 @@ Target: ARM64 QEMU `virt`
 - Shared kernel address-space object
 - Per-task stack and guard range diagnostics
 - Per-task address-space diagnostics
+- Focused scheduler task summary and per-task status diagnostics
 - User/process address-space scaffold
 - User address-space page-table storage scaffold
 - Controlled user code, data, and stack mapping plan
@@ -110,8 +111,9 @@ Target: ARM64 QEMU `virt`
 - Tab completion match listing for ambiguous built-in command prefixes
 - Short shell aliases for common diagnostics
 - Per-command usage details through `help <command>`
-- Built-in `help`, `version`, `tasks`, `mem`, `heap`, `heaptest`, `vm`,
-  `vmwalk`, `ticks`, `fb`, `user`, `clear`, `panic`, and `fault` commands
+- Built-in `help`, `version`, `task`, `tasks`, `mem`, `heap`, `heaptest`,
+  `vm`, `vmwalk`, `ticks`, `fb`, `user`, `clear`, `panic`, and `fault`
+  commands
 
 ### Memory Management
 

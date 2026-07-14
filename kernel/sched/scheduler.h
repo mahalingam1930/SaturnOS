@@ -76,6 +76,8 @@ void scheduler_preempt(void);
 void scheduler_exit(void);
 void scheduler_start_threads(void);
 void scheduler_dump_tasks(void);
+void scheduler_dump_task_summary(void);
+int scheduler_dump_task_status(int pid);
 void scheduler_dump_user_stats(void);
 const struct task *scheduler_current_task(void);
 unsigned long scheduler_get_ticks(void);

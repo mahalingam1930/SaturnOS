@@ -635,6 +635,104 @@ void scheduler_dump_tasks(void)
     }
 }
 
+void scheduler_dump_task_summary(void)
+{
+    const struct address_space *space;
+
+    kprintf("Task summary: ticks=%d tasks=%d current=%d\n",
+            (int)scheduler_ticks,
+            task_count,
+            current_task);
+
+    for (int i = 0; i < task_count; i++)
+    {
+        space = tasks[i].memory.address_space;
+        kprintf("  pid=%d name=%s state=%s run=%s kind=%s\n",
+                tasks[i].pid,
+                tasks[i].name,
+                scheduler_state_name(tasks[i].state),
+                scheduler_task_is_runnable(&tasks[i]) ? "yes" : "no",
+                space ? address_space_kind_name(space->kind) : "none");
+    }
+}
+
+int scheduler_dump_task_status(int pid)
+{
+    const struct address_space *space;
+    const struct task_user_status *status;
+
+    if (pid < 0 || pid >= task_count)
+    {
+        kprintf("Task %d not found\n", pid);
+        return -1;
+    }
+
+    space = tasks[pid].memory.address_space;
+    kprintf("Task %d:\n", tasks[pid].pid);
+    kprintf("  name=%s state=%s policy=%s runnable=%s current=%s\n",
+            tasks[pid].name,
+            scheduler_state_name(tasks[pid].state),
+            scheduler_policy_name(&tasks[pid]),
+            scheduler_task_is_runnable(&tasks[pid]) ? "yes" : "no",
+            pid == current_task ? "yes" : "no");
+
+    if (space)
+    {
+        kprintf("  aspace=%s kind=%s root=0x%x target=0x%x\n",
+                space->name,
+                address_space_kind_name(space->kind),
+                (unsigned int)space->root_table,
+                (unsigned int)space->target_root_table);
+        kprintf("  switch=%s check=%s errors=%d\n",
+                address_space_switch_state(space),
+                address_space_validation_state(space),
+                (int)space->validation_errors);
+    }
+    else
+    {
+        kprintf("  aspace=none kind=none root=0x0 target=0x0\n");
+        kprintf("  switch=blocked check=errors errors=1\n");
+    }
+
+    kprintf("  stack=0x%x-0x%x\n",
+            (unsigned int)tasks[pid].memory.stack_start,
+            (unsigned int)tasks[pid].memory.stack_end);
+    kprintf("  guards=0x%x-0x%x 0x%x-0x%x\n",
+            (unsigned int)tasks[pid].memory.guard_low_start,
+            (unsigned int)tasks[pid].memory.guard_low_end,
+            (unsigned int)tasks[pid].memory.guard_high_start,
+            (unsigned int)tasks[pid].memory.guard_high_end);
+    kprintf("  el0=%s pc=0x%x sp=0x%x spsr=0x%x\n",
+            tasks[pid].el0.ready ? "yes" : "no",
+            (unsigned int)tasks[pid].el0.pc,
+            (unsigned int)tasks[pid].el0.sp,
+            (unsigned int)tasks[pid].el0.spsr);
+    kprintf("  user_entry=%s status=%s\n",
+            user_mode_entry_state(&tasks[pid]),
+            user_mode_status_name(user_mode_prepare(&tasks[pid])));
+
+    if (space && space->kind == ADDRESS_SPACE_USER)
+    {
+        status = &tasks[pid].user_status;
+        kprintf("  user_smoke=%s result=%s\n",
+                status->smoke_completed ? "completed" : "pending",
+                status->smoke_completed ?
+                    (status->smoke_passed ? "passed" : "failed") :
+                    "none");
+        kprintf("  user_counts admit=%d enter=%d trap=%d recover=%d\n",
+                (int)status->admissions,
+                (int)status->el0_entries,
+                (int)status->expected_traps,
+                (int)status->recoveries);
+        kprintf("  user_counts reject=%d complete=%d fail=%d\n",
+                (int)status->rejects,
+                (int)status->completions,
+                (int)status->failures);
+    }
+
+    return 0;
+}
+
 void scheduler_dump_user_stats(void)
 {
     const struct task_user_status *status;

@@ -45,6 +45,7 @@ static void shell_end(void);
 static const struct shell_command shell_commands[] = {
     {"help", "help [command]", "show commands or detailed command help", "help vmwalk"},
     {"version", "version", "show kernel version", 0},
+    {"task", "task [pid]", "show scheduler task summary or task details", "task 2"},
     {"tasks", "tasks", "show scheduler tasks", 0},
     {"mem", "mem", "show physical memory stats", 0},
     {"heap", "heap", "show kernel heap stats", 0},
@@ -62,6 +63,7 @@ static const struct shell_command shell_commands[] = {
 static const struct shell_alias shell_aliases[] = {
     {"h", "help", "show commands"},
     {"?", "help", "show commands"},
+    {"tl", "task", "show scheduler task summary"},
     {"ps", "tasks", "show scheduler tasks"},
     {"free", "mem", "show physical memory stats"},
     {"top", "tasks", "show scheduler tasks"},
@@ -814,6 +816,7 @@ static void shell_execute(const char *command)
     if (*arg != '\0' &&
         selected_command &&
         !string_equals(selected_command->name, "help") &&
+        !string_equals(selected_command->name, "task") &&
         !string_equals(selected_command->name, "vmwalk"))
     {
         kprintf("Unexpected argument: %s\n", arg);
@@ -838,6 +841,26 @@ static void shell_execute(const char *command)
                 SATURNOS_NAME,
                 SATURNOS_VERSION,
                 SATURNOS_CODENAME);
+    }
+    else if (command_equals(effective_command, "task"))
+    {
+        if (*arg == '\0')
+        {
+            scheduler_dump_task_summary();
+        }
+        else
+        {
+            unsigned long pid;
+
+            if (parse_number(arg, &pid))
+            {
+                scheduler_dump_task_status((int)pid);
+            }
+            else
+            {
+                shell_command_help("task");
+            }
+        }
     }
     else if (string_equals(effective_command, "tasks"))
     {

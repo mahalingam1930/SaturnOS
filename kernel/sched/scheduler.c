@@ -8,9 +8,11 @@
 
 static void idle_task(void);
 static void scheduler_exit_task(int task_id);
+static void scheduler_user_smoke_runner(void);
 static void thread_trampoline(void);
 
 static struct address_space user_demo_address_space;
+static int user_smoke_runner_target_pid;
 static const char *scheduler_state_name(enum task_state state)
 {
     switch (state)
@@ -318,6 +320,7 @@ void scheduler_init(void)
     task_count = 0;
     current_task = 0;
     threads_started = 0;
+    user_smoke_runner_target_pid = -1;
     scheduler_ticks = 0;
     scheduler_clear_context(&bootstrap_context);
 
@@ -339,6 +342,27 @@ int scheduler_create_kernel_thread(const char *name, void (*entry)(void))
 
     kprintf("Created kernel thread %d: %s\n", pid, name);
     return pid;
+}
+
+int scheduler_create_user_smoke_runner(int pid)
+{
+    if (pid < 0 || pid >= task_count)
+    {
+        kprintf("Failed to create user runner: bad pid %d\n", pid);
+        return -1;
+    }
+
+    if (tasks[pid].state != TASK_ELIGIBLE)
+    {
+        kprintf("Failed to create user runner: task %d state=%s\n",
+                pid,
+                scheduler_state_name(tasks[pid].state));
+        return -1;
+    }
+
+    user_smoke_runner_target_pid = pid;
+    return scheduler_create_kernel_thread("user-runner",
+                                          scheduler_user_smoke_runner);
 }
 
 int scheduler_create_blocked_user_task(const char *name)
@@ -627,6 +651,21 @@ int scheduler_run_user_smoke_test(int pid)
             tasks[pid].name,
             scheduler_state_name(tasks[pid].state));
     return 0;
+}
+
+static void scheduler_user_smoke_runner(void)
+{
+    int pid = user_smoke_runner_target_pid;
+
+    if (pid < 0)
+    {
+        kprintf("Scheduled user runner: no target\n");
+        return;
+    }
+
+    kprintf("Scheduled user runner: task %d\n", pid);
+    scheduler_run_user_smoke_test(pid);
+    kprintf("Scheduled user runner: done\n");
 }
 
 void scheduler_tick(void)

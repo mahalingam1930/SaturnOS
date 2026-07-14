@@ -442,10 +442,11 @@ preventing accidental EL0 entry.
 
 ## Deliberate EL0 Syscall Smoke Test
 
-SaturnOS now performs its first controlled EL0 entry. The user-demo task enters
-EL0 at its smoke image, executes a `write` syscall through `svc #0`, prints a
-message from the user data page, resumes at the next EL0 instruction, executes
-an `exit` syscall through `svc #0`, and returns to kernel code without a panic.
+SaturnOS performs controlled EL0 entry through a scheduled kernel runner. The
+user-demo task enters EL0 at its smoke image, executes a `write` syscall through
+`svc #0`, prints a message from the user data page, resumes at the next EL0
+instruction, executes an `exit` syscall through `svc #0`, and returns to kernel
+code without a panic.
 
 The user address space now shares the kernel and MMIO mappings as EL1-only
 entries, while the user code, data, and stack pages remain the only EL0-capable
@@ -455,6 +456,9 @@ remain reachable after switching `TTBR0_EL1` to the user root table.
 Expected boot flow:
 
 ```text
+Starting preemptive kernel threads...
+SaturnOS shell ready
+saturn> Scheduled user runner: task N
 Starting EL0 SVC/BRK smoke test for task N (user-demo)
 EL0 smoke: entering user task at 0x100000
 EL0 smoke: SVC write, exit, then BRK fallback
@@ -464,7 +468,7 @@ EL0 smoke: exit syscall code=7
 EL0 smoke: returned to EL1
 User task N (user-demo) smoke=passed
 User task N (user-demo) completed; state=zombie runnable=no
-SaturnOS shell ready
+Scheduled user runner: done
 ```
 
 Only lower-EL SVC dispatch and the fallback lower-EL BRK are handled this way.

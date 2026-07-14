@@ -83,16 +83,15 @@ void kernel_main(void)
     keyboard_input_init();
     user_demo_pid = scheduler_create_blocked_user_task("user-demo");
     scheduler_unblock_user_task(user_demo_pid);
+    scheduler_create_user_smoke_runner(user_demo_pid);
     scheduler_dump_tasks();
-    scheduler_run_user_smoke_test(user_demo_pid);
     if (framebuffer_is_ready())
     {
         framebuffer_console_set_status(
             keyboard_graphical_ready()
-                ? "READY | UART+KBD | MMU ON | EL0 SMOKE OK"
-                : "READY | UART | MMU ON | EL0 SMOKE OK");
+                ? "READY | UART+KBD | MMU ON | EL0 SCHEDULED"
+                : "READY | UART | MMU ON | EL0 SCHEDULED");
     }
-    scheduler_dump_tasks();
 
     timer_start_periodic(100);
     irq_enable();

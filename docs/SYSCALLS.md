@@ -83,5 +83,5 @@ to test dispatching the `yield` syscall stub.
 
 ## Next Work
 
-The next syscall milestone is to run user tasks through the normal scheduler
-instead of only the guarded boot smoke path.
+The next syscall milestone is to promote user tasks from scheduler-driven
+runner execution to direct scheduler-runnable EL0 contexts.

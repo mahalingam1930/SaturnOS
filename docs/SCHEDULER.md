@@ -18,6 +18,7 @@ Current scheduler capabilities:
 - cooperative `scheduler_yield()`
 - scheduler-backed sleeping task state
 - guarded kernel-task block and unblock APIs
+- zombie task cleanup and tail slot reuse
 - task exit to zombie state
 - per-task stack and guard metadata
 - per-task address-space metadata
@@ -159,6 +160,22 @@ Alias:
 unblk -> unblock
 ```
 
+### `reap [pid]`
+
+Reclaims zombie task slots. With no argument, `reap` cleans every zombie task
+that is not the current task. With a pid, it only reaps that task.
+
+```text
+saturn> reap 2
+Reaped task 2 (user-demo)
+```
+
+Alias:
+
+```text
+rz -> reap
+```
+
 ### `ticks`
 
 Shows scheduler and timer interrupt counters:
@@ -196,6 +213,5 @@ ustats -> user
 
 ## Next Scheduler Work
 
-- Add task cleanup or slot reuse for zombie tasks.
 - Add scheduler accounting, such as per-task runtime and switches.
 - Add syscall-backed yield and exit once user programs are real.

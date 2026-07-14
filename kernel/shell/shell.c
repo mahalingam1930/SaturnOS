@@ -58,6 +58,7 @@ static const struct shell_command shell_commands[] = {
     {"sleep", "sleep <ms>", "sleep the current shell task for milliseconds", "sleep 100"},
     {"block", "block <pid>", "block a safe kernel scheduler task", "block 3"},
     {"unblock", "unblock <pid>", "unblock a blocked kernel scheduler task", "unblock 3"},
+    {"reap", "reap [pid]", "reap zombie task slots", "reap 2"},
     {"fb", "fb", "show framebuffer runtime status", 0},
     {"user", "user", "show user/EL0 exception stats", 0},
     {"clear", "clear", "clear framebuffer console", 0},
@@ -77,6 +78,7 @@ static const struct shell_alias shell_aliases[] = {
     {"nap", "sleep", "sleep the current shell task"},
     {"blk", "block", "block a safe kernel scheduler task"},
     {"unblk", "unblock", "unblock a blocked kernel scheduler task"},
+    {"rz", "reap", "reap zombie task slots"},
     {"video", "fb", "show framebuffer runtime status"},
     {"ustats", "user", "show user/EL0 exception stats"},
     {"cls", "clear", "clear framebuffer console"},
@@ -829,6 +831,7 @@ static void shell_execute(const char *command)
         !string_equals(selected_command->name, "sleep") &&
         !string_equals(selected_command->name, "block") &&
         !string_equals(selected_command->name, "unblock") &&
+        !string_equals(selected_command->name, "reap") &&
         !string_equals(selected_command->name, "vmwalk"))
     {
         kprintf("Unexpected argument: %s\n", arg);
@@ -970,6 +973,23 @@ static void shell_execute(const char *command)
         else
         {
             scheduler_unblock_task((int)pid);
+        }
+    }
+    else if (command_equals(effective_command, "reap"))
+    {
+        unsigned long pid;
+
+        if (*arg == '\0')
+        {
+            scheduler_reap_zombies();
+        }
+        else if (parse_number(arg, &pid))
+        {
+            scheduler_reap_zombie_task((int)pid);
+        }
+        else
+        {
+            shell_command_help("reap");
         }
     }
     else if (string_equals(effective_command, "fb"))

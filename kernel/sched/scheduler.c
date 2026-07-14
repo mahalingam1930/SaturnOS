@@ -131,6 +131,28 @@ static int task_count;
 static int threads_started;
 static unsigned long scheduler_ticks;
 
+static void scheduler_clear_task_slot(int pid)
+{
+    tasks[pid].pid = pid;
+    tasks[pid].name = "unused";
+    tasks[pid].state = TASK_UNUSED;
+    tasks[pid].entry = 0;
+    tasks[pid].sleep_until_tick = 0;
+    tasks[pid].sleep_requested_ms = 0;
+    scheduler_clear_context(&tasks[pid].context);
+    scheduler_clear_memory(&tasks[pid].memory);
+    scheduler_clear_el0(&tasks[pid].el0);
+    scheduler_clear_user_status(&tasks[pid].user_status);
+}
+
+static void scheduler_trim_unused_tail(void)
+{
+    while (task_count > 1 && tasks[task_count - 1].state == TASK_UNUSED)
+    {
+        task_count--;
+    }
+}
+
 static int scheduler_task_is_runnable(const struct task *task)
 {
     return task &&
@@ -216,44 +238,57 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
     unsigned long stack_top;
     int pid;
 
-    if (task_count >= SCHED_MAX_TASKS)
+    pid = -1;
+
+    for (int i = 1; i < task_count; i++)
     {
-        return -1;
+        if (tasks[i].state == TASK_UNUSED)
+        {
+            pid = i;
+            break;
+        }
     }
 
-    pid = task_count;
+    if (pid < 0)
+    {
+        if (task_count >= SCHED_MAX_TASKS)
+        {
+            return -1;
+        }
 
-    tasks[task_count].pid = pid;
-    tasks[task_count].name = name;
-    tasks[task_count].state = TASK_READY;
-    tasks[task_count].entry = entry;
-    tasks[task_count].sleep_until_tick = 0;
-    tasks[task_count].sleep_requested_ms = 0;
-    scheduler_clear_context(&tasks[task_count].context);
-    scheduler_clear_memory(&tasks[task_count].memory);
-    scheduler_clear_el0(&tasks[task_count].el0);
-    scheduler_clear_user_status(&tasks[task_count].user_status);
-    scheduler_init_task_memory(&tasks[task_count], pid);
-    scheduler_init_task_el0(&tasks[task_count]);
+        pid = task_count;
+        task_count++;
+    }
+
+    tasks[pid].pid = pid;
+    tasks[pid].name = name;
+    tasks[pid].state = TASK_READY;
+    tasks[pid].entry = entry;
+    tasks[pid].sleep_until_tick = 0;
+    tasks[pid].sleep_requested_ms = 0;
+    scheduler_clear_context(&tasks[pid].context);
+    scheduler_clear_memory(&tasks[pid].memory);
+    scheduler_clear_el0(&tasks[pid].el0);
+    scheduler_clear_user_status(&tasks[pid].user_status);
+    scheduler_init_task_memory(&tasks[pid], pid);
+    scheduler_init_task_el0(&tasks[pid]);
 
     if (entry)
     {
-        stack_top = scheduler_stack_end((unsigned long)task_count);
+        stack_top = scheduler_stack_end((unsigned long)pid);
         stack_top &= ~((unsigned long)0xF);
 
-        tasks[task_count].context.sp = stack_top;
+        tasks[pid].context.sp = stack_top;
 
         if (pid == 0)
         {
-            tasks[task_count].context.lr = (unsigned long)entry;
+            tasks[pid].context.lr = (unsigned long)entry;
         }
         else
         {
-            tasks[task_count].context.lr = (unsigned long)thread_trampoline;
+            tasks[pid].context.lr = (unsigned long)thread_trampoline;
         }
     }
-
-    task_count++;
 
     return pid;
 }
@@ -290,33 +325,53 @@ int scheduler_create_blocked_user_task(const char *name)
 {
     int pid;
 
-    if (task_count >= SCHED_MAX_TASKS)
+    pid = -1;
+
+    for (int i = 1; i < task_count; i++)
+    {
+        if (tasks[i].state == TASK_UNUSED)
+        {
+            pid = i;
+            break;
+        }
+    }
+
+    if (pid < 0)
+    {
+        if (task_count >= SCHED_MAX_TASKS)
+        {
+            kprintf("Failed to create blocked user task: %s\n", name);
+            return -1;
+        }
+
+        pid = task_count;
+        task_count++;
+    }
+
+    if (pid >= SCHED_MAX_TASKS)
     {
         kprintf("Failed to create blocked user task: %s\n", name);
         return -1;
     }
 
-    pid = task_count;
     address_space_init_user(&user_demo_address_space,
                             name ? name : "user-demo",
                             address_space_kernel()->root_table);
     address_space_install_user_smoke_image(&user_demo_address_space);
 
-    tasks[task_count].pid = pid;
-    tasks[task_count].name = name ? name : "user-demo";
-    tasks[task_count].state = TASK_BLOCKED;
-    tasks[task_count].entry = 0;
-    tasks[task_count].sleep_until_tick = 0;
-    tasks[task_count].sleep_requested_ms = 0;
-    scheduler_clear_context(&tasks[task_count].context);
-    scheduler_clear_memory(&tasks[task_count].memory);
-    scheduler_clear_el0(&tasks[task_count].el0);
-    scheduler_clear_user_status(&tasks[task_count].user_status);
-    scheduler_init_task_memory(&tasks[task_count], pid);
-    tasks[task_count].memory.address_space = &user_demo_address_space;
-    scheduler_init_task_el0(&tasks[task_count]);
-
-    task_count++;
+    tasks[pid].pid = pid;
+    tasks[pid].name = name ? name : "user-demo";
+    tasks[pid].state = TASK_BLOCKED;
+    tasks[pid].entry = 0;
+    tasks[pid].sleep_until_tick = 0;
+    tasks[pid].sleep_requested_ms = 0;
+    scheduler_clear_context(&tasks[pid].context);
+    scheduler_clear_memory(&tasks[pid].memory);
+    scheduler_clear_el0(&tasks[pid].el0);
+    scheduler_clear_user_status(&tasks[pid].user_status);
+    scheduler_init_task_memory(&tasks[pid], pid);
+    tasks[pid].memory.address_space = &user_demo_address_space;
+    scheduler_init_task_el0(&tasks[pid]);
 
     kprintf("Created blocked user task %d: %s\n", pid, tasks[pid].name);
     return pid;
@@ -443,6 +498,64 @@ int scheduler_unblock_task(int pid)
 
     kprintf("Unblocked task %d (%s)\n", pid, tasks[pid].name);
     return 0;
+}
+
+int scheduler_reap_zombie_task(int pid)
+{
+    if (pid < 0 || pid >= task_count)
+    {
+        kprintf("Failed to reap task %d: bad pid\n", pid);
+        return -1;
+    }
+
+    if (pid == 0)
+    {
+        kprintf("Failed to reap task %d: idle task is protected\n", pid);
+        return -1;
+    }
+
+    if (pid == current_task)
+    {
+        kprintf("Failed to reap task %d: current task is protected\n", pid);
+        return -1;
+    }
+
+    if (tasks[pid].state != TASK_ZOMBIE)
+    {
+        kprintf("Failed to reap task %d: state=%s\n",
+                pid,
+                scheduler_state_name(tasks[pid].state));
+        return -1;
+    }
+
+    kprintf("Reaped task %d (%s)\n", pid, tasks[pid].name);
+    scheduler_clear_task_slot(pid);
+    scheduler_trim_unused_tail();
+    return 0;
+}
+
+int scheduler_reap_zombies(void)
+{
+    int reaped = 0;
+
+    for (int i = 1; i < task_count; i++)
+    {
+        if (i != current_task && tasks[i].state == TASK_ZOMBIE)
+        {
+            kprintf("Reaped task %d (%s)\n", i, tasks[i].name);
+            scheduler_clear_task_slot(i);
+            reaped++;
+        }
+    }
+
+    scheduler_trim_unused_tail();
+
+    if (!reaped)
+    {
+        kprintf("No zombie tasks to reap\n");
+    }
+
+    return reaped;
 }
 
 int scheduler_run_user_smoke_test(int pid)

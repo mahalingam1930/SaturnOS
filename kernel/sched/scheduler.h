@@ -74,6 +74,8 @@ int scheduler_create_blocked_user_task(const char *name);
 int scheduler_unblock_user_task(int pid);
 int scheduler_block_task(int pid);
 int scheduler_unblock_task(int pid);
+int scheduler_reap_zombie_task(int pid);
+int scheduler_reap_zombies(void);
 int scheduler_run_user_smoke_test(int pid);
 void scheduler_tick(void);
 void scheduler_yield(void);

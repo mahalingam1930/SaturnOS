@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.46
+Version: 0.6.47
 
 Codename: Memory
 
@@ -230,6 +230,10 @@ scripts/           QEMU run scripts
 docs/              Architecture, roadmap, and graphics notes
 ```
 
+Additional docs:
+
+- [Scheduler](docs/SCHEDULER.md)
+
 ## Current Boot Flow
 
 1. Initialize UART.
@@ -246,7 +250,9 @@ docs/              Architecture, roadmap, and graphics notes
 
 ## Next Milestones
 
-- Expand scheduler robustness and task management
+- Add real blocked sleep state for scheduler tasks
+- Add syscall foundation for user programs
+- Add VFS and RAM filesystem foundation
 
 ## Vision
 

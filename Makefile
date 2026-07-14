@@ -16,6 +16,7 @@ CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only -MMD -MP \
 	-Ikernel/input \
 	-Ikernel/shell \
 	-Ikernel/memory \
+	-Ikernel/syscall \
 	-Idrivers/video \
 	-Idrivers/keyboard
 
@@ -95,6 +96,9 @@ $(BUILD)/address_space.o: kernel/memory/address_space.c | $(BUILD)
 $(BUILD)/vm.o: kernel/memory/vm.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/syscall.o: kernel/syscall/syscall.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -125,6 +129,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/heap.o \
 	$(BUILD)/address_space.o \
 	$(BUILD)/vm.o \
+	$(BUILD)/syscall.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^

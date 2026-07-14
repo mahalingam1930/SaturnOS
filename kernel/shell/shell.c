@@ -6,6 +6,7 @@
 #include "kprintf.h"
 #include "pmm.h"
 #include "scheduler.h"
+#include "syscall.h"
 #include "timer.h"
 #include "version.h"
 #include "vm.h"
@@ -59,6 +60,7 @@ static const struct shell_command shell_commands[] = {
     {"block", "block <pid>", "block a safe kernel scheduler task", "block 3"},
     {"unblock", "unblock <pid>", "unblock a blocked kernel scheduler task", "unblock 3"},
     {"reap", "reap [pid]", "reap zombie task slots", "reap 2"},
+    {"syscall", "syscall [number]", "show or test syscall dispatcher", "syscall 3"},
     {"fb", "fb", "show framebuffer runtime status", 0},
     {"user", "user", "show user/EL0 exception stats", 0},
     {"clear", "clear", "clear framebuffer console", 0},
@@ -79,6 +81,7 @@ static const struct shell_alias shell_aliases[] = {
     {"blk", "block", "block a safe kernel scheduler task"},
     {"unblk", "unblock", "unblock a blocked kernel scheduler task"},
     {"rz", "reap", "reap zombie task slots"},
+    {"sc", "syscall", "show or test syscall dispatcher"},
     {"video", "fb", "show framebuffer runtime status"},
     {"ustats", "user", "show user/EL0 exception stats"},
     {"cls", "clear", "clear framebuffer console"},
@@ -832,6 +835,7 @@ static void shell_execute(const char *command)
         !string_equals(selected_command->name, "block") &&
         !string_equals(selected_command->name, "unblock") &&
         !string_equals(selected_command->name, "reap") &&
+        !string_equals(selected_command->name, "syscall") &&
         !string_equals(selected_command->name, "vmwalk"))
     {
         kprintf("Unexpected argument: %s\n", arg);
@@ -990,6 +994,28 @@ static void shell_execute(const char *command)
         else
         {
             shell_command_help("reap");
+        }
+    }
+    else if (command_equals(effective_command, "syscall"))
+    {
+        unsigned long number;
+        long result;
+
+        if (*arg == '\0')
+        {
+            syscall_dump_stats();
+        }
+        else if (parse_number(arg, &number))
+        {
+            result = syscall_dispatch(number, 0, 0, 0, 0);
+            kprintf("syscall %d (%s) -> %d\n",
+                    (int)number,
+                    syscall_name(number),
+                    (int)result);
+        }
+        else
+        {
+            shell_command_help("syscall");
         }
     }
     else if (string_equals(effective_command, "fb"))

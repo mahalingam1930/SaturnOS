@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.51
+Version: 0.6.52
 
 Codename: Memory
 
@@ -81,6 +81,8 @@ Target: ARM64 QEMU `virt`
 - Hardened EL0 recovery tuple validation
 - Per-user-task lifecycle counters
 - Focused shell diagnostics for user/EL0 exception statistics
+- Syscall dispatcher foundation with write, exit, and yield syscall IDs
+- Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
 
@@ -119,7 +121,7 @@ Target: ARM64 QEMU `virt`
 - Per-command usage details through `help <command>`
 - Built-in `help`, `version`, `task`, `tasks`, `mem`, `heap`, `heaptest`,
   `vm`, `vmwalk`, `ticks`, `yield`, `sleep`, `block`, `unblock`, `fb`,
-  `user`, `reap`, `clear`, `panic`, and `fault` commands
+  `user`, `syscall`, `reap`, `clear`, `panic`, and `fault` commands
 
 ### Memory Management
 
@@ -229,6 +231,7 @@ kernel/memory/     Physical memory manager
 kernel/panic/      Kernel panic diagnostics
 kernel/sched/      Kernel scheduler
 kernel/shell/      Interactive kernel shell
+kernel/syscall/    Syscall dispatcher foundation
 kernel/src/        Kernel entry point
 scripts/           QEMU run scripts
 docs/              Architecture, roadmap, and graphics notes
@@ -237,6 +240,7 @@ docs/              Architecture, roadmap, and graphics notes
 Additional docs:
 
 - [Scheduler](docs/SCHEDULER.md)
+- [Syscalls](docs/SYSCALLS.md)
 
 ## Current Boot Flow
 
@@ -254,7 +258,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add syscall foundation for user programs
+- Wire EL0 SVC exceptions into the syscall dispatcher
 - Add VFS and RAM filesystem foundation
 
 ## Vision

@@ -6,7 +6,7 @@ SaturnOS
 
 ## Version
 
-0.6.51
+0.6.52
 
 ## Target Architecture
 
@@ -36,6 +36,7 @@ Monolithic Kernel
 - Virtual-memory diagnostics and page-walk tooling
 - Kernel scheduler and task table
 - User address-space and EL0 smoke-test scaffold
+- Syscall dispatcher foundation
 - Interactive kernel shell
 
 ## Boot Flow
@@ -61,8 +62,9 @@ unused, ready, running, blocked, eligible, zombie
 
 It supports an idle task, kernel thread creation, timer-driven preemption,
 cooperative yield, task exit, and shell-visible diagnostics. User-shaped tasks
-can be admitted and smoke-tested, but normal user process scheduling and
-syscalls are still future work.
+can be admitted and smoke-tested. The syscall dispatcher exists with initial
+write, exit, and yield IDs, but normal user process scheduling and the EL0 SVC
+entry ABI are still future work.
 
 See `docs/SCHEDULER.md` for scheduler shell commands and task-management notes.
 

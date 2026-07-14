@@ -2,6 +2,7 @@
 #define ARM64_USER_H
 
 struct task;
+struct address_space;
 
 enum user_mode_status
 {
@@ -26,6 +27,7 @@ int user_mode_handle_exception(unsigned long esr,
                                unsigned long elr,
                                unsigned long far,
                                unsigned long spsr);
+const struct address_space *user_mode_active_address_space(void);
 const char *user_mode_status_name(int status);
 const char *user_mode_entry_state(const struct task *task);
 void arm64_enter_el0(unsigned long pc, unsigned long sp, unsigned long spsr);

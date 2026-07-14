@@ -205,7 +205,7 @@ int user_mode_run_smoke_test(struct task *task)
 
     kprintf("EL0 smoke: entering user task at 0x%x\n",
             (unsigned int)task->el0.pc);
-    kprintf("EL0 smoke: SVC write stub then BRK recovery\n");
+    kprintf("EL0 smoke: SVC write then BRK recovery\n");
     kprintf("EL0 smoke: recovery armed ec=0x%x iss=0x%x elr=0x%x\n",
             (unsigned int)ESR_EC_BRK,
             (unsigned int)user_smoke.expected_iss,
@@ -314,6 +314,16 @@ int user_mode_handle_exception(unsigned long esr,
         : "memory");
 
     return 1;
+}
+
+const struct address_space *user_mode_active_address_space(void)
+{
+    if (user_smoke.active && user_smoke.task)
+    {
+        return user_smoke.task->memory.address_space;
+    }
+
+    return 0;
 }
 
 const char *user_mode_status_name(int status)

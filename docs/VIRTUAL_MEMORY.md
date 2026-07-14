@@ -367,9 +367,10 @@ prove the user-task creation path without entering EL0 or running user code.
 ## User-Mode Smoke Task Scaffold
 
 SaturnOS now places a tiny smoke image into the user code page for `user-demo`.
-The image now performs one AArch64 `SVC` syscall and then executes a controlled
-`BRK` instruction. That gives the EL0 entry path a deterministic syscall trap,
-a return to the next user instruction, and a final completion trap back to EL1.
+The image now performs one AArch64 `SVC` write syscall using a message in the
+user data page and then executes a controlled `BRK` instruction. That gives the
+EL0 entry path a deterministic syscall trap, a user-buffer read, a return to
+the next user instruction, and a final completion trap back to EL1.
 
 The user-entry readiness check now requires:
 
@@ -441,9 +442,10 @@ preventing accidental EL0 entry.
 ## Deliberate EL0 SVC/BRK Smoke Test
 
 SaturnOS now performs its first controlled EL0 entry. The user-demo task enters
-EL0 at its smoke image, executes a `write` syscall through `svc #0`, resumes at
-the next EL0 instruction, executes the expected `BRK`, traps back to EL1, and
-returns to kernel code without a panic.
+EL0 at its smoke image, executes a `write` syscall through `svc #0`, prints a
+message from the user data page, resumes at the next EL0 instruction, executes
+the expected `BRK`, traps back to EL1, and returns to kernel code without a
+panic.
 
 The user address space now shares the kernel and MMIO mappings as EL1-only
 entries, while the user code, data, and stack pages remain the only EL0-capable
@@ -455,8 +457,9 @@ Expected boot flow:
 ```text
 Starting EL0 SVC/BRK smoke test for task N (user-demo)
 EL0 smoke: entering user task at 0x100000
-EL0 smoke: SVC write stub then BRK recovery
+EL0 smoke: SVC write then BRK recovery
 EL0 smoke: recovery armed ec=0x3c iss=0x0 elr=0x100014
+hello from EL0 syscall
 EL0 smoke: caught expected BRK ec=0x3c iss=0x0 ELR=0x100014
 EL0 smoke: returned to EL1
 User task N (user-demo) smoke=passed

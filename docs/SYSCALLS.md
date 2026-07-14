@@ -15,13 +15,15 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 
 ## Current Behavior
 
-- `write` records the call and currently returns the requested length.
-- `exit` records the call and currently returns success.
+- `write` accepts file descriptors `1` and `2`, validates a bounded user
+  buffer, writes bytes to the kernel console, and returns the number of bytes
+  written.
+- `exit` records the requested exit code and currently returns success.
 - `yield` records the call and performs a scheduler yield.
 - unknown syscall numbers are rejected with `-1`.
 
-These are stubs. They give the kernel a stable dispatch point before real user
-program ABI plumbing is connected.
+`exit` is still intentionally minimal; the next step is to connect it to real
+user-task lifecycle handling.
 
 ## EL0 ABI
 
@@ -44,14 +46,15 @@ The `user-demo` smoke image now executes:
 ```text
 mov x8, #1      syscall: write
 mov x0, #1      arg0: fd
-mov x1, #0      arg1: buffer
-mov x2, #0      arg2: length
+mov x1, #0x200000 arg1: user data buffer
+mov x2, #23        arg2: length
 svc #0
 brk #0
 ```
 
-The SVC proves the EL0 syscall path returns to the next user instruction. The
-BRK is still used as the controlled completion trap back to EL1.
+The SVC prints `hello from EL0 syscall`, proving the EL0 syscall path can pass
+a user buffer to the kernel and return to the next user instruction. The BRK is
+still used as the controlled completion trap back to EL1.
 
 ## Shell Diagnostics
 
@@ -75,5 +78,6 @@ to test dispatching the `yield` syscall stub.
 
 ## Next Work
 
-The next syscall milestone is to replace the dispatcher stubs with real
-user-visible behavior for `write`, `exit`, and `yield`.
+The next syscall milestone is to add real user-task exit lifecycle behavior and
+then run user tasks through the normal scheduler instead of only the guarded
+boot smoke path.

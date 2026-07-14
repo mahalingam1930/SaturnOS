@@ -6,7 +6,7 @@ SaturnOS
 
 ## Version
 
-0.6.53
+0.6.54
 
 ## Target Architecture
 
@@ -65,7 +65,8 @@ cooperative yield, task exit, and shell-visible diagnostics. User-shaped tasks
 can be admitted and smoke-tested. The syscall dispatcher exists with initial
 write, exit, and yield IDs. Lower-EL SVC exceptions are routed into the
 dispatcher using `x8` as the syscall number and `x0`-`x3` as arguments, but
-normal user process scheduling and real syscall behavior are still future work.
+the `write` syscall can already validate and print bounded user buffers. Normal
+user process scheduling and real process exit behavior are still future work.
 
 See `docs/SCHEDULER.md` for scheduler shell commands and task-management notes.
 

@@ -12,10 +12,11 @@
 #define ADDRESS_SPACE_USER_STACK_END 0x40000000UL
 #define ADDRESS_SPACE_USER_SMOKE_MOV_X8_WRITE 0xd2800028U
 #define ADDRESS_SPACE_USER_SMOKE_MOV_X0_STDOUT 0xd2800020U
-#define ADDRESS_SPACE_USER_SMOKE_MOV_X1_ZERO 0xd2800001U
-#define ADDRESS_SPACE_USER_SMOKE_MOV_X2_ZERO 0xd2800002U
+#define ADDRESS_SPACE_USER_SMOKE_MOV_X1_DATA 0xd2a00401U
+#define ADDRESS_SPACE_USER_SMOKE_MOV_X2_LEN 0xd28002e2U
 #define ADDRESS_SPACE_USER_SMOKE_SVC 0xd4000001U
 #define ADDRESS_SPACE_USER_SMOKE_BRK 0xd4200000U
+#define ADDRESS_SPACE_USER_SMOKE_MESSAGE_LEN 23UL
 #define ADDRESS_SPACE_USER_CODE_ATTR \
     ((ARM64_NORMAL_MEMORY_ATTR & ~ARM64_DESC_AP_MASK) | \
      ARM64_DESC_AP_RO_EL0 | \
@@ -259,6 +260,47 @@ static int address_space_region_is_valid(
     return 1;
 }
 
+int address_space_user_range_valid(const struct address_space *space,
+                                   unsigned long address,
+                                   unsigned long size)
+{
+    unsigned long end;
+
+    if (!space || space->kind != ADDRESS_SPACE_USER)
+    {
+        return 0;
+    }
+
+    if (size == 0)
+    {
+        return 1;
+    }
+
+    end = address + size;
+    if (end < address)
+    {
+        return 0;
+    }
+
+    for (unsigned long i = 0; i < ADDRESS_SPACE_USER_REGION_COUNT; i++)
+    {
+        const struct address_space_user_region *region =
+            &space->user_regions[i];
+
+        if (!region->name || !region->user_access)
+        {
+            continue;
+        }
+
+        if (address >= region->start && end <= region->end)
+        {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 static unsigned long address_space_validate_user(const struct address_space *space)
 {
     unsigned long errors = 0;
@@ -460,6 +502,8 @@ void address_space_init_user(struct address_space *space,
 int address_space_install_user_smoke_image(struct address_space *space)
 {
     unsigned int *code;
+    unsigned char *data;
+    static const char message[] = "hello from EL0 syscall\n";
     unsigned long slot;
 
     if (!space ||
@@ -472,12 +516,18 @@ int address_space_install_user_smoke_image(struct address_space *space)
 
     slot = space->user_table_slot;
     code = (unsigned int *)&user_region_pages[slot][0][0];
+    data = &user_region_pages[slot][1][0];
     code[0] = ADDRESS_SPACE_USER_SMOKE_MOV_X8_WRITE;
     code[1] = ADDRESS_SPACE_USER_SMOKE_MOV_X0_STDOUT;
-    code[2] = ADDRESS_SPACE_USER_SMOKE_MOV_X1_ZERO;
-    code[3] = ADDRESS_SPACE_USER_SMOKE_MOV_X2_ZERO;
+    code[2] = ADDRESS_SPACE_USER_SMOKE_MOV_X1_DATA;
+    code[3] = ADDRESS_SPACE_USER_SMOKE_MOV_X2_LEN;
     code[4] = ADDRESS_SPACE_USER_SMOKE_SVC;
     code[5] = ADDRESS_SPACE_USER_SMOKE_BRK;
+
+    for (unsigned long i = 0; i < ADDRESS_SPACE_USER_SMOKE_MESSAGE_LEN; i++)
+    {
+        data[i] = (unsigned char)message[i];
+    }
 
     space->user_image_entry = space->user_code_start;
     space->user_image_size = sizeof(code[0]) * 6;

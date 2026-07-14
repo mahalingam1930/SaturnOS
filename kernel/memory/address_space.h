@@ -82,6 +82,9 @@ void address_space_init_user(struct address_space *space,
                              const char *name,
                              unsigned long kernel_root_table);
 int address_space_install_user_smoke_image(struct address_space *space);
+int address_space_user_range_valid(const struct address_space *space,
+                                   unsigned long address,
+                                   unsigned long size);
 struct address_space *address_space_kernel(void);
 const char *address_space_kind_name(enum address_space_kind kind);
 const char *address_space_validation_state(const struct address_space *space);

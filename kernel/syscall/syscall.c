@@ -1,6 +1,14 @@
 #include "syscall.h"
+#include "console.h"
 #include "kprintf.h"
 #include "scheduler.h"
+#include "user.h"
+
+#define SYSCALL_STDOUT 1UL
+#define SYSCALL_STDERR 2UL
+#define SYSCALL_WRITE_MAX 128UL
+#define SYSCALL_ERR_INVAL -1L
+#define SYSCALL_ERR_FAULT -2L
 
 struct syscall_stats
 {
@@ -10,6 +18,9 @@ struct syscall_stats
     unsigned long write_calls;
     unsigned long exit_calls;
     unsigned long yield_calls;
+    unsigned long faults;
+    unsigned long write_bytes;
+    unsigned long last_exit_code;
     unsigned long last_number;
     unsigned long last_arg0;
     unsigned long last_arg1;
@@ -18,6 +29,64 @@ struct syscall_stats
 };
 
 static struct syscall_stats stats;
+
+static const struct address_space *syscall_address_space(void)
+{
+    const struct address_space *space = user_mode_active_address_space();
+    const struct task *task;
+
+    if (space)
+    {
+        return space;
+    }
+
+    task = scheduler_current_task();
+    if (task && task->memory.address_space &&
+        task->memory.address_space->kind == ADDRESS_SPACE_USER)
+    {
+        return task->memory.address_space;
+    }
+
+    return 0;
+}
+
+static long syscall_write(unsigned long fd,
+                          unsigned long buffer,
+                          unsigned long length)
+{
+    const char *bytes = (const char *)buffer;
+    const struct address_space *space;
+
+    if (fd != SYSCALL_STDOUT && fd != SYSCALL_STDERR)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+
+    if (length == 0)
+    {
+        return 0;
+    }
+
+    if (length > SYSCALL_WRITE_MAX)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+
+    space = syscall_address_space();
+    if (!address_space_user_range_valid(space, buffer, length))
+    {
+        stats.faults++;
+        return SYSCALL_ERR_FAULT;
+    }
+
+    for (unsigned long i = 0; i < length; i++)
+    {
+        console_putc(bytes[i]);
+    }
+
+    stats.write_bytes += length;
+    return (long)length;
+}
 
 const char *syscall_name(unsigned long number)
 {
@@ -53,12 +122,20 @@ long syscall_dispatch(unsigned long number,
     {
         case SYSCALL_WRITE:
             stats.write_calls++;
-            stats.handled++;
-            result = (long)arg2;
+            result = syscall_write(arg0, arg1, arg2);
+            if (result < 0)
+            {
+                stats.rejected++;
+            }
+            else
+            {
+                stats.handled++;
+            }
             break;
         case SYSCALL_EXIT:
             stats.exit_calls++;
             stats.handled++;
+            stats.last_exit_code = arg0;
             result = 0;
             break;
         case SYSCALL_YIELD:
@@ -98,6 +175,10 @@ void syscall_dump_stats(void)
             (int)stats.write_calls,
             (int)stats.exit_calls,
             (int)stats.yield_calls);
+    kprintf("  write_bytes=%d faults=%d last_exit=%d\n",
+            (int)stats.write_bytes,
+            (int)stats.faults,
+            (int)stats.last_exit_code);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

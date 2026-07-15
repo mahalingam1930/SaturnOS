@@ -6,7 +6,7 @@ SaturnOS
 
 ## Version
 
-0.6.67
+0.6.68
 
 ## Target Architecture
 
@@ -67,8 +67,8 @@ unused, ready, running, blocked, eligible, zombie
 
 It supports an idle task, kernel thread creation, timer-driven preemption,
 cooperative yield, task exit, and shell-visible diagnostics. User-shaped tasks
-can be admitted and smoke-tested. The syscall dispatcher exists with initial
-write, exit, and yield IDs. Lower-EL SVC exceptions are routed into the
+can be admitted and run. The syscall dispatcher provides console write, exit,
+yield, and per-task VFS open/read/close operations. Lower-EL SVC exceptions are routed into the
 dispatcher using `x8` as the syscall number and `x0`-`x3` as arguments, but
 the `write` syscall can validate and print bounded user buffers, and `exit`
 can complete a generic EL0 run session with a tracked exit code. The

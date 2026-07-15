@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.67` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.68` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -92,12 +92,15 @@ SaturnOS is currently at `0.6.67` and targets ARM64 QEMU `virt`.
 - generic EL0 exit-completion sessions independent of BRK
 - contained EL0 fault recovery and failed-task retirement
 - deliberate faulting executable lifecycle test
+- per-task user file descriptor tables
+- validated user `open`, `read`, and `close` syscalls
+- EL0 persistent-file read integration program and rejection tests
 
 ## Next
 
 ### User Space
 
-- add user-facing filesystem syscalls
+- add user file-write syscall support
 
 ### Storage
 

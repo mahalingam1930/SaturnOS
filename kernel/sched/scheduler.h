@@ -10,6 +10,8 @@
 #define SCHED_STACK_SLOT_SIZE (SCHED_STACK_GUARD_SIZE + SCHED_STACK_SIZE)
 #define SCHED_STACK_REGION_SIZE \
     ((SCHED_MAX_TASKS * SCHED_STACK_SLOT_SIZE) + SCHED_STACK_GUARD_SIZE)
+#define TASK_MAX_FILES 4
+#define TASK_FILE_PATH_SIZE 48
 
 enum task_state
 {
@@ -65,6 +67,13 @@ struct task_accounting
     unsigned long sleep_wakeups;
 };
 
+struct task_file
+{
+    int used;
+    char path[TASK_FILE_PATH_SIZE];
+    unsigned long offset;
+};
+
 struct task
 {
     int pid;
@@ -79,6 +88,7 @@ struct task
     struct address_space user_address_space;
     struct task_el0_state el0;
     struct task_user_status user_status;
+    struct task_file files[TASK_MAX_FILES];
 };
 
 void scheduler_init(void);
@@ -103,6 +113,7 @@ void scheduler_dump_task_summary(void);
 int scheduler_dump_task_status(int pid);
 void scheduler_dump_user_stats(void);
 const struct task *scheduler_current_task(void);
+struct task *scheduler_current_task_mutable(void);
 unsigned long scheduler_get_ticks(void);
 unsigned long scheduler_stack_region_start(void);
 unsigned long scheduler_stack_region_end(void);

@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.67
+Version: 0.6.68
 
 Codename: Memory
 
@@ -104,6 +104,8 @@ Target: ARM64 QEMU `virt`
 - Persistent `.sx` executable loading through ordinary VFS paths
 - Generic EL0 run sessions completed by `exit`, independent of BRK recovery
 - Contained EL0 fault recovery with failed-task retirement and reuse
+- Per-task user file descriptors with validated `open`, `read`, and `close`
+- EL0 file-reading program backed by persistent `/disk` VFS data
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -289,7 +291,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user-facing filesystem syscalls
+- Add user file-write syscall support
 
 ## Vision
 

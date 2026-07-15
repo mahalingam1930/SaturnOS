@@ -97,6 +97,16 @@ static void scheduler_clear_accounting(struct task_accounting *accounting)
     accounting->sleep_wakeups = 0;
 }
 
+static void scheduler_clear_files(struct task *task)
+{
+    for (int i = 0; i < TASK_MAX_FILES; i++)
+    {
+        task->files[i].used = 0;
+        task->files[i].path[0] = '\0';
+        task->files[i].offset = 0;
+    }
+}
+
 static void scheduler_init_task_memory(struct task *task, int pid)
 {
     task->memory.address_space = address_space_kernel();
@@ -159,6 +169,7 @@ static void scheduler_clear_task_slot(int pid)
     scheduler_clear_memory(&tasks[pid].memory);
     scheduler_clear_el0(&tasks[pid].el0);
     scheduler_clear_user_status(&tasks[pid].user_status);
+    scheduler_clear_files(&tasks[pid]);
 }
 
 static void scheduler_trim_unused_tail(void)
@@ -294,6 +305,7 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
     scheduler_clear_memory(&tasks[pid].memory);
     scheduler_clear_el0(&tasks[pid].el0);
     scheduler_clear_user_status(&tasks[pid].user_status);
+    scheduler_clear_files(&tasks[pid]);
     scheduler_init_task_memory(&tasks[pid], pid);
     scheduler_init_task_el0(&tasks[pid]);
 
@@ -429,6 +441,7 @@ int scheduler_create_user_task_from_image(const char *name,
     scheduler_clear_memory(&tasks[pid].memory);
     scheduler_clear_el0(&tasks[pid].el0);
     scheduler_clear_user_status(&tasks[pid].user_status);
+    scheduler_clear_files(&tasks[pid]);
     scheduler_init_task_memory(&tasks[pid], pid);
     tasks[pid].memory.address_space = &tasks[pid].user_address_space;
     scheduler_init_task_el0(&tasks[pid]);
@@ -1175,6 +1188,15 @@ static void idle_task(void)
 
 const struct task *scheduler_current_task(void)
 {
+    return &tasks[current_task];
+}
+
+struct task *scheduler_current_task_mutable(void)
+{
+    if (current_task < 0 || current_task >= task_count)
+    {
+        return 0;
+    }
     return &tasks[current_task];
 }
 

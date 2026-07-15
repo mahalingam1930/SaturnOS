@@ -1,4 +1,5 @@
 #include "scheduler.h"
+#include "mmu.h"
 #include "config.h"
 #include "cpu.h"
 #include "irq.h"
@@ -902,6 +903,12 @@ void scheduler_yield(void)
 
     scheduler_set_running_task(next_task);
     current_task = next_task;
+
+    unsigned long resume_root = user_mode_task_resume_root(&tasks[next_task]);
+    if (resume_root)
+    {
+        arm64_mmu_switch_ttbr0(resume_root);
+    }
 
     if (CONFIG_SCHED_DEBUG)
     {

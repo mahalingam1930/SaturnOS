@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.73` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.74` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -101,12 +101,13 @@ SaturnOS is currently at `0.6.73` and targets ARM64 QEMU `virt`.
 - bounded shell-to-EL0 user-program argument ABI and integration program
 - bounded multi-argument vector ABI with count, pointers, and lengths
 - validated non-blocking user wait/status syscall and zombie reaping
+- validated EL0 spawn syscall with VFS loading and child admission
 
 ## Next
 
 ### User Space
 
-- add user task spawn syscall support
+- add argument-vector support to spawned user tasks
 
 ### Storage
 

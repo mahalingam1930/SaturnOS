@@ -54,13 +54,11 @@ static const unsigned int user_args_code[] = {
     0xf9400482U, 0xd2800028U, 0xd2800020U, 0xd4000001U,
     0xd2800048U, 0xd2800000U, 0xd4000001U, 0xd4200000U,
 };
-static const unsigned int user_wait_code[] = {
-    0xd2800128U, 0xd2800060U, 0xd2a00401U, 0xd4000001U,
-    0xf100041fU, 0x540000e1U, 0xd2800028U, 0xd2800020U,
-    0xd2a00401U, 0x91008021U, 0xd2800102U, 0xd4000001U,
+static const unsigned int user_spawn_code[] = {
+    0xd2800148U, 0xd2a00400U, 0xd2800221U, 0xd4000001U,
     0xd2800048U, 0xd2800000U, 0xd4000001U, 0xd4200000U,
 };
-static const char user_wait_message[] = "wait ok\n";
+static const char user_spawn_path[] = "/bin/user-demo.sx";
 
 int user_programs_init(void)
 {
@@ -86,7 +84,7 @@ int user_programs_init(void)
                                     sizeof(user_args_code) + 128UL]
         __attribute__((aligned(4)));
     static unsigned char wait_image[sizeof(struct saturn_exec_header) +
-                                    sizeof(user_wait_code) + 64UL]
+                                    sizeof(user_spawn_code) + 64UL]
         __attribute__((aligned(4)));
     struct saturn_exec_header *header =
         (struct saturn_exec_header *)image;
@@ -241,24 +239,23 @@ int user_programs_init(void)
     wait_header->magic = SATURN_EXEC_MAGIC;
     wait_header->version = SATURN_EXEC_VERSION;
     wait_header->header_size = sizeof(*wait_header);
-    wait_header->code_size = sizeof(user_wait_code);
+    wait_header->code_size = sizeof(user_spawn_code);
     wait_header->data_size = 64;
     wait_header->entry_offset = 0;
-    for (unsigned long i = 0; i < sizeof(user_wait_code); i++)
+    for (unsigned long i = 0; i < sizeof(user_spawn_code); i++)
     {
-        wait_payload[i] = ((const unsigned char *)user_wait_code)[i];
+        wait_payload[i] = ((const unsigned char *)user_spawn_code)[i];
     }
     for (unsigned long i = 0; i < 64; i++)
     {
-        wait_payload[sizeof(user_wait_code) + i] = 0;
+        wait_payload[sizeof(user_spawn_code) + i] = 0;
     }
-    for (unsigned long i = 0; i < sizeof(user_wait_message) - 1UL; i++)
+    for (unsigned long i = 0; i < sizeof(user_spawn_path) - 1UL; i++)
     {
-        wait_payload[sizeof(user_wait_code) + 32UL + i] =
-            user_wait_message[i];
+        wait_payload[sizeof(user_spawn_code) + i] = user_spawn_path[i];
     }
     wait_header->payload_checksum = saturn_exec_checksum(
-        wait_payload, sizeof(user_wait_code) + 64UL);
+        wait_payload, sizeof(user_spawn_code) + 64UL);
 
     if (!vfs_mkdir("/bin") ||
         !vfs_mkdir("/share") ||
@@ -274,7 +271,7 @@ int user_programs_init(void)
                     file_seek_image,
                     sizeof(file_seek_image)) ||
         !vfs_create(USER_ARGS_IMAGE_PATH, args_image, sizeof(args_image)) ||
-        !vfs_create(USER_WAIT_IMAGE_PATH, wait_image, sizeof(wait_image)) ||
+        !vfs_create(USER_SPAWN_IMAGE_PATH, wait_image, sizeof(wait_image)) ||
         !vfs_create(USER_DEMO_DATA_PATH,
                     user_demo_message,
                     sizeof(user_demo_message) - 1UL))

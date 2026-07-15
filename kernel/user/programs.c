@@ -44,10 +44,16 @@ int user_programs_init(void)
     }
     header->payload_checksum = saturn_exec_checksum(payload, payload_size);
 
-    return vfs_mkdir("/bin") &&
-           vfs_mkdir("/share") &&
-           vfs_create(USER_DEMO_IMAGE_PATH, image, sizeof(image)) &&
-           vfs_create(USER_DEMO_DATA_PATH,
-                      user_demo_message,
-                      sizeof(user_demo_message) - 1UL);
+    if (!vfs_mkdir("/bin") ||
+        !vfs_mkdir("/share") ||
+        !vfs_create(USER_DEMO_IMAGE_PATH, image, sizeof(image)) ||
+        !vfs_create(USER_DEMO_DATA_PATH,
+                    user_demo_message,
+                    sizeof(user_demo_message) - 1UL))
+    {
+        return 0;
+    }
+
+    vfs_create("/disk/bin/user-demo.sx", image, sizeof(image));
+    return 1;
 }

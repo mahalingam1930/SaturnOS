@@ -37,6 +37,9 @@ reports missing paths without changing filesystem state. `mkdir <path>` adds a
 directory, and `write <path> <text>` creates or replaces a text file. `run`
 launches the built-in program in a new user task.
 
-## Next Work
+SaturnFS is mounted at `/disk`. The same `ls`, `cat`, `write`, and `run`
+interfaces route `/disk/...` paths to persistent storage. For example,
+`run /disk/bin/user-demo.sx` loads and validates an executable after a reboot.
 
-- persistent filesystem drivers
+The `pfs`, `pcat`, and `pwrite` commands remain available as low-level
+SaturnFS administration and diagnostics.

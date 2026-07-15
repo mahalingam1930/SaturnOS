@@ -1,5 +1,6 @@
 #include "vfs.h"
 #include "kprintf.h"
+#include "sfs.h"
 
 enum ramfs_node_kind
 {
@@ -19,6 +20,27 @@ struct ramfs_node
 static struct ramfs_node nodes[VFS_MAX_NODES];
 static unsigned long file_count;
 static unsigned long dir_count;
+static unsigned char disk_file_buffer[SFS_MAX_FILE_SIZE];
+
+static const char *vfs_disk_path(const char *path)
+{
+    static const char prefix[] = "/disk";
+    unsigned long i = 0;
+
+    if (!path)
+    {
+        return 0;
+    }
+    while (prefix[i])
+    {
+        if (path[i] != prefix[i])
+        {
+            return 0;
+        }
+        i++;
+    }
+    return path[i] == '/' && path[i + 1] ? path + i : 0;
+}
 
 static int vfs_path_valid(const char *path)
 {
@@ -152,6 +174,12 @@ int vfs_mkdir(const char *path)
 int vfs_create(const char *path, const void *data, unsigned long size)
 {
     struct ramfs_node *file;
+    const char *disk_path = vfs_disk_path(path);
+
+    if (disk_path)
+    {
+        return sfs_write_file(disk_path, data, size);
+    }
 
     if (!vfs_path_valid(path) || size > VFS_MAX_FILE_SIZE ||
         (size && !data) || vfs_find(path) || !vfs_parent_exists(path) ||
@@ -184,7 +212,17 @@ long vfs_write(const char *path,
                const void *buffer,
                unsigned long size)
 {
+    const char *disk_path = vfs_disk_path(path);
     struct ramfs_node *file = vfs_find(path);
+
+    if (disk_path)
+    {
+        if (offset != 0 || !size || size > SFS_MAX_FILE_SIZE)
+        {
+            return -1;
+        }
+        return sfs_write_file(disk_path, buffer, size) ? (long)size : -1;
+    }
 
     if (!file || file->kind != RAMFS_FILE || (size && !buffer) ||
         offset > VFS_MAX_FILE_SIZE || size > VFS_MAX_FILE_SIZE - offset)
@@ -204,7 +242,30 @@ long vfs_write(const char *path,
 
 int vfs_truncate(const char *path, unsigned long size)
 {
+    const char *disk_path = vfs_disk_path(path);
     struct ramfs_node *file = vfs_find(path);
+
+    if (disk_path)
+    {
+        long current;
+
+        if (!size || size > SFS_MAX_FILE_SIZE)
+        {
+            return 0;
+        }
+        current = sfs_read_file(disk_path,
+                                disk_file_buffer,
+                                sizeof(disk_file_buffer));
+        if (current < 0)
+        {
+            return 0;
+        }
+        for (unsigned long i = (unsigned long)current; i < size; i++)
+        {
+            disk_file_buffer[i] = 0;
+        }
+        return sfs_write_file(disk_path, disk_file_buffer, size);
+    }
 
     if (!file || file->kind != RAMFS_FILE || size > VFS_MAX_FILE_SIZE)
     {
@@ -226,7 +287,29 @@ long vfs_read(const char *path,
               void *buffer,
               unsigned long size)
 {
+    const char *disk_path = vfs_disk_path(path);
     struct ramfs_node *file = vfs_find(path);
+
+    if (disk_path)
+    {
+        long file_size = sfs_read_file(disk_path,
+                                       disk_file_buffer,
+                                       sizeof(disk_file_buffer));
+        if ((size && !buffer) || file_size < 0 ||
+            offset > (unsigned long)file_size)
+        {
+            return -1;
+        }
+        if (size > (unsigned long)file_size - offset)
+        {
+            size = (unsigned long)file_size - offset;
+        }
+        for (unsigned long i = 0; i < size; i++)
+        {
+            ((unsigned char *)buffer)[i] = disk_file_buffer[offset + i];
+        }
+        return (long)size;
+    }
 
     if (!file || file->kind != RAMFS_FILE ||
         (size && !buffer) || offset > file->size)
@@ -246,7 +329,24 @@ long vfs_read(const char *path,
 
 const void *vfs_file_data(const char *path, unsigned long *size)
 {
+    const char *disk_path = vfs_disk_path(path);
     struct ramfs_node *file = vfs_find(path);
+
+    if (disk_path)
+    {
+        long file_size = sfs_read_file(disk_path,
+                                       disk_file_buffer,
+                                       sizeof(disk_file_buffer));
+        if (file_size < 0)
+        {
+            return 0;
+        }
+        if (size)
+        {
+            *size = (unsigned long)file_size;
+        }
+        return disk_file_buffer;
+    }
 
     if (!file || file->kind != RAMFS_FILE)
     {
@@ -275,6 +375,8 @@ void vfs_dump_files(void)
                     (int)nodes[i].size);
         }
     }
+    kprintf("Mount: /disk -> SaturnFS\n");
+    sfs_dump();
 }
 
 unsigned long vfs_dir_count(void)

@@ -21,5 +21,5 @@ the final sector, writes and verifies a deterministic pattern, then restores
 the original bytes.
 
 If no virtio block device is attached, SaturnOS falls back to the RAM backend,
-which persists for the current boot only. The next storage milestone is an
-on-disk filesystem over the shared sector interface.
+which persists for the current boot only. SaturnFS now provides compact native
+on-disk files over the shared sector interface.

@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.64
+Version: 0.6.65
 
 Codename: Memory
 
@@ -98,6 +98,8 @@ Target: ARM64 QEMU `virt`
 - Non-destructive block read/write self-test and operation diagnostics
 - Legacy and modern virtio-MMIO block driver with RAM-disk fallback
 - Persistent 4 MiB QEMU disk-image launch configuration
+- SaturnFS fixed-layout persistent files with payload checksums
+- Persistent file inspection and writes through `pfs`, `pcat`, and `pwrite`
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -138,7 +140,7 @@ Target: ARM64 QEMU `virt`
 - Built-in `help`, `version`, `task`, `tasks`, `mem`, `heap`, `heaptest`,
   `vm`, `vmwalk`, `ticks`, `yield`, `sleep`, `block`, `unblock`, `fb`,
   `user`, `syscall`, `ls`, `cat`, `run`, `mkdir`, `write`, `reap`, `clear`,
-  `disk`, `panic`, and `fault` commands
+  `disk`, `pfs`, `pcat`, `pwrite`, `panic`, and `fault` commands
 
 ### Filesystem
 
@@ -283,7 +285,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add an on-disk filesystem, starting with FAT32 or a compact native format
+- Mount SaturnFS through the common VFS namespace
 
 ## Vision
 

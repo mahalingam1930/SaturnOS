@@ -17,6 +17,7 @@
 #include "programs.h"
 #include "vfs.h"
 #include "block.h"
+#include "sfs.h"
 
 void kernel_main(void)
 {
@@ -32,6 +33,7 @@ void kernel_main(void)
     pmm_init();
     heap_init();
     block_init();
+    sfs_init();
     exception_init();
     vm_init();
     address_space_init(vm_root_table());
@@ -72,6 +74,7 @@ void kernel_main(void)
     kprintf("FS     : ramfs, %d dirs, %d files\n",
             (int)vfs_dir_count(),
             (int)vfs_file_count());
+    kprintf("DiskFS : %s\n", sfs_ready() ? "mounted" : "unavailable");
     kprintf("Input  : %s\n", keyboard_source());
     kprintf("VM     : %s, tables %s, check %s\n",
             vm_state(),

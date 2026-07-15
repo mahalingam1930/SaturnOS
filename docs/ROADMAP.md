@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.64` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.65` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -85,12 +85,15 @@ SaturnOS is currently at `0.6.64` and targets ARM64 QEMU `virt`.
 - non-destructive block-device self-test and I/O counters
 - legacy and modern virtio-MMIO block transport
 - persistent QEMU raw disk image with RAM-disk fallback
+- SaturnFS superblock, fixed directory, checksummed files, and reboot remount
+- persistent filesystem shell diagnostics and file operations
 
 ## Next
 
 ### Storage
 
-- add FAT32, ext2, or a compact native on-disk filesystem
+- mount SaturnFS through the common VFS namespace
+- later add FAT32 or ext2
 
 ## Future
 

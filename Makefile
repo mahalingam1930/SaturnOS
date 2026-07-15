@@ -106,6 +106,9 @@ $(BUILD)/syscall.o: kernel/syscall/syscall.c | $(BUILD)
 $(BUILD)/vfs.o: kernel/fs/vfs.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/sfs.o: kernel/fs/sfs.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/programs.o: kernel/user/programs.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -150,6 +153,7 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/vm.o \
 	$(BUILD)/syscall.o \
 	$(BUILD)/vfs.o \
+	$(BUILD)/sfs.o \
 	$(BUILD)/programs.o \
 	$(BUILD)/executable.o \
 	$(BUILD)/block.o \

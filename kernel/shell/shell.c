@@ -13,6 +13,7 @@
 #include "vfs.h"
 #include "programs.h"
 #include "block.h"
+#include "sfs.h"
 
 #define SHELL_BUFFER_SIZE 64
 #define SHELL_HISTORY_SIZE 8
@@ -36,6 +37,7 @@ struct shell_alias
 
 static char command_buffer[SHELL_BUFFER_SIZE];
 static char history_buffer[SHELL_HISTORY_SIZE][SHELL_BUFFER_SIZE];
+static unsigned char persistent_file_buffer[SFS_MAX_FILE_SIZE];
 static unsigned int command_length;
 static unsigned int command_cursor;
 static unsigned int rendered_length;
@@ -70,6 +72,9 @@ static const struct shell_command shell_commands[] = {
     {"mkdir", "mkdir <path>", "create a RAM filesystem directory", "mkdir /tmp"},
     {"write", "write <path> <text>", "create or replace a RAMFS text file", "write /tmp/note hello"},
     {"disk", "disk [test]", "show or test the block device", "disk test"},
+    {"pfs", "pfs [format]", "show or format the persistent filesystem", 0},
+    {"pwrite", "pwrite <path> <text>", "write a persistent file", "pwrite /note hello"},
+    {"pcat", "pcat <path>", "print a persistent file", "pcat /note"},
     {"fb", "fb", "show framebuffer runtime status", 0},
     {"user", "user", "show user/EL0 exception stats", 0},
     {"clear", "clear", "clear framebuffer console", 0},
@@ -850,6 +855,9 @@ static void shell_execute(const char *command)
         !string_equals(selected_command->name, "mkdir") &&
         !string_equals(selected_command->name, "write") &&
         !string_equals(selected_command->name, "disk") &&
+        !string_equals(selected_command->name, "pfs") &&
+        !string_equals(selected_command->name, "pwrite") &&
+        !string_equals(selected_command->name, "pcat") &&
         !string_equals(selected_command->name, "vmwalk"))
     {
         kprintf("Unexpected argument: %s\n", arg);
@@ -1141,6 +1149,72 @@ static void shell_execute(const char *command)
         else
         {
             shell_command_help("disk");
+        }
+    }
+    else if (command_equals(effective_command, "pfs"))
+    {
+        if (*arg == '\0')
+        {
+            sfs_dump();
+        }
+        else if (string_equals(arg, "format"))
+        {
+            kprintf("SaturnFS format: %s\n",
+                    sfs_format() ? "complete" : "failed");
+        }
+        else
+        {
+            shell_command_help("pfs");
+        }
+    }
+    else if (command_equals(effective_command, "pwrite"))
+    {
+        char path[SFS_MAX_PATH];
+        unsigned long path_length = 0;
+        const char *text = arg;
+
+        while (*text && *text != ' ' && path_length + 1 < SFS_MAX_PATH)
+        {
+            path[path_length++] = *text++;
+        }
+        path[path_length] = '\0';
+        text = skip_spaces(text);
+        if (!path_length || !*text)
+        {
+            shell_command_help("pwrite");
+        }
+        else
+        {
+            kprintf("Persistent write: %s\n",
+                    sfs_write_file(path, text, string_length(text)) ?
+                        "complete" : "failed");
+        }
+    }
+    else if (command_equals(effective_command, "pcat"))
+    {
+        long size;
+
+        if (*arg == '\0')
+        {
+            shell_command_help("pcat");
+        }
+        else
+        {
+            size = sfs_read_file(arg,
+                                 persistent_file_buffer,
+                                 sizeof(persistent_file_buffer));
+            if (size < 0)
+            {
+                kprintf("Persistent file not found or corrupt: %s\n", arg);
+            }
+            else
+            {
+                for (long i = 0; i < size; i++)
+                {
+                    kprintf("%c", persistent_file_buffer[i]);
+                }
+                kprintf("\n");
+            }
         }
     }
     else if (string_equals(effective_command, "fb"))

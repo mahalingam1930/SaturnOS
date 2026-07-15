@@ -30,7 +30,19 @@ struct user_session_state
     unsigned long user_root;
 };
 
-static struct user_session_state user_session;
+static struct user_session_state user_sessions[SCHED_MAX_TASKS];
+
+static struct user_session_state *user_session_current(void)
+{
+    const struct task *task = scheduler_current_task();
+    if (!task || task->pid < 0 || task->pid >= SCHED_MAX_TASKS)
+    {
+        return &user_sessions[0];
+    }
+    return &user_sessions[task->pid];
+}
+
+#define user_session (*user_session_current())
 
 static unsigned long exception_class_value(unsigned long esr)
 {
@@ -329,6 +341,20 @@ const struct address_space *user_mode_active_address_space(void)
     }
 
     return 0;
+}
+
+unsigned long user_mode_task_resume_root(const struct task *task)
+{
+    if (!task || task->pid < 0 || task->pid >= SCHED_MAX_TASKS ||
+        !task->memory.address_space)
+    {
+        return 0;
+    }
+    if (user_sessions[task->pid].active)
+    {
+        return user_sessions[task->pid].user_root;
+    }
+    return task->memory.address_space->kernel_root_table;
 }
 
 const char *user_mode_status_name(int status)

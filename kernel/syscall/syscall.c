@@ -23,8 +23,10 @@ struct syscall_stats
     unsigned long open_calls;
     unsigned long read_calls;
     unsigned long close_calls;
+    unsigned long create_calls;
     unsigned long faults;
     unsigned long write_bytes;
+    unsigned long file_write_bytes;
     unsigned long last_exit_code;
     unsigned long last_number;
     unsigned long last_arg0;
@@ -61,11 +63,9 @@ static long syscall_write(unsigned long fd,
 {
     const char *bytes = (const char *)buffer;
     const struct address_space *space;
-
-    if (fd != SYSCALL_STDOUT && fd != SYSCALL_STDERR)
-    {
-        return SYSCALL_ERR_INVAL;
-    }
+    struct task *task;
+    int slot;
+    long result;
 
     if (length == 0)
     {
@@ -84,16 +84,41 @@ static long syscall_write(unsigned long fd,
         return SYSCALL_ERR_FAULT;
     }
 
-    for (unsigned long i = 0; i < length; i++)
+    if (fd == SYSCALL_STDOUT || fd == SYSCALL_STDERR)
     {
-        console_putc(bytes[i]);
+        for (unsigned long i = 0; i < length; i++)
+        {
+            console_putc(bytes[i]);
+        }
+        stats.write_bytes += length;
+        return (long)length;
     }
 
-    stats.write_bytes += length;
-    return (long)length;
+    task = scheduler_current_task_mutable();
+    if (!task || fd < 3 || fd >= 3 + TASK_MAX_FILES)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    slot = (int)(fd - 3);
+    if (!task->files[slot].used)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    result = vfs_write(task->files[slot].path,
+                       task->files[slot].offset,
+                       bytes,
+                       length);
+    if (result > 0)
+    {
+        task->files[slot].offset += (unsigned long)result;
+        stats.file_write_bytes += (unsigned long)result;
+    }
+    return result < 0 ? SYSCALL_ERR_INVAL : result;
 }
 
-static long syscall_open(unsigned long path_address, unsigned long path_length)
+static long syscall_open(unsigned long path_address,
+                         unsigned long path_length,
+                         int create)
 {
     const struct address_space *space = syscall_address_space();
     struct task *task = scheduler_current_task_mutable();
@@ -129,6 +154,13 @@ static long syscall_open(unsigned long path_address, unsigned long path_length)
         task->files[slot].path[i] = path[i];
     }
     task->files[slot].path[path_length] = '\0';
+    if (create &&
+        !vfs_create(task->files[slot].path, 0, 0) &&
+        !vfs_truncate(task->files[slot].path, 0))
+    {
+        task->files[slot].path[0] = '\0';
+        return SYSCALL_ERR_INVAL;
+    }
     if (!vfs_file_data(task->files[slot].path, &file_size))
     {
         task->files[slot].path[0] = '\0';
@@ -214,6 +246,8 @@ const char *syscall_name(unsigned long number)
             return "read";
         case SYSCALL_CLOSE:
             return "close";
+        case SYSCALL_CREATE:
+            return "create";
         default:
             return "unknown";
     }
@@ -263,7 +297,7 @@ long syscall_dispatch(unsigned long number,
             break;
         case SYSCALL_OPEN:
             stats.open_calls++;
-            result = syscall_open(arg0, arg1);
+            result = syscall_open(arg0, arg1, 0);
             break;
         case SYSCALL_READ:
             stats.read_calls++;
@@ -273,13 +307,17 @@ long syscall_dispatch(unsigned long number,
             stats.close_calls++;
             result = syscall_close(arg0);
             break;
+        case SYSCALL_CREATE:
+            stats.create_calls++;
+            result = syscall_open(arg0, arg1, 1);
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_CLOSE)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_CREATE)
     {
         if (result < 0)
         {
@@ -313,6 +351,8 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_READ));
     kprintf("  %d %s args: fd\n", (int)SYSCALL_CLOSE,
             syscall_name(SYSCALL_CLOSE));
+    kprintf("  %d %s args: path, length\n", (int)SYSCALL_CREATE,
+            syscall_name(SYSCALL_CREATE));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -322,14 +362,16 @@ void syscall_dump_stats(void)
             (int)stats.write_calls,
             (int)stats.exit_calls,
             (int)stats.yield_calls);
-    kprintf("  open=%d read=%d close=%d\n",
+    kprintf("  open=%d read=%d close=%d create=%d\n",
             (int)stats.open_calls,
             (int)stats.read_calls,
-            (int)stats.close_calls);
+            (int)stats.close_calls,
+            (int)stats.create_calls);
     kprintf("  write_bytes=%d faults=%d last_exit=%d\n",
             (int)stats.write_bytes,
             (int)stats.faults,
             (int)stats.last_exit_code);
+    kprintf("  file_write_bytes=%d\n", (int)stats.file_write_bytes);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

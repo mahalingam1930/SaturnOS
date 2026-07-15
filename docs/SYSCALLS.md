@@ -14,13 +14,14 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 4  open    args: path, length
 5  read    args: fd, buffer, length
 6  close   args: fd
+7  create  args: path, length
 ```
 
 ## Current Behavior
 
-- `write` accepts file descriptors `1` and `2`, validates a bounded user
-  buffer, writes bytes to the kernel console, and returns the number of bytes
-  written.
+- `write` accepts console descriptors `1` and `2` or an open task-owned file
+  descriptor, validates a bounded user buffer, advances file offsets, and
+  returns the number of bytes written.
 - `exit` records the requested exit code and completes the active EL0 program
   back to its scheduler context in EL1.
 - `yield` records the call and performs a scheduler yield.
@@ -30,6 +31,8 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   advances the descriptor offset.
 - `close` releases a valid descriptor; all descriptors are also cleared when
   the task slot is reaped or reused.
+- `create` copies a bounded path from user memory, creates or truncates the VFS
+  file, and returns a task-owned descriptor positioned at offset zero.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous
@@ -96,6 +99,11 @@ to test dispatching the `yield` syscall stub.
 into the writable user data page, closes the descriptor, prints the bytes
 through console `write`, and exits with code `0`. Invalid pointer and descriptor
 tests return `-2` and `-1` without corrupting task state.
+
+`run /bin/user-file-write.sx` creates or truncates `/disk/user-write.txt`,
+writes `written from EL0`, closes the descriptor, and exits with code `0`. The
+file remains readable after a full QEMU reboot, exercising the descriptor,
+VFS, SaturnFS rewrite, and checksum paths together.
 
 ## User Image Loading
 

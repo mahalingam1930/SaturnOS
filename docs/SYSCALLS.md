@@ -40,7 +40,8 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   through the current end of file and returns the new offset.
 - `wait` returns `0` while a valid user task is active or `1` when it copies
   the completed PID, exit code, and success flag to validated user memory and
-  reaps the zombie. Invalid PIDs return `-1`; bad pointers return `-2`.
+  reaps the zombie. Only the recorded parent may wait on a child. Invalid or
+  unrelated PIDs return `-1`; bad pointers return `-2`.
 - `spawn` copies a bounded path and optional argument text from user memory,
   loads and validates the executable through VFS, packs the child's argument
   vectors, admits the child task, and returns its PID.
@@ -133,6 +134,8 @@ exercises completed-status delivery and safe zombie reaping; the waiter prints
 `run /bin/user-spawn.sx` invokes syscall 10 for `/bin/user-args.sx` with two
 arguments. The parent exits with code `0`, then the admitted child prints
 `child args`, proving the copied argument vector is independent of its parent.
+The scheduler records the spawning PID and reparents any remaining children
+when their parent exits, preventing stale ownership after task-slot reuse.
 
 ## User Image Loading
 

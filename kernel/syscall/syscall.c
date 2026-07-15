@@ -310,7 +310,10 @@ static long syscall_spawn(unsigned long path_address,
     pid = scheduler_create_user_task_from_image("user-child",
                                                 path,
                                                 argument_length ? argument : 0);
-    if (pid < 0 || scheduler_unblock_user_task(pid) < 0)
+    struct task *parent = scheduler_current_task_mutable();
+    if (pid < 0 || !parent ||
+        !scheduler_set_task_parent(pid, parent->pid) ||
+        scheduler_unblock_user_task(pid) < 0)
     {
         return SYSCALL_ERR_INVAL;
     }

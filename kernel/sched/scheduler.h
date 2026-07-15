@@ -76,6 +76,13 @@ struct task_file
     unsigned long offset;
 };
 
+struct task_wait_status
+{
+    unsigned long pid;
+    unsigned long exit_code;
+    unsigned long succeeded;
+};
+
 struct task
 {
     int pid;
@@ -107,6 +114,7 @@ int scheduler_block_task(int pid);
 int scheduler_unblock_task(int pid);
 int scheduler_reap_zombie_task(int pid);
 int scheduler_reap_zombies(void);
+int scheduler_wait_task_status(int pid, struct task_wait_status *status);
 int scheduler_run_user_task(int pid);
 void scheduler_tick(void);
 void scheduler_yield(void);

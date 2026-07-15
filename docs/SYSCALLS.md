@@ -16,6 +16,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 6  close   args: fd
 7  create  args: path, length
 8  seek    args: fd, absolute offset
+9  wait    args: pid, status buffer
 ```
 
 ## Current Behavior
@@ -36,6 +37,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   file, and returns a task-owned descriptor positioned at offset zero.
 - `seek` sets a valid task-owned descriptor to an absolute offset from zero
   through the current end of file and returns the new offset.
+- `wait` returns `0` while a valid user task is active or `1` when it copies
+  the completed PID, exit code, and success flag to validated user memory and
+  reaps the zombie. Invalid PIDs return `-1`; bad pointers return `-2`.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous
@@ -117,6 +121,10 @@ VFS, SaturnFS rewrite, and checksum paths together.
 `run /bin/user-file-seek.sx` opens `/disk/syscall.txt`, seeks to byte `6`,
 reads from the new offset, and prints only `from file syscall` before closing
 the descriptor and exiting with code `0`.
+
+Launching `/bin/user-demo.sx` as task 3 followed by `/bin/user-wait.sx`
+exercises completed-status delivery and safe zombie reaping; the waiter prints
+`wait ok` only when syscall 9 returns the completed state.
 
 ## User Image Loading
 

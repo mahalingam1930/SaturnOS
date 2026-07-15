@@ -741,6 +741,26 @@ int scheduler_reap_zombies(void)
     return reaped;
 }
 
+int scheduler_wait_task_status(int pid, struct task_wait_status *status)
+{
+    if (!status || pid <= 0 || pid >= task_count || pid == current_task ||
+        !tasks[pid].memory.address_space ||
+        tasks[pid].memory.address_space->kind != ADDRESS_SPACE_USER)
+    {
+        return -1;
+    }
+    if (tasks[pid].state != TASK_ZOMBIE)
+    {
+        return 0;
+    }
+    status->pid = (unsigned long)pid;
+    status->exit_code = tasks[pid].user_status.last_exit_code;
+    status->succeeded = tasks[pid].user_status.program_succeeded ? 1UL : 0UL;
+    scheduler_clear_task_slot(pid);
+    scheduler_trim_unused_tail();
+    return 1;
+}
+
 int scheduler_run_user_task(int pid)
 {
     int status;

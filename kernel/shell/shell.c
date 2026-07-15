@@ -68,7 +68,7 @@ static const struct shell_command shell_commands[] = {
     {"syscall", "syscall [number]", "show or test syscall dispatcher", "syscall 3"},
     {"ls", "ls", "list files in the RAM filesystem", 0},
     {"cat", "cat <path>", "print a RAM filesystem file", "cat /share/user-demo.txt"},
-    {"run", "run [path]", "launch a Saturn executable from RAMFS", "run /bin/user-demo.sx"},
+    {"run", "run [path] [argument]", "launch a Saturn executable with optional argument text", "run /bin/user-args.sx hello"},
     {"mkdir", "mkdir <path>", "create a RAM filesystem directory", "mkdir /tmp"},
     {"write", "write <path> <text>", "create or replace a RAMFS text file", "write /tmp/note hello"},
     {"disk", "disk [test]", "show or test the block device", "disk test"},
@@ -1079,8 +1079,37 @@ static void shell_execute(const char *command)
     }
     else if (command_equals(effective_command, "run"))
     {
-        const char *path = *arg ? arg : USER_DEMO_IMAGE_PATH;
-        int pid = scheduler_create_user_task_from_image("user-program", path);
+        char path[VFS_MAX_PATH];
+        const char *argument = 0;
+        unsigned long path_length = 0;
+
+        if (!*arg)
+        {
+            arg = USER_DEMO_IMAGE_PATH;
+        }
+        while (arg[path_length] && arg[path_length] != ' ' &&
+               path_length + 1UL < sizeof(path))
+        {
+            path[path_length] = arg[path_length];
+            path_length++;
+        }
+        path[path_length] = '\0';
+        if (arg[path_length] && arg[path_length] != ' ')
+        {
+            kprintf("Program path is too long\n");
+            return;
+        }
+        if (arg[path_length] == ' ')
+        {
+            argument = arg + path_length + 1UL;
+            while (*argument == ' ')
+            {
+                argument++;
+            }
+        }
+        int pid = scheduler_create_user_task_from_image("user-program",
+                                                        path,
+                                                        argument);
 
         if (pid >= 0 && scheduler_unblock_user_task(pid) == 0)
         {

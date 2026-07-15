@@ -33,8 +33,10 @@ const char *user_mode_status_name(int status);
 const char *user_mode_entry_state(const struct task *task);
 void arm64_enter_el0(unsigned long pc, unsigned long sp, unsigned long spsr);
 void arm64_enter_el0_task(unsigned long pc,
-                           unsigned long sp,
-                           unsigned long spsr);
+                          unsigned long sp,
+                          unsigned long spsr,
+                          unsigned long argument_length,
+                          unsigned long argument_address);
 void arm64_el0_task_return(void);
 
 #endif

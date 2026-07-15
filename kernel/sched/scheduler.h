@@ -12,6 +12,7 @@
     ((SCHED_MAX_TASKS * SCHED_STACK_SLOT_SIZE) + SCHED_STACK_GUARD_SIZE)
 #define TASK_MAX_FILES 4
 #define TASK_FILE_PATH_SIZE 48
+#define TASK_USER_ARGUMENT_MAX 128UL
 
 enum task_state
 {
@@ -89,13 +90,16 @@ struct task
     struct task_el0_state el0;
     struct task_user_status user_status;
     struct task_file files[TASK_MAX_FILES];
+    unsigned long user_argument_address;
+    unsigned long user_argument_length;
 };
 
 void scheduler_init(void);
 int scheduler_create_kernel_thread(const char *name, void (*entry)(void));
 int scheduler_create_blocked_user_task(const char *name);
 int scheduler_create_user_task_from_image(const char *name,
-                                          const char *image_path);
+                                          const char *image_path,
+                                          const char *argument);
 int scheduler_unblock_user_task(int pid);
 int scheduler_block_task(int pid);
 int scheduler_unblock_task(int pid);

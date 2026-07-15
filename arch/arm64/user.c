@@ -195,7 +195,11 @@ int user_mode_run_task(struct task *task)
 
     arm64_mmu_switch_ttbr0(user_session.user_root);
     task->user_status.el0_entries++;
-    arm64_enter_el0_task(task->el0.pc, task->el0.sp, task->el0.spsr);
+    arm64_enter_el0_task(task->el0.pc,
+                        task->el0.sp,
+                        task->el0.spsr,
+                        task->user_argument_length,
+                        task->user_argument_address);
 
     if (user_session.completed)
     {

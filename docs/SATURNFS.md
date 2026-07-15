@@ -25,3 +25,10 @@ untouched and reported as unavailable.
 
 Persistence was verified by writing a file to the QEMU virtio disk, restarting
 the VM, remounting SaturnFS, and reading the same contents back.
+
+## VFS Mount
+
+SaturnFS is mounted at `/disk`. VFS translates `/disk/path` to SaturnFS
+`/path`, so standard shell file commands and executable loading work without a
+filesystem-specific call path. The built-in executable is mirrored to
+`/disk/bin/user-demo.sx` during boot.

@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.65
+Version: 0.6.66
 
 Codename: Memory
 
@@ -100,6 +100,8 @@ Target: ARM64 QEMU `virt`
 - Persistent 4 MiB QEMU disk-image launch configuration
 - SaturnFS fixed-layout persistent files with payload checksums
 - Persistent file inspection and writes through `pfs`, `pcat`, and `pwrite`
+- SaturnFS mounted at `/disk` through the common VFS read/write interface
+- Persistent `.sx` executable loading through ordinary VFS paths
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -285,7 +287,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Mount SaturnFS through the common VFS namespace
+- Generalize the controlled EL0 lifecycle beyond the smoke protocol
 
 ## Vision
 

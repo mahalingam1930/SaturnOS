@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.76
+Version: 0.6.77
 
 Codename: Memory
 
@@ -115,6 +115,7 @@ Target: ARM64 QEMU `virt`
 - Validated user task spawn syscall with VFS executable loading
 - Bounded argument propagation from EL0 parent to spawned child
 - Parent-owned child wait authorization and orphan-safe reparenting
+- Guarded EL0 yield rejection to preserve the single recovery session
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -300,7 +301,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add blocking wait semantics for child tasks
+- Add per-task resumable EL0 recovery sessions
 
 ## Vision
 

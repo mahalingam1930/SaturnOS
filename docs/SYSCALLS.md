@@ -18,13 +18,13 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `write` accepts file descriptors `1` and `2`, validates a bounded user
   buffer, writes bytes to the kernel console, and returns the number of bytes
   written.
-- `exit` records the requested exit code and completes the active controlled
-  EL0 smoke run back to EL1.
+- `exit` records the requested exit code and completes the active EL0 program
+  back to its scheduler context in EL1.
 - `yield` records the call and performs a scheduler yield.
 - unknown syscall numbers are rejected with `-1`.
 
-`exit` is still intentionally scoped to the guarded smoke path; the next step is
-normal scheduler-driven user-task execution.
+Program completion is independent of the diagnostic BRK fallback. Synchronous
+EL0 faults are recovered as failed tasks rather than successful exits.
 
 ## EL0 ABI
 
@@ -58,8 +58,8 @@ brk #0             fallback if exit returns to EL0
 
 The SVC prints `hello from EL0 syscall`, proving the EL0 syscall path can pass
 a user buffer to the kernel and return to the next user instruction. The exit
-syscall then completes the smoke run back to EL1 with exit code `7`. The final
-BRK remains as a fallback if exit ever incorrectly returns to EL0.
+syscall then completes the program back to EL1 with exit code `7`. The final
+BRK remains a fault fallback if exit ever incorrectly returns to EL0.
 
 ## Shell Diagnostics
 

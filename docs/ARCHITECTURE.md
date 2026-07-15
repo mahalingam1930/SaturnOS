@@ -6,7 +6,7 @@ SaturnOS
 
 ## Version
 
-0.6.66
+0.6.67
 
 ## Target Architecture
 
@@ -71,7 +71,7 @@ can be admitted and smoke-tested. The syscall dispatcher exists with initial
 write, exit, and yield IDs. Lower-EL SVC exceptions are routed into the
 dispatcher using `x8` as the syscall number and `x0`-`x3` as arguments, but
 the `write` syscall can validate and print bounded user buffers, and `exit`
-can complete the controlled EL0 smoke run with a tracked exit code. The
+can complete a generic EL0 run session with a tracked exit code. The
 user-demo task is now admitted as a direct scheduler-runnable context that
 enters EL0 from its own task entry; loading arbitrary user programs is still
 future work.
@@ -84,9 +84,10 @@ SaturnOS currently uses an ARM64 identity map for QEMU RAM and MMIO. The kernel
 has page-level permission diagnostics for text, rodata, data, bss, heap,
 scheduler stacks, stack guards, framebuffer, and MMIO regions.
 
-User/process address spaces exist as a scaffold with controlled code, data, and
-stack descriptors. The EL0 smoke path proves controlled entry, SVC dispatch,
-and exception recovery, but not yet general-purpose user programs.
+User/process address spaces provide controlled code, data, and stack
+descriptors. EL0 programs complete through `exit`; synchronous user faults are
+contained, recorded as program failures, and returned to the scheduler without
+panicking the kernel.
 
 ## Graphics And Input
 

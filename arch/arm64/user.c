@@ -7,37 +7,30 @@
 #define ESR_EC_SHIFT 26
 #define ESR_EC_MASK 0x3FUL
 #define ESR_ISS_MASK 0x01ffffffUL
-#define ESR_EC_BRK 0x3CUL
-#define ESR_BRK_IMM0 0x0UL
-#define USER_SMOKE_BRK_OFFSET 32UL
 #define SPSR_MODE_MASK 0xFUL
 
-enum user_smoke_reject_reason
+enum user_session_reject_reason
 {
-    USER_SMOKE_REJECT_NONE = 0,
-    USER_SMOKE_REJECT_BAD_ROOTS,
-    USER_SMOKE_REJECT_BAD_RETURN,
-    USER_SMOKE_REJECT_UNEXPECTED_EC,
-    USER_SMOKE_REJECT_UNEXPECTED_ISS,
-    USER_SMOKE_REJECT_UNEXPECTED_MODE,
-    USER_SMOKE_REJECT_UNEXPECTED_ELR,
+    USER_SESSION_REJECT_NONE = 0,
+    USER_SESSION_REJECT_BAD_ROOTS,
+    USER_SESSION_REJECT_BAD_RETURN,
+    USER_SESSION_REJECT_UNEXPECTED_MODE,
 };
 
-struct user_smoke_state
+struct user_session_state
 {
     volatile int active;
-    volatile int handled;
+    volatile int completed;
+    volatile int faulted;
     volatile int last_reject_reason;
     volatile unsigned long reject_count;
     struct task *task;
-    unsigned long expected_elr;
-    unsigned long expected_iss;
     unsigned long return_pc;
     unsigned long kernel_root;
     unsigned long user_root;
 };
 
-static struct user_smoke_state user_smoke;
+static struct user_session_state user_session;
 
 static unsigned long exception_class_value(unsigned long esr)
 {
@@ -49,50 +42,44 @@ static unsigned long exception_iss_value(unsigned long esr)
     return esr & ESR_ISS_MASK;
 }
 
-static const char *user_smoke_reject_reason_name(int reason)
+static const char *user_session_reject_reason_name(int reason)
 {
     switch (reason)
     {
-        case USER_SMOKE_REJECT_NONE:
+        case USER_SESSION_REJECT_NONE:
             return "none";
-        case USER_SMOKE_REJECT_BAD_ROOTS:
+        case USER_SESSION_REJECT_BAD_ROOTS:
             return "bad-roots";
-        case USER_SMOKE_REJECT_BAD_RETURN:
+        case USER_SESSION_REJECT_BAD_RETURN:
             return "bad-return";
-        case USER_SMOKE_REJECT_UNEXPECTED_EC:
-            return "unexpected-ec";
-        case USER_SMOKE_REJECT_UNEXPECTED_ISS:
-            return "unexpected-iss";
-        case USER_SMOKE_REJECT_UNEXPECTED_MODE:
+        case USER_SESSION_REJECT_UNEXPECTED_MODE:
             return "unexpected-mode";
-        case USER_SMOKE_REJECT_UNEXPECTED_ELR:
-            return "unexpected-elr";
         default:
             return "unknown";
     }
 }
 
-static int user_smoke_reject(int reason,
+static int user_session_reject(int reason,
                              unsigned long esr,
                              unsigned long elr,
                              unsigned long spsr)
 {
-    if (user_smoke.kernel_root)
+    if (user_session.kernel_root)
     {
-        arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
+        arm64_mmu_switch_ttbr0(user_session.kernel_root);
     }
 
-    user_smoke.last_reject_reason = reason;
-    user_smoke.reject_count++;
-    if (user_smoke.task)
+    user_session.last_reject_reason = reason;
+    user_session.reject_count++;
+    if (user_session.task)
     {
-        user_smoke.task->user_status.rejects++;
+        user_session.task->user_status.rejects++;
     }
-    user_smoke.active = 0;
+    user_session.active = 0;
 
-    kprintf("EL0 smoke: recovery rejected reason=%s ec=0x%x iss=0x%x "
+    kprintf("EL0 task: recovery rejected reason=%s ec=0x%x iss=0x%x "
             "elr=0x%x spsr=0x%x\n",
-            user_smoke_reject_reason_name(reason),
+            user_session_reject_reason_name(reason),
             (unsigned int)exception_class_value(esr),
             (unsigned int)exception_iss_value(esr),
             (unsigned int)elr,
@@ -170,7 +157,7 @@ int user_mode_enter_stub(const struct task *task)
     return USER_MODE_READY;
 }
 
-int user_mode_run_smoke_test(struct task *task)
+int user_mode_run_task(struct task *task)
 {
     const struct address_space *space;
     int status = user_mode_prepare(task);
@@ -193,40 +180,36 @@ int user_mode_run_smoke_test(struct task *task)
         return USER_MODE_SWITCH_NOT_READY;
     }
 
-    user_smoke.active = 1;
-    user_smoke.handled = 0;
-    user_smoke.last_reject_reason = USER_SMOKE_REJECT_NONE;
-    user_smoke.task = task;
-    user_smoke.expected_elr = task->el0.pc + USER_SMOKE_BRK_OFFSET;
-    user_smoke.expected_iss = ESR_BRK_IMM0;
-    user_smoke.return_pc = (unsigned long)arm64_el0_smoke_return;
-    user_smoke.kernel_root = space->kernel_root_table;
-    user_smoke.user_root = space->target_root_table;
+    user_session.active = 1;
+    user_session.completed = 0;
+    user_session.faulted = 0;
+    user_session.last_reject_reason = USER_SESSION_REJECT_NONE;
+    user_session.task = task;
+    user_session.return_pc = (unsigned long)arm64_el0_task_return;
+    user_session.kernel_root = space->kernel_root_table;
+    user_session.user_root = space->target_root_table;
 
-    kprintf("EL0 smoke: entering user task at 0x%x\n",
+    kprintf("EL0 task: entering at 0x%x\n",
             (unsigned int)task->el0.pc);
-    kprintf("EL0 smoke: SVC write, exit, then BRK fallback\n");
-    kprintf("EL0 smoke: recovery armed ec=0x%x iss=0x%x elr=0x%x\n",
-            (unsigned int)ESR_EC_BRK,
-            (unsigned int)user_smoke.expected_iss,
-            (unsigned int)user_smoke.expected_elr);
+    kprintf("EL0 task: completion via exit syscall; faults recover to EL1\n");
 
-    arm64_mmu_switch_ttbr0(user_smoke.user_root);
+    arm64_mmu_switch_ttbr0(user_session.user_root);
     task->user_status.el0_entries++;
-    arm64_enter_el0_smoke(task->el0.pc, task->el0.sp, task->el0.spsr);
+    arm64_enter_el0_task(task->el0.pc, task->el0.sp, task->el0.spsr);
 
-    if (user_smoke.handled)
+    if (user_session.completed)
     {
         task->user_status.recoveries++;
-        user_smoke.task = 0;
-        kprintf("EL0 smoke: returned to EL1\n");
-        return USER_MODE_READY;
+        user_session.task = 0;
+        kprintf("EL0 task: returned to EL1 outcome=%s\n",
+                user_session.faulted ? "fault" : "exit");
+        return user_session.faulted ? USER_MODE_TASK_FAILED : USER_MODE_READY;
     }
 
-    user_smoke.active = 0;
-    user_smoke.task = 0;
-    arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
-    return USER_MODE_SMOKE_FAILED;
+    user_session.active = 0;
+    user_session.task = 0;
+    arm64_mmu_switch_ttbr0(user_session.kernel_root);
+    return USER_MODE_TASK_FAILED;
 }
 
 int user_mode_handle_exception(unsigned long esr,
@@ -239,38 +222,22 @@ int user_mode_handle_exception(unsigned long esr,
     unsigned long mode = spsr & SPSR_MODE_MASK;
     (void)far;
 
-    if (!user_smoke.active)
+    if (!user_session.active)
     {
         return 0;
     }
 
-    if (!user_smoke.kernel_root || !user_smoke.user_root)
+    if (!user_session.kernel_root || !user_session.user_root)
     {
-        return user_smoke_reject(USER_SMOKE_REJECT_BAD_ROOTS,
+        return user_session_reject(USER_SESSION_REJECT_BAD_ROOTS,
                                  esr,
                                  elr,
                                  spsr);
     }
 
-    if (!user_smoke.return_pc)
+    if (!user_session.return_pc)
     {
-        return user_smoke_reject(USER_SMOKE_REJECT_BAD_RETURN,
-                                 esr,
-                                 elr,
-                                 spsr);
-    }
-
-    if (ec != ESR_EC_BRK)
-    {
-        return user_smoke_reject(USER_SMOKE_REJECT_UNEXPECTED_EC,
-                                 esr,
-                                 elr,
-                                 spsr);
-    }
-
-    if (iss != user_smoke.expected_iss)
-    {
-        return user_smoke_reject(USER_SMOKE_REJECT_UNEXPECTED_ISS,
+        return user_session_reject(USER_SESSION_REJECT_BAD_RETURN,
                                  esr,
                                  elr,
                                  spsr);
@@ -278,39 +245,36 @@ int user_mode_handle_exception(unsigned long esr,
 
     if (mode != ARM64_SPSR_MODE_EL0T)
     {
-        return user_smoke_reject(USER_SMOKE_REJECT_UNEXPECTED_MODE,
+        return user_session_reject(USER_SESSION_REJECT_UNEXPECTED_MODE,
                                  esr,
                                  elr,
                                  spsr);
     }
 
-    if (elr != user_smoke.expected_elr)
+    arm64_mmu_switch_ttbr0(user_session.kernel_root);
+    if (user_session.task)
     {
-        return user_smoke_reject(USER_SMOKE_REJECT_UNEXPECTED_ELR,
-                                 esr,
-                                 elr,
-                                 spsr);
+        user_session.task->user_status.traps++;
+        user_session.task->user_status.rejects++;
     }
+    user_session.reject_count++;
+    user_session.last_reject_reason = USER_SESSION_REJECT_NONE;
+    user_session.completed = 1;
+    user_session.faulted = 1;
+    user_session.active = 0;
 
-    arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
-    if (user_smoke.task)
-    {
-        user_smoke.task->user_status.expected_traps++;
-    }
-    user_smoke.handled = 1;
-    user_smoke.active = 0;
-
-    kprintf("EL0 smoke: caught expected BRK ec=0x%x iss=0x%x ELR=0x%x\n",
+    kprintf("EL0 task: fault recovered ec=0x%x iss=0x%x elr=0x%x far=0x%x\n",
             (unsigned int)ec,
             (unsigned int)iss,
-            (unsigned int)elr);
+            (unsigned int)elr,
+            (unsigned int)far);
 
     __asm__ volatile(
         "msr ELR_EL1, %0\n"
         "msr SPSR_EL1, %1\n"
         "isb\n"
         :
-        : "r"(user_smoke.return_pc), "r"(ARM64_SPSR_EL1H)
+        : "r"(user_session.return_pc), "r"(ARM64_SPSR_EL1H)
         : "memory");
 
     return 1;
@@ -318,34 +282,35 @@ int user_mode_handle_exception(unsigned long esr,
 
 int user_mode_handle_exit_syscall(unsigned long code)
 {
-    if (!user_smoke.active || !user_smoke.return_pc)
+    if (!user_session.active || !user_session.return_pc)
     {
         return 0;
     }
 
-    if (user_smoke.kernel_root)
+    if (user_session.kernel_root)
     {
-        arm64_mmu_switch_ttbr0(user_smoke.kernel_root);
+        arm64_mmu_switch_ttbr0(user_session.kernel_root);
     }
 
-    if (user_smoke.task)
+    if (user_session.task)
     {
-        user_smoke.task->user_status.expected_traps++;
-        user_smoke.task->user_status.exits++;
-        user_smoke.task->user_status.last_exit_code = code;
+        user_session.task->user_status.traps++;
+        user_session.task->user_status.exits++;
+        user_session.task->user_status.last_exit_code = code;
     }
 
-    user_smoke.handled = 1;
-    user_smoke.active = 0;
+    user_session.completed = 1;
+    user_session.faulted = 0;
+    user_session.active = 0;
 
-    kprintf("EL0 smoke: exit syscall code=%d\n", (int)code);
+    kprintf("EL0 task: exit code=%d\n", (int)code);
 
     __asm__ volatile(
         "msr ELR_EL1, %0\n"
         "msr SPSR_EL1, %1\n"
         "isb\n"
         :
-        : "r"(user_smoke.return_pc), "r"(ARM64_SPSR_EL1H)
+        : "r"(user_session.return_pc), "r"(ARM64_SPSR_EL1H)
         : "memory");
 
     return 1;
@@ -353,9 +318,9 @@ int user_mode_handle_exit_syscall(unsigned long code)
 
 const struct address_space *user_mode_active_address_space(void)
 {
-    if (user_smoke.active && user_smoke.task)
+    if (user_session.active && user_session.task)
     {
-        return user_smoke.task->memory.address_space;
+        return user_session.task->memory.address_space;
     }
 
     return 0;
@@ -385,8 +350,8 @@ const char *user_mode_status_name(int status)
             return "not-eligible";
         case USER_MODE_SWITCH_NOT_READY:
             return "switch-not-ready";
-        case USER_MODE_SMOKE_FAILED:
-            return "smoke-failed";
+        case USER_MODE_TASK_FAILED:
+            return "task-failed";
         default:
             return "unknown";
     }

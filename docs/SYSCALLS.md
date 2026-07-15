@@ -15,6 +15,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 5  read    args: fd, buffer, length
 6  close   args: fd
 7  create  args: path, length
+8  seek    args: fd, absolute offset
 ```
 
 ## Current Behavior
@@ -33,6 +34,8 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   the task slot is reaped or reused.
 - `create` copies a bounded path from user memory, creates or truncates the VFS
   file, and returns a task-owned descriptor positioned at offset zero.
+- `seek` sets a valid task-owned descriptor to an absolute offset from zero
+  through the current end of file and returns the new offset.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous
@@ -104,6 +107,10 @@ tests return `-2` and `-1` without corrupting task state.
 writes `written from EL0`, closes the descriptor, and exits with code `0`. The
 file remains readable after a full QEMU reboot, exercising the descriptor,
 VFS, SaturnFS rewrite, and checksum paths together.
+
+`run /bin/user-file-seek.sx` opens `/disk/syscall.txt`, seeks to byte `6`,
+reads from the new offset, and prints only `from file syscall` before closing
+the descriptor and exiting with code `0`.
 
 ## User Image Loading
 

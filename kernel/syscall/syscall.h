@@ -8,6 +8,7 @@
 #define SYSCALL_READ 5UL
 #define SYSCALL_CLOSE 6UL
 #define SYSCALL_CREATE 7UL
+#define SYSCALL_SEEK 8UL
 
 long syscall_dispatch(unsigned long number,
                       unsigned long arg0,

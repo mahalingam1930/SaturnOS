@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.69
+Version: 0.6.70
 
 Codename: Memory
 
@@ -108,6 +108,7 @@ Target: ARM64 QEMU `virt`
 - EL0 file-reading program backed by persistent `/disk` VFS data
 - Validated user `create` and descriptor-backed `write` syscalls
 - EL0 persistent-file write program with reboot persistence verification
+- Validated descriptor seek syscall and EL0 persistent-file seek program
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -293,7 +294,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user file seek support
+- Add user program argument support
 
 ## Vision
 

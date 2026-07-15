@@ -27,7 +27,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   returns the number of bytes written.
 - `exit` records the requested exit code and completes the active EL0 program
   back to its scheduler context in EL1.
-- `yield` records the call and performs a scheduler yield.
+- `yield` performs a scheduler yield for kernel callers. EL0 callers currently
+  receive `-1` because recovery uses one active session; rejecting the switch
+  prevents another user task from overwriting the parent's recovery tuple.
 - `open` copies a bounded path from user memory, resolves it through VFS, and
   returns a descriptor owned by the current task.
 - `read` copies at most 128 bytes into a validated writable user range and

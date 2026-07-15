@@ -386,9 +386,17 @@ long syscall_dispatch(unsigned long number,
             break;
         case SYSCALL_YIELD:
             stats.yield_calls++;
-            stats.handled++;
-            scheduler_yield();
-            result = 0;
+            if (user_mode_active_address_space())
+            {
+                stats.rejected++;
+                result = SYSCALL_ERR_INVAL;
+            }
+            else
+            {
+                stats.handled++;
+                scheduler_yield();
+                result = 0;
+            }
             break;
         case SYSCALL_OPEN:
             stats.open_calls++;

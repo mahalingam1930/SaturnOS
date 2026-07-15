@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.76` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.77` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -104,12 +104,13 @@ SaturnOS is currently at `0.6.76` and targets ARM64 QEMU `virt`.
 - validated EL0 spawn syscall with VFS loading and child admission
 - bounded spawned-child argument propagation into the existing argv ABI
 - parent-child ownership, wait authorization, and orphan reparenting
+- explicit EL0 yield guard preventing recovery-session corruption
 
 ## Next
 
 ### User Space
 
-- add blocking wait semantics for child tasks
+- add per-task resumable EL0 recovery sessions, then blocking wait
 
 ### Storage
 

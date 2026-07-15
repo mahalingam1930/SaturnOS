@@ -55,9 +55,10 @@ static const unsigned int user_args_code[] = {
     0xd2800048U, 0xd2800000U, 0xd4000001U, 0xd4200000U,
 };
 static const unsigned int user_spawn_code[] = {
-    0xd2800148U, 0xd2a00400U, 0xd2800221U, 0xd2a00402U,
-    0x91008042U, 0xd2800143U, 0xd4000001U, 0xd2800048U,
-    0xd2800000U, 0xd4000001U, 0xd4200000U,
+    0xd2800068U, 0xd4000001U, 0xd2800148U, 0xd2a00400U,
+    0xd2800221U, 0xd2a00402U, 0x91008042U, 0xd2800143U,
+    0xd4000001U, 0xd2800048U, 0xd2800000U, 0xd4000001U,
+    0xd4200000U,
 };
 static const char user_spawn_path[] = "/bin/user-args.sx";
 static const char user_spawn_arguments[] = "child args";

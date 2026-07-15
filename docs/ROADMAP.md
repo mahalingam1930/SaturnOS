@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.69` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.70` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -97,12 +97,13 @@ SaturnOS is currently at `0.6.69` and targets ARM64 QEMU `virt`.
 - EL0 persistent-file read integration program and rejection tests
 - validated user `create` and descriptor-backed `write` syscalls
 - EL0 persistent-file write integration and reboot persistence test
+- validated descriptor seek syscall and EL0 seek integration program
 
 ## Next
 
 ### User Space
 
-- add user file seek support
+- add user program argument support
 
 ### Storage
 

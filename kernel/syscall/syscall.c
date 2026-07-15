@@ -24,6 +24,7 @@ struct syscall_stats
     unsigned long read_calls;
     unsigned long close_calls;
     unsigned long create_calls;
+    unsigned long seek_calls;
     unsigned long faults;
     unsigned long write_bytes;
     unsigned long file_write_bytes;
@@ -230,6 +231,27 @@ static long syscall_close(unsigned long fd)
     return 0;
 }
 
+static long syscall_seek(unsigned long fd, unsigned long offset)
+{
+    struct task *task = scheduler_current_task_mutable();
+    unsigned long file_size;
+    int slot;
+
+    if (!task || fd < 3 || fd >= 3 + TASK_MAX_FILES)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    slot = (int)(fd - 3);
+    if (!task->files[slot].used ||
+        !vfs_file_data(task->files[slot].path, &file_size) ||
+        offset > file_size)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    task->files[slot].offset = offset;
+    return (long)offset;
+}
+
 const char *syscall_name(unsigned long number)
 {
     switch (number)
@@ -248,6 +270,8 @@ const char *syscall_name(unsigned long number)
             return "close";
         case SYSCALL_CREATE:
             return "create";
+        case SYSCALL_SEEK:
+            return "seek";
         default:
             return "unknown";
     }
@@ -311,13 +335,17 @@ long syscall_dispatch(unsigned long number,
             stats.create_calls++;
             result = syscall_open(arg0, arg1, 1);
             break;
+        case SYSCALL_SEEK:
+            stats.seek_calls++;
+            result = syscall_seek(arg0, arg1);
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_CREATE)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_SEEK)
     {
         if (result < 0)
         {
@@ -353,6 +381,8 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_CLOSE));
     kprintf("  %d %s args: path, length\n", (int)SYSCALL_CREATE,
             syscall_name(SYSCALL_CREATE));
+    kprintf("  %d %s args: fd, offset\n", (int)SYSCALL_SEEK,
+            syscall_name(SYSCALL_SEEK));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -362,11 +392,12 @@ void syscall_dump_stats(void)
             (int)stats.write_calls,
             (int)stats.exit_calls,
             (int)stats.yield_calls);
-    kprintf("  open=%d read=%d close=%d create=%d\n",
+    kprintf("  open=%d read=%d close=%d create=%d seek=%d\n",
             (int)stats.open_calls,
             (int)stats.read_calls,
             (int)stats.close_calls,
-            (int)stats.create_calls);
+            (int)stats.create_calls,
+            (int)stats.seek_calls);
     kprintf("  write_bytes=%d faults=%d last_exit=%d\n",
             (int)stats.write_bytes,
             (int)stats.faults,

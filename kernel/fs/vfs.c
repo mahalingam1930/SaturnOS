@@ -217,11 +217,30 @@ long vfs_write(const char *path,
 
     if (disk_path)
     {
-        if (offset != 0 || !size || size > SFS_MAX_FILE_SIZE)
+        long current;
+        unsigned long final_size;
+
+        if (!size || !buffer || offset > SFS_MAX_FILE_SIZE ||
+            size > SFS_MAX_FILE_SIZE - offset)
         {
             return -1;
         }
-        return sfs_write_file(disk_path, buffer, size) ? (long)size : -1;
+        current = sfs_read_file(disk_path,
+                                disk_file_buffer,
+                                sizeof(disk_file_buffer));
+        if (current < 0)
+        {
+            return -1;
+        }
+        for (unsigned long i = 0; i < size; i++)
+        {
+            disk_file_buffer[offset + i] =
+                ((const unsigned char *)buffer)[i];
+        }
+        final_size = offset + size > (unsigned long)current ?
+            offset + size : (unsigned long)current;
+        return sfs_write_file(disk_path, disk_file_buffer, final_size) ?
+            (long)size : -1;
     }
 
     if (!file || file->kind != RAMFS_FILE || (size && !buffer) ||
@@ -249,7 +268,7 @@ int vfs_truncate(const char *path, unsigned long size)
     {
         long current;
 
-        if (!size || size > SFS_MAX_FILE_SIZE)
+        if (size > SFS_MAX_FILE_SIZE)
         {
             return 0;
         }

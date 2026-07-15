@@ -181,7 +181,7 @@ int sfs_write_file(const char *path, const void *data, unsigned long size)
 {
     struct sfs_entry *entry;
 
-    if (!mounted || !path_valid(path) || !data || !size ||
+    if (!mounted || !path_valid(path) || (size && !data) ||
         size > SFS_MAX_FILE_SIZE)
     {
         return 0;

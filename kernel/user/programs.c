@@ -47,7 +47,11 @@ static const unsigned int user_file_seek_code[] = {
     0xd4000001U, 0xd4200000U,
 };
 static const unsigned int user_args_code[] = {
-    0xaa0003e2U, 0xd2800028U, 0xd2800020U, 0xd4000001U,
+    0xf100081fU, 0x54000263U, 0xaa0103e3U, 0xaa0203e4U,
+    0xf9400061U, 0xf9400082U, 0xd2800028U, 0xd2800020U,
+    0xd4000001U, 0xd2800028U, 0xd2800020U, 0xd2a00401U,
+    0x9101e021U, 0xd2800022U, 0xd4000001U, 0xf9400461U,
+    0xf9400482U, 0xd2800028U, 0xd2800020U, 0xd4000001U,
     0xd2800048U, 0xd2800000U, 0xd4000001U, 0xd4200000U,
 };
 
@@ -72,7 +76,7 @@ int user_programs_init(void)
         sizeof(user_file_seek_code) + 128UL]
         __attribute__((aligned(4)));
     static unsigned char args_image[sizeof(struct saturn_exec_header) +
-                                    sizeof(user_args_code)]
+                                    sizeof(user_args_code) + 128UL]
         __attribute__((aligned(4)));
     struct saturn_exec_header *header =
         (struct saturn_exec_header *)image;
@@ -207,14 +211,19 @@ int user_programs_init(void)
     args_header->version = SATURN_EXEC_VERSION;
     args_header->header_size = sizeof(*args_header);
     args_header->code_size = sizeof(user_args_code);
-    args_header->data_size = 0;
+    args_header->data_size = 128;
     args_header->entry_offset = 0;
     for (unsigned long i = 0; i < sizeof(user_args_code); i++)
     {
         args_payload[i] = ((const unsigned char *)user_args_code)[i];
     }
+    for (unsigned long i = 0; i < 128; i++)
+    {
+        args_payload[sizeof(user_args_code) + i] = 0;
+    }
+    args_payload[sizeof(user_args_code) + 120] = ' ';
     args_header->payload_checksum =
-        saturn_exec_checksum(args_payload, sizeof(user_args_code));
+        saturn_exec_checksum(args_payload, sizeof(user_args_code) + 128UL);
 
     if (!vfs_mkdir("/bin") ||
         !vfs_mkdir("/share") ||

@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.71
+Version: 0.6.72
 
 Codename: Memory
 
@@ -110,6 +110,7 @@ Target: ARM64 QEMU `virt`
 - EL0 persistent-file write program with reboot persistence verification
 - Validated descriptor seek syscall and EL0 persistent-file seek program
 - Bounded user-program argument copying with EL0 `x0`/`x1` entry ABI
+- Bounded multi-argument EL0 `argc`/`argv`/length-vector entry ABI
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -295,7 +296,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add multiple-argument `argv` vector support
+- Add user task wait/status syscall support
 
 ## Vision
 

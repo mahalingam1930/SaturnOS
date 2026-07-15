@@ -370,6 +370,7 @@ int scheduler_create_user_task_from_image(const char *name,
     unsigned long file_size;
     struct saturn_exec_image image;
     unsigned long argument_length = 0;
+    unsigned long argc = 0;
     int pid;
 
     file = vfs_file_data(image_path, &file_size);
@@ -395,7 +396,30 @@ int scheduler_create_user_task_from_image(const char *name,
             }
         }
     }
-    if (image.data_size + argument_length + 1UL > 4096UL)
+    for (unsigned long i = 0; i < argument_length;)
+    {
+        while (i < argument_length && argument[i] == ' ')
+        {
+            i++;
+        }
+        if (i < argument_length)
+        {
+            argc++;
+            if (argc > TASK_USER_ARG_MAX)
+            {
+                kprintf("Failed to create user task: too many arguments\n");
+                return -1;
+            }
+            while (i < argument_length && argument[i] != ' ')
+            {
+                i++;
+            }
+        }
+    }
+    unsigned long argument_base = (image.data_size + 7UL) & ~7UL;
+    unsigned long strings_offset = argument_base +
+        2UL * TASK_USER_ARG_MAX * sizeof(unsigned long);
+    if (strings_offset + argument_length + 1UL > 4096UL)
     {
         kprintf("Failed to create user task: argument exceeds data page\n");
         return -1;
@@ -463,13 +487,60 @@ int scheduler_create_user_task_from_image(const char *name,
     scheduler_clear_files(&tasks[pid]);
     scheduler_init_task_memory(&tasks[pid], pid);
     tasks[pid].memory.address_space = &tasks[pid].user_address_space;
-    tasks[pid].user_argument_address =
-        tasks[pid].user_address_space.user_data_start + image.data_size;
-    tasks[pid].user_argument_length = argument_length;
+    unsigned long argv[TASK_USER_ARG_MAX];
+    unsigned long lengths[TASK_USER_ARG_MAX];
+    for (unsigned long i = 0; i < TASK_USER_ARG_MAX; i++)
+    {
+        argv[i] = 0;
+        lengths[i] = 0;
+    }
+    unsigned long string_cursor = strings_offset;
+    unsigned long source = 0;
+    for (unsigned long index = 0; index < argc; index++)
+    {
+        while (argument[source] == ' ')
+        {
+            source++;
+        }
+        unsigned long start = source;
+        while (argument[source] && argument[source] != ' ')
+        {
+            source++;
+        }
+        lengths[index] = source - start;
+        argv[index] = tasks[pid].user_address_space.user_data_start +
+                      string_cursor;
+        if (!address_space_write_user_data(&tasks[pid].user_address_space,
+                                           string_cursor,
+                                           argument + start,
+                                           lengths[index]))
+        {
+            address_space_destroy_user(&tasks[pid].user_address_space);
+            tasks[pid].state = TASK_UNUSED;
+            if (pid == task_count - 1)
+            {
+                task_count--;
+            }
+            return -1;
+        }
+        string_cursor += lengths[index];
+        const char zero = '\0';
+        address_space_write_user_data(&tasks[pid].user_address_space,
+                                      string_cursor++, &zero, 1);
+    }
+    tasks[pid].user_argc = argc;
+    tasks[pid].user_argv_address =
+        tasks[pid].user_address_space.user_data_start + argument_base;
+    tasks[pid].user_arg_lengths_address = tasks[pid].user_argv_address +
+        TASK_USER_ARG_MAX * sizeof(unsigned long);
     if (!address_space_write_user_data(&tasks[pid].user_address_space,
-                                       image.data_size,
-                                       argument ? argument : "",
-                                       argument_length + 1UL))
+                                       argument_base,
+                                       argv,
+                                       sizeof(argv)) ||
+        !address_space_write_user_data(&tasks[pid].user_address_space,
+                                       argument_base + sizeof(argv),
+                                       lengths,
+                                       sizeof(lengths)))
     {
         address_space_destroy_user(&tasks[pid].user_address_space);
         tasks[pid].state = TASK_UNUSED;

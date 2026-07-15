@@ -11,6 +11,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 1  write   args: fd, buffer, length
 2  exit    args: code
 3  yield   args: none
+4  open    args: path, length
+5  read    args: fd, buffer, length
+6  close   args: fd
 ```
 
 ## Current Behavior
@@ -21,6 +24,12 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `exit` records the requested exit code and completes the active EL0 program
   back to its scheduler context in EL1.
 - `yield` records the call and performs a scheduler yield.
+- `open` copies a bounded path from user memory, resolves it through VFS, and
+  returns a descriptor owned by the current task.
+- `read` copies at most 128 bytes into a validated writable user range and
+  advances the descriptor offset.
+- `close` releases a valid descriptor; all descriptors are also cleared when
+  the task slot is reaped or reused.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous
@@ -80,6 +89,13 @@ syscall 3
 to test dispatching the `yield` syscall stub.
 
 `sc` is a short alias for `syscall`.
+
+## Filesystem Integration Test
+
+`run /bin/user-file.sx` opens `/disk/syscall.txt`, reads its persistent contents
+into the writable user data page, closes the descriptor, prints the bytes
+through console `write`, and exits with code `0`. Invalid pointer and descriptor
+tests return `-2` and `-1` without corrupting task state.
 
 ## User Image Loading
 

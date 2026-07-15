@@ -91,6 +91,9 @@ int address_space_load_user_image(struct address_space *space,
 int address_space_user_range_valid(const struct address_space *space,
                                    unsigned long address,
                                    unsigned long size);
+int address_space_user_writable_range_valid(const struct address_space *space,
+                                            unsigned long address,
+                                            unsigned long size);
 struct address_space *address_space_kernel(void);
 const char *address_space_kind_name(enum address_space_kind kind);
 const char *address_space_validation_state(const struct address_space *space);

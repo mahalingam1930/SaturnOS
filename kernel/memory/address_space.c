@@ -301,6 +301,34 @@ int address_space_user_range_valid(const struct address_space *space,
     return 0;
 }
 
+int address_space_user_writable_range_valid(const struct address_space *space,
+                                            unsigned long address,
+                                            unsigned long size)
+{
+    unsigned long end;
+
+    if (!space || space->kind != ADDRESS_SPACE_USER || size == 0)
+    {
+        return size == 0 && space && space->kind == ADDRESS_SPACE_USER;
+    }
+    end = address + size;
+    if (end < address)
+    {
+        return 0;
+    }
+    for (unsigned long i = 0; i < ADDRESS_SPACE_USER_REGION_COUNT; i++)
+    {
+        const struct address_space_user_region *region =
+            &space->user_regions[i];
+        if (region->name && region->user_access && region->writable &&
+            address >= region->start && end <= region->end)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static unsigned long address_space_validate_user(const struct address_space *space)
 {
     unsigned long errors = 0;

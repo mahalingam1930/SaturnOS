@@ -4,6 +4,9 @@
 #define SYSCALL_WRITE 1UL
 #define SYSCALL_EXIT 2UL
 #define SYSCALL_YIELD 3UL
+#define SYSCALL_OPEN 4UL
+#define SYSCALL_READ 5UL
+#define SYSCALL_CLOSE 6UL
 
 long syscall_dispatch(unsigned long number,
                       unsigned long arg0,

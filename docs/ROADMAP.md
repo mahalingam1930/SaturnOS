@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.66` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.67` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -89,12 +89,15 @@ SaturnOS is currently at `0.6.66` and targets ARM64 QEMU `virt`.
 - persistent filesystem shell diagnostics and file operations
 - SaturnFS mounted at `/disk` through the common VFS namespace
 - persistent executable loading through standard VFS paths
+- generic EL0 exit-completion sessions independent of BRK
+- contained EL0 fault recovery and failed-task retirement
+- deliberate faulting executable lifecycle test
 
 ## Next
 
 ### User Space
 
-- generalize the controlled EL0 lifecycle beyond the smoke protocol
+- add user-facing filesystem syscalls
 
 ### Storage
 

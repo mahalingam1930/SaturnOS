@@ -43,11 +43,11 @@ struct task_el0_state
 
 struct task_user_status
 {
-    int smoke_completed;
-    int smoke_passed;
+    int program_completed;
+    int program_succeeded;
     unsigned long admissions;
     unsigned long el0_entries;
-    unsigned long expected_traps;
+    unsigned long traps;
     unsigned long recoveries;
     unsigned long rejects;
     unsigned long exits;
@@ -91,7 +91,7 @@ int scheduler_block_task(int pid);
 int scheduler_unblock_task(int pid);
 int scheduler_reap_zombie_task(int pid);
 int scheduler_reap_zombies(void);
-int scheduler_run_user_smoke_test(int pid);
+int scheduler_run_user_task(int pid);
 void scheduler_tick(void);
 void scheduler_yield(void);
 void scheduler_sleep_ms(unsigned long ms);

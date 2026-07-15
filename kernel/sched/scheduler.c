@@ -75,11 +75,11 @@ static void scheduler_clear_el0(struct task_el0_state *el0)
 
 static void scheduler_clear_user_status(struct task_user_status *status)
 {
-    status->smoke_completed = 0;
-    status->smoke_passed = 0;
+    status->program_completed = 0;
+    status->program_succeeded = 0;
     status->admissions = 0;
     status->el0_entries = 0;
-    status->expected_traps = 0;
+    status->traps = 0;
     status->recoveries = 0;
     status->rejects = 0;
     status->exits = 0;
@@ -622,50 +622,52 @@ int scheduler_reap_zombies(void)
     return reaped;
 }
 
-int scheduler_run_user_smoke_test(int pid)
+int scheduler_run_user_task(int pid)
 {
     int status;
 
     if (pid < 0 || pid >= task_count)
     {
-        kprintf("Failed to run user smoke task %d: bad pid\n", pid);
+        kprintf("Failed to run user task %d: bad pid\n", pid);
         return -1;
     }
 
     if (tasks[pid].state != TASK_ELIGIBLE &&
         tasks[pid].state != TASK_RUNNING)
     {
-        kprintf("Failed to run user smoke task %d: state=%s\n",
+        kprintf("Failed to run user task %d: state=%s\n",
                 pid,
                 scheduler_state_name(tasks[pid].state));
         return -1;
     }
 
-    kprintf("Starting EL0 SVC/BRK smoke test for task %d (%s)\n",
+    kprintf("Starting EL0 program for task %d (%s)\n",
             pid,
             tasks[pid].name);
 
-    status = user_mode_run_smoke_test(&tasks[pid]);
+    status = user_mode_run_task(&tasks[pid]);
     if (status != USER_MODE_READY)
     {
-        tasks[pid].user_status.smoke_completed = 1;
-        tasks[pid].user_status.smoke_passed = 0;
+        tasks[pid].user_status.program_completed = 1;
+        tasks[pid].user_status.program_succeeded = 0;
         tasks[pid].user_status.failures++;
-        kprintf("User task %d (%s) smoke=failed status=%s\n",
+        tasks[pid].state = TASK_ZOMBIE;
+        kprintf("User task %d (%s) program=failed status=%s\n",
                 pid,
                 tasks[pid].name,
                 user_mode_status_name(status));
         return -1;
     }
 
-    tasks[pid].user_status.smoke_completed = 1;
-    tasks[pid].user_status.smoke_passed = 1;
+    tasks[pid].user_status.program_completed = 1;
+    tasks[pid].user_status.program_succeeded = 1;
     tasks[pid].user_status.completions++;
     tasks[pid].state = TASK_ZOMBIE;
 
-    kprintf("User task %d (%s) smoke=passed\n",
+    kprintf("User task %d (%s) program=completed exit=%d\n",
             pid,
-            tasks[pid].name);
+            tasks[pid].name,
+            (int)tasks[pid].user_status.last_exit_code);
     kprintf("User task %d (%s) completed; state=%s runnable=no\n",
             pid,
             tasks[pid].name,
@@ -678,7 +680,7 @@ static void scheduler_user_task_entry(void)
     int pid = current_task;
 
     kprintf("Scheduled user task entry: task %d\n", pid);
-    scheduler_run_user_smoke_test(pid);
+    scheduler_run_user_task(pid);
     kprintf("Scheduled user task entry: done\n");
 }
 
@@ -916,11 +918,11 @@ void scheduler_dump_tasks(void)
                         (unsigned int)space->user_image_entry,
                         (int)space->user_image_size,
                         (unsigned int)space->user_image_checksum);
-                kprintf("    user_smoke=%s result=%s\n",
-                        tasks[i].user_status.smoke_completed ?
+                kprintf("    user_program=%s result=%s\n",
+                        tasks[i].user_status.program_completed ?
                             "completed" : "pending",
-                        tasks[i].user_status.smoke_completed ?
-                            (tasks[i].user_status.smoke_passed ?
+                        tasks[i].user_status.program_completed ?
+                            (tasks[i].user_status.program_succeeded ?
                                 "passed" : "failed") :
                             "none");
                 kprintf("    user_counts admit=%d enter=%d trap=%d "
@@ -928,7 +930,7 @@ void scheduler_dump_tasks(void)
                         "complete=%d fail=%d\n",
                         (int)tasks[i].user_status.admissions,
                         (int)tasks[i].user_status.el0_entries,
-                        (int)tasks[i].user_status.expected_traps,
+                        (int)tasks[i].user_status.traps,
                         (int)tasks[i].user_status.recoveries,
                         (int)tasks[i].user_status.rejects,
                         (int)tasks[i].user_status.exits,
@@ -1077,15 +1079,15 @@ int scheduler_dump_task_status(int pid)
     if (space && space->kind == ADDRESS_SPACE_USER)
     {
         status = &tasks[pid].user_status;
-        kprintf("  user_smoke=%s result=%s\n",
-                status->smoke_completed ? "completed" : "pending",
-                status->smoke_completed ?
-                    (status->smoke_passed ? "passed" : "failed") :
+        kprintf("  user_program=%s result=%s\n",
+                status->program_completed ? "completed" : "pending",
+                status->program_completed ?
+                    (status->program_succeeded ? "passed" : "failed") :
                     "none");
         kprintf("  user_counts admit=%d enter=%d trap=%d recover=%d\n",
                 (int)status->admissions,
                 (int)status->el0_entries,
-                (int)status->expected_traps,
+                (int)status->traps,
                 (int)status->recoveries);
         kprintf("  user_counts reject=%d exit=%d code=%d complete=%d "
                 "fail=%d\n",
@@ -1121,15 +1123,15 @@ void scheduler_dump_user_stats(void)
                 tasks[i].pid,
                 tasks[i].name,
                 scheduler_state_name(tasks[i].state));
-        kprintf("    smoke=%s result=%s\n",
-                status->smoke_completed ? "completed" : "pending",
-                status->smoke_completed ?
-                    (status->smoke_passed ? "passed" : "failed") :
+        kprintf("    program=%s result=%s\n",
+                status->program_completed ? "completed" : "pending",
+                status->program_completed ?
+                    (status->program_succeeded ? "passed" : "failed") :
                     "none");
         kprintf("    admit=%d enter=%d trap=%d recover=%d\n",
                 (int)status->admissions,
                 (int)status->el0_entries,
-                (int)status->expected_traps,
+                (int)status->traps,
                 (int)status->recoveries);
         kprintf("    reject=%d exit=%d code=%d complete=%d fail=%d\n",
                 (int)status->rejects,

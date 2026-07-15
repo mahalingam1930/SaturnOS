@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.66
+Version: 0.6.67
 
 Codename: Memory
 
@@ -102,6 +102,8 @@ Target: ARM64 QEMU `virt`
 - Persistent file inspection and writes through `pfs`, `pcat`, and `pwrite`
 - SaturnFS mounted at `/disk` through the common VFS read/write interface
 - Persistent `.sx` executable loading through ordinary VFS paths
+- Generic EL0 run sessions completed by `exit`, independent of BRK recovery
+- Contained EL0 fault recovery with failed-task retirement and reuse
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -287,7 +289,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Generalize the controlled EL0 lifecycle beyond the smoke protocol
+- Add user-facing filesystem syscalls
 
 ## Vision
 

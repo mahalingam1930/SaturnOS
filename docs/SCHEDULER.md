@@ -202,7 +202,7 @@ Shows focused user/EL0 smoke counters:
 saturn> user
 User exception stats:
   task 2: user-demo state=zombie
-    smoke=completed result=passed
+    program=completed result=passed
     admit=1 enter=1 trap=1 recover=1
     reject=0 exit=1 code=7 complete=1 fail=0
     entry=ready status=ready
@@ -229,6 +229,13 @@ wakeups     timer wakeups from scheduler sleep
 The `task` command shows compact switch and run-tick counters. `task <pid>` and
 `tasks` show the full accounting tuple.
 
-## Next Scheduler Work
+## EL0 Program Lifecycle
 
-- Generalize the controlled EL0 lifecycle beyond the initial smoke protocol.
+Runnable user tasks enter a generic EL0 session. A successful `exit` syscall
+records the exit code, restores the kernel translation root, and retires the
+task as a successful zombie. Any other synchronous EL0 exception is contained
+as a program fault, restores EL1 safely, records failure counters, and retires
+only the faulting task. Reaping releases its task and address-space slots.
+
+The built-in `/bin/user-fault.sx` program deliberately executes BRK to verify
+the failure path without treating BRK as successful completion.

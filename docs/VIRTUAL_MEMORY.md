@@ -442,10 +442,10 @@ user_entry=ready status=ready
 This proves the user task can pass the controlled admission checks and become a
 normal scheduler-runnable task.
 
-## Deliberate EL0 Syscall Smoke Test
+## Scheduled EL0 Program Execution
 
-SaturnOS performs controlled EL0 entry from the scheduled `user-demo` task
-context. The user-demo task enters EL0 at its smoke image, executes a `write`
+SaturnOS performs controlled EL0 entry from a scheduled user-task context. The
+user-demo task enters EL0 at its image, executes a `write`
 syscall through `svc #0`, prints a message from the user data page, resumes at
 the next EL0 instruction, executes an `exit` syscall through `svc #0`, and
 returns to kernel code without a panic.
@@ -461,61 +461,55 @@ Expected boot flow:
 Starting preemptive kernel threads...
 SaturnOS shell ready
 saturn> Scheduled user task entry: task N
-Starting EL0 SVC/BRK smoke test for task N (user-demo)
-EL0 smoke: entering user task at 0x100000
-EL0 smoke: SVC write, exit, then BRK fallback
-EL0 smoke: recovery armed ec=0x3c iss=0x0 elr=0x100020
+Starting EL0 program for task N (user-demo)
+EL0 task: entering at 0x100000
+EL0 task: completion via exit syscall; faults recover to EL1
 hello from EL0 syscall
-EL0 smoke: exit syscall code=7
-EL0 smoke: returned to EL1
-User task N (user-demo) smoke=passed
+EL0 task: exit code=7
+EL0 task: returned to EL1 outcome=exit
+User task N (user-demo) program=completed exit=7
 User task N (user-demo) completed; state=zombie runnable=no
 Scheduled user task entry: done
 ```
 
-Only lower-EL SVC dispatch and the fallback lower-EL BRK are handled this way.
-Unexpected exceptions still fall through to the normal kernel panic diagnostics.
+Lower-EL SVC dispatch handles syscalls. Other synchronous EL0 exceptions are
+contained as task faults and do not panic the kernel.
 
 ## EL0 Recovery Hardening
 
-The EL0 smoke recovery path now validates the exact recovery tuple before it
-returns to kernel code:
+The generic recovery path requires:
 
 ```text
-EC    BRK instruction, 0x3c
-ISS   BRK immediate 0
 mode  EL0t
-ELR   expected user smoke BRK fallback address
 roots kernel and user TTBR0 roots present
 ret   explicit EL1 recovery label present
 ```
 
-Any mismatch switches back to the kernel root when possible, prints a named
-rejection reason, and lets the normal panic path handle the exception:
+Missing roots, return state, or an invalid source mode reject recovery and fall
+through to kernel panic diagnostics. Valid EL0 exceptions switch back to the
+kernel root, record a failed program, and return to the scheduler:
 
 ```text
-EL0 smoke: recovery rejected reason=unexpected-ec ...
-EL0 smoke: recovery rejected reason=unexpected-iss ...
-EL0 smoke: recovery rejected reason=unexpected-mode ...
-EL0 smoke: recovery rejected reason=unexpected-elr ...
+EL0 task: fault recovered ec=0x3c iss=0x0 elr=0x100000 far=0x0
+EL0 task: returned to EL1 outcome=fault
 ```
 
-This keeps the deliberate smoke path narrow: only lower-EL SVC dispatch, the
-exit completion path, and the exact fallback lower-EL BRK can recover.
+The `/bin/user-fault.sx` fixture deliberately executes BRK to verify that only
+the faulting task fails and the scheduler remains usable.
 
-## User Smoke Task Cleanup
+## User Task Cleanup
 
-After the EL0 smoke test passes, the scheduler records the result and retires
-the `user-demo` task:
+After an EL0 program exits or faults, the scheduler records its outcome and
+retires the task:
 
 ```text
 task N: user-demo state=zombie
 policy=inactive runnable=no
-user_smoke=completed result=passed
+user_program=completed result=passed
 user_counts admit=1 enter=1 trap=1 recover=1 reject=0 exit=1 code=7 complete=1 fail=0
 ```
 
-This prevents the same smoke task from being re-entered accidentally while
+This prevents the same task from being re-entered accidentally while
 preserving the diagnostic trail that it entered EL0, exited back to EL1, and
 completed successfully.
 
@@ -525,17 +519,17 @@ Each user-shaped task now carries lifecycle counters:
 
 ```text
 admit     controlled unblock/admission successes
-enter     deliberate EL0 entries
-trap      expected lower-EL traps or syscall exits
+enter     EL0 program entries
+trap      lower-EL faults or syscall exits
 recover   returns from EL0 back to EL1
-reject    rejected recovery attempts
+reject    contained program faults or rejected recovery attempts
 exit      user exit syscalls
 code      last user exit code
-complete  completed smoke runs
-fail      failed smoke runs
+complete  successfully completed programs
+fail      failed programs
 ```
 
-The current smoke path should end with:
+The successful demo path should end with:
 
 ```text
 user_counts admit=1 enter=1 trap=1 recover=1 reject=0 exit=1 code=7 complete=1 fail=0

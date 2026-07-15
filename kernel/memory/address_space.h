@@ -88,6 +88,10 @@ int address_space_load_user_image(struct address_space *space,
                                   const void *data,
                                   unsigned long data_size,
                                   unsigned long entry_offset);
+int address_space_write_user_data(struct address_space *space,
+                                  unsigned long offset,
+                                  const void *data,
+                                  unsigned long size);
 int address_space_user_range_valid(const struct address_space *space,
                                    unsigned long address,
                                    unsigned long size);

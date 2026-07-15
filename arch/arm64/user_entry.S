@@ -22,6 +22,8 @@ arm64_enter_el0_task:
     msr ELR_EL1, x0
     msr SP_EL0, x1
     msr SPSR_EL1, x2
+    mov x0, x3
+    mov x1, x4
     isb
     eret
 

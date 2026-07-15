@@ -359,15 +359,17 @@ int scheduler_create_kernel_thread(const char *name, void (*entry)(void))
 
 int scheduler_create_blocked_user_task(const char *name)
 {
-    return scheduler_create_user_task_from_image(name, USER_DEMO_IMAGE_PATH);
+    return scheduler_create_user_task_from_image(name, USER_DEMO_IMAGE_PATH, 0);
 }
 
 int scheduler_create_user_task_from_image(const char *name,
-                                          const char *image_path)
+                                          const char *image_path,
+                                          const char *argument)
 {
     const void *file;
     unsigned long file_size;
     struct saturn_exec_image image;
+    unsigned long argument_length = 0;
     int pid;
 
     file = vfs_file_data(image_path, &file_size);
@@ -379,6 +381,23 @@ int scheduler_create_user_task_from_image(const char *name,
     if (!saturn_exec_parse(file, file_size, &image))
     {
         kprintf("Failed to create user task: invalid executable\n");
+        return -1;
+    }
+    if (argument)
+    {
+        while (argument[argument_length])
+        {
+            argument_length++;
+            if (argument_length > TASK_USER_ARGUMENT_MAX)
+            {
+                kprintf("Failed to create user task: argument too long\n");
+                return -1;
+            }
+        }
+    }
+    if (image.data_size + argument_length + 1UL > 4096UL)
+    {
+        kprintf("Failed to create user task: argument exceeds data page\n");
         return -1;
     }
 
@@ -444,6 +463,22 @@ int scheduler_create_user_task_from_image(const char *name,
     scheduler_clear_files(&tasks[pid]);
     scheduler_init_task_memory(&tasks[pid], pid);
     tasks[pid].memory.address_space = &tasks[pid].user_address_space;
+    tasks[pid].user_argument_address =
+        tasks[pid].user_address_space.user_data_start + image.data_size;
+    tasks[pid].user_argument_length = argument_length;
+    if (!address_space_write_user_data(&tasks[pid].user_address_space,
+                                       image.data_size,
+                                       argument ? argument : "",
+                                       argument_length + 1UL))
+    {
+        address_space_destroy_user(&tasks[pid].user_address_space);
+        tasks[pid].state = TASK_UNUSED;
+        if (pid == task_count - 1)
+        {
+            task_count--;
+        }
+        return -1;
+    }
     scheduler_init_task_el0(&tasks[pid]);
 
     kprintf("Created blocked user task %d: %s\n", pid, tasks[pid].name);

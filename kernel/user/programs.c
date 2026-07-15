@@ -46,6 +46,10 @@ static const unsigned int user_file_seek_code[] = {
     0xaa0303e0U, 0xd4000001U, 0xd2800048U, 0xd2800000U,
     0xd4000001U, 0xd4200000U,
 };
+static const unsigned int user_args_code[] = {
+    0xaa0003e2U, 0xd2800028U, 0xd2800020U, 0xd4000001U,
+    0xd2800048U, 0xd2800000U, 0xd4000001U, 0xd4200000U,
+};
 
 int user_programs_init(void)
 {
@@ -66,6 +70,9 @@ int user_programs_init(void)
     static unsigned char file_seek_image[
         sizeof(struct saturn_exec_header) +
         sizeof(user_file_seek_code) + 128UL]
+        __attribute__((aligned(4)));
+    static unsigned char args_image[sizeof(struct saturn_exec_header) +
+                                    sizeof(user_args_code)]
         __attribute__((aligned(4)));
     struct saturn_exec_header *header =
         (struct saturn_exec_header *)image;
@@ -193,6 +200,22 @@ int user_programs_init(void)
         saturn_exec_checksum(file_seek_payload,
                              sizeof(user_file_seek_code) + 128UL);
 
+    struct saturn_exec_header *args_header =
+        (struct saturn_exec_header *)args_image;
+    unsigned char *args_payload = args_image + sizeof(*args_header);
+    args_header->magic = SATURN_EXEC_MAGIC;
+    args_header->version = SATURN_EXEC_VERSION;
+    args_header->header_size = sizeof(*args_header);
+    args_header->code_size = sizeof(user_args_code);
+    args_header->data_size = 0;
+    args_header->entry_offset = 0;
+    for (unsigned long i = 0; i < sizeof(user_args_code); i++)
+    {
+        args_payload[i] = ((const unsigned char *)user_args_code)[i];
+    }
+    args_header->payload_checksum =
+        saturn_exec_checksum(args_payload, sizeof(user_args_code));
+
     if (!vfs_mkdir("/bin") ||
         !vfs_mkdir("/share") ||
         !vfs_create(USER_DEMO_IMAGE_PATH, image, sizeof(image)) ||
@@ -206,6 +229,7 @@ int user_programs_init(void)
         !vfs_create(USER_FILE_SEEK_IMAGE_PATH,
                     file_seek_image,
                     sizeof(file_seek_image)) ||
+        !vfs_create(USER_ARGS_IMAGE_PATH, args_image, sizeof(args_image)) ||
         !vfs_create(USER_DEMO_DATA_PATH,
                     user_demo_message,
                     sizeof(user_demo_message) - 1UL))

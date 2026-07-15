@@ -614,6 +614,30 @@ int address_space_load_user_image(struct address_space *space,
     return 1;
 }
 
+int address_space_write_user_data(struct address_space *space,
+                                  unsigned long offset,
+                                  const void *data,
+                                  unsigned long size)
+{
+    unsigned long slot;
+    unsigned char *data_page;
+
+    if (!space || space->kind != ADDRESS_SPACE_USER ||
+        space->user_table_slot >= ADDRESS_SPACE_USER_TABLE_SLOTS ||
+        (size && !data) || offset > ARM64_PAGE_SIZE ||
+        size > ARM64_PAGE_SIZE - offset)
+    {
+        return 0;
+    }
+    slot = space->user_table_slot;
+    data_page = &user_region_pages[slot][1][0];
+    for (unsigned long i = 0; i < size; i++)
+    {
+        data_page[offset + i] = ((const unsigned char *)data)[i];
+    }
+    return 1;
+}
+
 struct address_space *address_space_kernel(void)
 {
     return &kernel_address_space;

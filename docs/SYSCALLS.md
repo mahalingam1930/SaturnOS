@@ -55,6 +55,11 @@ The exception vector saves general-purpose registers, passes the saved frame to
 C, dispatches the syscall, writes the result into saved `x0`, and returns to
 the `ELR_EL1` address supplied by the CPU for the SVC trap.
 
+At initial program entry, `x0` contains the optional argument-text length and
+`x1` points to its NUL-terminated copy in the task's writable user data page.
+The shell accepts `run <path> [argument text]`, caps the text at 128 bytes, and
+never exposes the shell command buffer or another task's memory to EL0.
+
 ## Boot Smoke Test
 
 The `user-demo` smoke image now executes:
@@ -119,3 +124,7 @@ filesystem, then copied into controlled user pages. The loader validates the
 magic, format version, header size, code and data bounds, aligned entry offset,
 exact file size, and payload checksum. The built-in image is stored as
 `/bin/user-demo.sx`.
+
+`run /bin/user-args.sx Saturn argument works` exercises the entry ABI by
+writing the exact argument text through the console syscall and exiting with
+code `0`. Launching the fixture without text verifies the zero-length path.

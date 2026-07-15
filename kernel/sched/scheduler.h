@@ -86,6 +86,7 @@ struct task_wait_status
 struct task
 {
     int pid;
+    int parent_pid;
     const char *name;
     enum task_state state;
     void (*entry)(void);
@@ -115,6 +116,7 @@ int scheduler_unblock_task(int pid);
 int scheduler_reap_zombie_task(int pid);
 int scheduler_reap_zombies(void);
 int scheduler_wait_task_status(int pid, struct task_wait_status *status);
+int scheduler_set_task_parent(int pid, int parent_pid);
 int scheduler_run_user_task(int pid);
 void scheduler_tick(void);
 void scheduler_yield(void);

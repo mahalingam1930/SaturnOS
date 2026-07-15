@@ -159,6 +159,7 @@ static void scheduler_clear_task_slot(int pid)
 {
     address_space_destroy_user(tasks[pid].memory.address_space);
     tasks[pid].pid = pid;
+    tasks[pid].parent_pid = -1;
     tasks[pid].name = "unused";
     tasks[pid].state = TASK_UNUSED;
     tasks[pid].entry = 0;
@@ -295,6 +296,7 @@ static int scheduler_add_task(const char *name, void (*entry)(void))
     }
 
     tasks[pid].pid = pid;
+    tasks[pid].parent_pid = -1;
     tasks[pid].name = name;
     tasks[pid].state = TASK_READY;
     tasks[pid].entry = entry;
@@ -474,6 +476,7 @@ int scheduler_create_user_task_from_image(const char *name,
     }
 
     tasks[pid].pid = pid;
+    tasks[pid].parent_pid = -1;
     tasks[pid].name = name ? name : "user-demo";
     tasks[pid].state = TASK_BLOCKED;
     tasks[pid].entry = 0;
@@ -745,7 +748,8 @@ int scheduler_wait_task_status(int pid, struct task_wait_status *status)
 {
     if (!status || pid <= 0 || pid >= task_count || pid == current_task ||
         !tasks[pid].memory.address_space ||
-        tasks[pid].memory.address_space->kind != ADDRESS_SPACE_USER)
+        tasks[pid].memory.address_space->kind != ADDRESS_SPACE_USER ||
+        tasks[pid].parent_pid != current_task)
     {
         return -1;
     }
@@ -758,6 +762,18 @@ int scheduler_wait_task_status(int pid, struct task_wait_status *status)
     status->succeeded = tasks[pid].user_status.program_succeeded ? 1UL : 0UL;
     scheduler_clear_task_slot(pid);
     scheduler_trim_unused_tail();
+    return 1;
+}
+
+int scheduler_set_task_parent(int pid, int parent_pid)
+{
+    if (pid <= 0 || pid >= task_count || parent_pid <= 0 ||
+        parent_pid >= task_count || pid == parent_pid)
+    {
+        return 0;
+    }
+    tasks[pid].parent_pid = parent_pid;
+    kprintf("Task %d parent=%d\n", pid, parent_pid);
     return 1;
 }
 
@@ -976,6 +992,13 @@ static void scheduler_exit_task(int task_id)
             tasks[task_id].pid,
             tasks[task_id].name);
 
+    for (int i = 1; i < task_count; i++)
+    {
+        if (tasks[i].parent_pid == task_id)
+        {
+            tasks[i].parent_pid = -1;
+        }
+    }
     tasks[task_id].state = TASK_ZOMBIE;
     current_task = task_id;
     scheduler_yield();
@@ -1018,6 +1041,7 @@ void scheduler_dump_tasks(void)
                 tasks[i].pid,
                 tasks[i].name,
                 scheduler_state_name(tasks[i].state));
+        kprintf("    parent=%d\n", tasks[i].parent_pid);
         kprintf("    policy=%s runnable=%s\n",
                 scheduler_policy_name(&tasks[i]),
                 scheduler_task_is_runnable(&tasks[i]) ? "yes" : "no");

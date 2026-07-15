@@ -271,11 +271,14 @@ static long syscall_wait(unsigned long pid, unsigned long status_address)
 }
 
 static long syscall_spawn(unsigned long path_address,
-                          unsigned long path_length)
+                          unsigned long path_length,
+                          unsigned long argument_address,
+                          unsigned long argument_length)
 {
     const struct address_space *space = syscall_address_space();
     const char *source = (const char *)path_address;
     char path[TASK_FILE_PATH_SIZE];
+    char argument[TASK_USER_ARGUMENT_MAX + 1UL];
     int pid;
 
     if (!space || !path_length || path_length >= sizeof(path) ||
@@ -290,7 +293,23 @@ static long syscall_spawn(unsigned long path_address,
         path[i] = source[i];
     }
     path[path_length] = '\0';
-    pid = scheduler_create_user_task_from_image("user-child", path, 0);
+    if (argument_length > TASK_USER_ARGUMENT_MAX ||
+        (argument_length &&
+         !address_space_user_range_valid(space,
+                                         argument_address,
+                                         argument_length)))
+    {
+        stats.faults++;
+        return SYSCALL_ERR_FAULT;
+    }
+    for (unsigned long i = 0; i < argument_length; i++)
+    {
+        argument[i] = ((const char *)argument_address)[i];
+    }
+    argument[argument_length] = '\0';
+    pid = scheduler_create_user_task_from_image("user-child",
+                                                path,
+                                                argument_length ? argument : 0);
     if (pid < 0 || scheduler_unblock_user_task(pid) < 0)
     {
         return SYSCALL_ERR_INVAL;
@@ -334,7 +353,6 @@ long syscall_dispatch(unsigned long number,
                       unsigned long arg3)
 {
     long result = 0;
-    (void)arg3;
 
     stats.total++;
     stats.last_number = number;
@@ -395,7 +413,7 @@ long syscall_dispatch(unsigned long number,
             break;
         case SYSCALL_SPAWN:
             stats.spawn_calls++;
-            result = syscall_spawn(arg0, arg1);
+            result = syscall_spawn(arg0, arg1, arg2, arg3);
             break;
         default:
             stats.rejected++;
@@ -443,7 +461,8 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_SEEK));
     kprintf("  %d %s args: pid, status\n", (int)SYSCALL_WAIT,
             syscall_name(SYSCALL_WAIT));
-    kprintf("  %d %s args: path, length\n", (int)SYSCALL_SPAWN,
+    kprintf("  %d %s args: path, length, arguments, length\n",
+            (int)SYSCALL_SPAWN,
             syscall_name(SYSCALL_SPAWN));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",

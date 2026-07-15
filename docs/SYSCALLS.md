@@ -17,7 +17,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 7  create  args: path, length
 8  seek    args: fd, absolute offset
 9  wait    args: pid, status buffer
-10 spawn   args: executable path, path length
+10 spawn   args: path, path length, argument text, argument length
 ```
 
 ## Current Behavior
@@ -41,8 +41,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `wait` returns `0` while a valid user task is active or `1` when it copies
   the completed PID, exit code, and success flag to validated user memory and
   reaps the zombie. Invalid PIDs return `-1`; bad pointers return `-2`.
-- `spawn` copies a bounded path from user memory, loads and validates the
-  executable through VFS, admits a new scheduler task, and returns its PID.
+- `spawn` copies a bounded path and optional argument text from user memory,
+  loads and validates the executable through VFS, packs the child's argument
+  vectors, admits the child task, and returns its PID.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous
@@ -129,9 +130,9 @@ Launching `/bin/user-demo.sx` as task 3 followed by `/bin/user-wait.sx`
 exercises completed-status delivery and safe zombie reaping; the waiter prints
 `wait ok` only when syscall 9 returns the completed state.
 
-`run /bin/user-spawn.sx` invokes syscall 10 for `/bin/user-demo.sx`; the parent
-exits with code `0`, then the admitted child prints its EL0 message and exits
-with code `7`.
+`run /bin/user-spawn.sx` invokes syscall 10 for `/bin/user-args.sx` with two
+arguments. The parent exits with code `0`, then the admitted child prints
+`child args`, proving the copied argument vector is independent of its parent.
 
 ## User Image Loading
 

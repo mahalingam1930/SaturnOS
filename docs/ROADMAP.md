@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.72` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.73` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -100,12 +100,13 @@ SaturnOS is currently at `0.6.72` and targets ARM64 QEMU `virt`.
 - validated descriptor seek syscall and EL0 seek integration program
 - bounded shell-to-EL0 user-program argument ABI and integration program
 - bounded multi-argument vector ABI with count, pointers, and lengths
+- validated non-blocking user wait/status syscall and zombie reaping
 
 ## Next
 
 ### User Space
 
-- add user task wait/status syscall support
+- add user task spawn syscall support
 
 ### Storage
 

@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.72
+Version: 0.6.73
 
 Codename: Memory
 
@@ -111,6 +111,7 @@ Target: ARM64 QEMU `virt`
 - Validated descriptor seek syscall and EL0 persistent-file seek program
 - Bounded user-program argument copying with EL0 `x0`/`x1` entry ABI
 - Bounded multi-argument EL0 `argc`/`argv`/length-vector entry ABI
+- Non-blocking user task wait/status syscall with safe zombie reaping
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -296,7 +297,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user task wait/status syscall support
+- Add user task spawn syscall support
 
 ## Vision
 

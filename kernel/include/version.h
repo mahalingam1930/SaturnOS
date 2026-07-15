@@ -2,7 +2,7 @@
 #define VERSION_H
 
 #define SATURNOS_NAME "SaturnOS"
-#define SATURNOS_VERSION "0.6.74"
+#define SATURNOS_VERSION "0.6.75"
 #define SATURNOS_CODENAME "Memory"
 
 #endif

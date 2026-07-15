@@ -55,10 +55,12 @@ static const unsigned int user_args_code[] = {
     0xd2800048U, 0xd2800000U, 0xd4000001U, 0xd4200000U,
 };
 static const unsigned int user_spawn_code[] = {
-    0xd2800148U, 0xd2a00400U, 0xd2800221U, 0xd4000001U,
-    0xd2800048U, 0xd2800000U, 0xd4000001U, 0xd4200000U,
+    0xd2800148U, 0xd2a00400U, 0xd2800221U, 0xd2a00402U,
+    0x91008042U, 0xd2800143U, 0xd4000001U, 0xd2800048U,
+    0xd2800000U, 0xd4000001U, 0xd4200000U,
 };
-static const char user_spawn_path[] = "/bin/user-demo.sx";
+static const char user_spawn_path[] = "/bin/user-args.sx";
+static const char user_spawn_arguments[] = "child args";
 
 int user_programs_init(void)
 {
@@ -253,6 +255,11 @@ int user_programs_init(void)
     for (unsigned long i = 0; i < sizeof(user_spawn_path) - 1UL; i++)
     {
         wait_payload[sizeof(user_spawn_code) + i] = user_spawn_path[i];
+    }
+    for (unsigned long i = 0; i < sizeof(user_spawn_arguments) - 1UL; i++)
+    {
+        wait_payload[sizeof(user_spawn_code) + 32UL + i] =
+            user_spawn_arguments[i];
     }
     wait_header->payload_checksum = saturn_exec_checksum(
         wait_payload, sizeof(user_spawn_code) + 64UL);

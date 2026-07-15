@@ -40,6 +40,24 @@ struct syscall_stats
 
 static struct syscall_stats stats;
 
+static void syscall_scheduler_yield(void)
+{
+    unsigned long elr;
+    unsigned long spsr;
+
+    if (!user_mode_active_address_space())
+    {
+        scheduler_yield();
+        return;
+    }
+    __asm__ volatile("mrs %0, ELR_EL1" : "=r"(elr));
+    __asm__ volatile("mrs %0, SPSR_EL1" : "=r"(spsr));
+    scheduler_yield();
+    __asm__ volatile("msr ELR_EL1, %0" : : "r"(elr) : "memory");
+    __asm__ volatile("msr SPSR_EL1, %0" : : "r"(spsr) : "memory");
+    __asm__ volatile("isb" : : : "memory");
+}
+
 static const struct address_space *syscall_address_space(void)
 {
     const struct address_space *space = user_mode_active_address_space();
@@ -267,7 +285,16 @@ static long syscall_wait(unsigned long pid, unsigned long status_address)
         stats.faults++;
         return SYSCALL_ERR_FAULT;
     }
-    return scheduler_wait_task_status((int)pid, status);
+    long result;
+    do
+    {
+        result = scheduler_wait_task_status((int)pid, status);
+        if (result == 0)
+        {
+            syscall_scheduler_yield();
+        }
+    } while (result == 0);
+    return result;
 }
 
 static long syscall_spawn(unsigned long path_address,
@@ -387,7 +414,7 @@ long syscall_dispatch(unsigned long number,
         case SYSCALL_YIELD:
             stats.yield_calls++;
             stats.handled++;
-            scheduler_yield();
+            syscall_scheduler_yield();
             result = 0;
             break;
         case SYSCALL_OPEN:

@@ -40,10 +40,10 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   file, and returns a task-owned descriptor positioned at offset zero.
 - `seek` sets a valid task-owned descriptor to an absolute offset from zero
   through the current end of file and returns the new offset.
-- `wait` returns `0` while a valid user task is active or `1` when it copies
-  the completed PID, exit code, and success flag to validated user memory and
-  reaps the zombie. Only the recorded parent may wait on a child. Invalid or
-  unrelated PIDs return `-1`; bad pointers return `-2`.
+- `wait` blocks cooperatively while an owned child is active, then copies the
+  completed PID, exit code, and success flag to validated user memory and reaps
+  the zombie. The yield path preserves TTBR0, `ELR_EL1`, and `SPSR_EL1` across
+  child execution. Invalid or unrelated PIDs return `-1`; bad pointers `-2`.
 - `spawn` copies a bounded path and optional argument text from user memory,
   loads and validates the executable through VFS, packs the child's argument
   vectors, admits the child task, and returns its PID.

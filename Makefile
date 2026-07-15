@@ -17,6 +17,10 @@ CFLAGS = -ffreestanding -O2 -Wall -Wextra -mgeneral-regs-only -MMD -MP \
 	-Ikernel/shell \
 	-Ikernel/memory \
 	-Ikernel/syscall \
+	-Ikernel/fs \
+	-Ikernel/user \
+	-Ikernel/storage \
+	-Idrivers/storage \
 	-Idrivers/video \
 	-Idrivers/keyboard
 
@@ -99,6 +103,21 @@ $(BUILD)/vm.o: kernel/memory/vm.c | $(BUILD)
 $(BUILD)/syscall.o: kernel/syscall/syscall.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/vfs.o: kernel/fs/vfs.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/programs.o: kernel/user/programs.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/executable.o: kernel/user/executable.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/block.o: kernel/storage/block.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/virtio_blk.o: drivers/storage/virtio_blk.c | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/panic.o: kernel/panic/panic.c | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -130,6 +149,11 @@ $(BUILD)/saturnos.elf: \
 	$(BUILD)/address_space.o \
 	$(BUILD)/vm.o \
 	$(BUILD)/syscall.o \
+	$(BUILD)/vfs.o \
+	$(BUILD)/programs.o \
+	$(BUILD)/executable.o \
+	$(BUILD)/block.o \
+	$(BUILD)/virtio_blk.o \
 	$(BUILD)/panic.o \
 	$(BUILD)/decoder.o
 	$(LD) -T boot/linker.ld -o $@ $^

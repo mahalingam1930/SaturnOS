@@ -10,6 +10,9 @@
 #include "timer.h"
 #include "version.h"
 #include "vm.h"
+#include "vfs.h"
+#include "programs.h"
+#include "block.h"
 
 #define SHELL_BUFFER_SIZE 64
 #define SHELL_HISTORY_SIZE 8
@@ -61,6 +64,12 @@ static const struct shell_command shell_commands[] = {
     {"unblock", "unblock <pid>", "unblock a blocked kernel scheduler task", "unblock 3"},
     {"reap", "reap [pid]", "reap zombie task slots", "reap 2"},
     {"syscall", "syscall [number]", "show or test syscall dispatcher", "syscall 3"},
+    {"ls", "ls", "list files in the RAM filesystem", 0},
+    {"cat", "cat <path>", "print a RAM filesystem file", "cat /share/user-demo.txt"},
+    {"run", "run [path]", "launch a Saturn executable from RAMFS", "run /bin/user-demo.sx"},
+    {"mkdir", "mkdir <path>", "create a RAM filesystem directory", "mkdir /tmp"},
+    {"write", "write <path> <text>", "create or replace a RAMFS text file", "write /tmp/note hello"},
+    {"disk", "disk [test]", "show or test the block device", "disk test"},
     {"fb", "fb", "show framebuffer runtime status", 0},
     {"user", "user", "show user/EL0 exception stats", 0},
     {"clear", "clear", "clear framebuffer console", 0},
@@ -836,6 +845,11 @@ static void shell_execute(const char *command)
         !string_equals(selected_command->name, "unblock") &&
         !string_equals(selected_command->name, "reap") &&
         !string_equals(selected_command->name, "syscall") &&
+        !string_equals(selected_command->name, "cat") &&
+        !string_equals(selected_command->name, "run") &&
+        !string_equals(selected_command->name, "mkdir") &&
+        !string_equals(selected_command->name, "write") &&
+        !string_equals(selected_command->name, "disk") &&
         !string_equals(selected_command->name, "vmwalk"))
     {
         kprintf("Unexpected argument: %s\n", arg);
@@ -1016,6 +1030,117 @@ static void shell_execute(const char *command)
         else
         {
             shell_command_help("syscall");
+        }
+    }
+    else if (string_equals(effective_command, "ls"))
+    {
+        vfs_dump_files();
+    }
+    else if (command_equals(effective_command, "cat"))
+    {
+        unsigned char bytes[64];
+        unsigned long offset = 0;
+        long count;
+
+        if (*arg == '\0')
+        {
+            shell_command_help("cat");
+        }
+        else
+        {
+            do
+            {
+                count = vfs_read(arg, offset, bytes, sizeof(bytes));
+                if (count < 0)
+                {
+                    kprintf("File not found: %s\n", arg);
+                    break;
+                }
+                for (long i = 0; i < count; i++)
+                {
+                    kprintf("%c", bytes[i]);
+                }
+                offset += (unsigned long)count;
+            } while (count == (long)sizeof(bytes));
+
+            if (count >= 0 && (offset == 0 || bytes[(count - 1) & 63] != '\n'))
+            {
+                kprintf("\n");
+            }
+        }
+    }
+    else if (command_equals(effective_command, "run"))
+    {
+        const char *path = *arg ? arg : USER_DEMO_IMAGE_PATH;
+        int pid = scheduler_create_user_task_from_image("user-program", path);
+
+        if (pid >= 0 && scheduler_unblock_user_task(pid) == 0)
+        {
+            kprintf("Launched user program as task %d\n", pid);
+        }
+    }
+    else if (command_equals(effective_command, "mkdir"))
+    {
+        if (*arg == '\0')
+        {
+            shell_command_help("mkdir");
+        }
+        else if (vfs_mkdir(arg))
+        {
+            kprintf("Created directory: %s\n", arg);
+        }
+        else
+        {
+            kprintf("Failed to create directory: %s\n", arg);
+        }
+    }
+    else if (command_equals(effective_command, "write"))
+    {
+        char path[VFS_MAX_PATH];
+        unsigned long path_length = 0;
+        const char *text = arg;
+        long written;
+
+        while (*text && *text != ' ' && path_length + 1 < VFS_MAX_PATH)
+        {
+            path[path_length++] = *text++;
+        }
+        path[path_length] = '\0';
+        text = skip_spaces(text);
+        if (!path_length || !*text)
+        {
+            shell_command_help("write");
+        }
+        else
+        {
+            vfs_create(path, 0, 0);
+            written = vfs_write(path, 0, text, string_length(text));
+            if (written < 0)
+            {
+                kprintf("Failed to write file: %s\n", path);
+            }
+            else
+            {
+                vfs_truncate(path, (unsigned long)written);
+                kprintf("Wrote %d bytes: %s\n", (int)written, path);
+            }
+        }
+    }
+    else if (command_equals(effective_command, "disk"))
+    {
+        if (*arg == '\0')
+        {
+            block_dump_stats();
+        }
+        else if (string_equals(arg, "test"))
+        {
+            kprintf("Block self-test: %s\n",
+                    block_self_test() ? "passed" : "failed");
+            block_dump_stats();
+        }
+        else
+        {
+            shell_command_help("disk");
         }
     }
     else if (string_equals(effective_command, "fb"))

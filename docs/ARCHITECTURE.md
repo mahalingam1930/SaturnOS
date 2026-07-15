@@ -6,7 +6,7 @@ SaturnOS
 
 ## Version
 
-0.6.57
+0.6.64
 
 ## Target Architecture
 
@@ -26,6 +26,9 @@ Monolithic Kernel
 
 - Boot entry and linker script
 - ARM64 CPU, MMU, exception, IRQ, timer, and context-switch code
+- VFS and bounded RAM filesystem
+- sector block-device layer and RAM-disk backend
+- virtio-MMIO block backend for persistent QEMU disk images
 - PL011 UART driver
 - QEMU `ramfb` framebuffer driver
 - QEMU virtio keyboard input path

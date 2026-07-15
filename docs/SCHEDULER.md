@@ -231,4 +231,4 @@ The `task` command shows compact switch and run-tick counters. `task <pid>` and
 
 ## Next Scheduler Work
 
-- Add in-memory user program loading.
+- Generalize the controlled EL0 lifecycle beyond the initial smoke protocol.

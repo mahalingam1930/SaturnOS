@@ -10,15 +10,6 @@
 #define ADDRESS_SPACE_USER_DATA_END 0x00300000UL
 #define ADDRESS_SPACE_USER_STACK_START 0x3fff0000UL
 #define ADDRESS_SPACE_USER_STACK_END 0x40000000UL
-#define ADDRESS_SPACE_USER_SMOKE_MOV_X8_WRITE 0xd2800028U
-#define ADDRESS_SPACE_USER_SMOKE_MOV_X0_STDOUT 0xd2800020U
-#define ADDRESS_SPACE_USER_SMOKE_MOV_X1_DATA 0xd2a00401U
-#define ADDRESS_SPACE_USER_SMOKE_MOV_X2_LEN 0xd28002e2U
-#define ADDRESS_SPACE_USER_SMOKE_MOV_X8_EXIT 0xd2800048U
-#define ADDRESS_SPACE_USER_SMOKE_MOV_X0_EXIT_CODE 0xd28000e0U
-#define ADDRESS_SPACE_USER_SMOKE_SVC 0xd4000001U
-#define ADDRESS_SPACE_USER_SMOKE_BRK 0xd4200000U
-#define ADDRESS_SPACE_USER_SMOKE_MESSAGE_LEN 23UL
 #define ADDRESS_SPACE_USER_CODE_ATTR \
     ((ARM64_NORMAL_MEMORY_ATTR & ~ARM64_DESC_AP_MASK) | \
      ARM64_DESC_AP_RO_EL0 | \
@@ -45,7 +36,7 @@ static unsigned char user_region_pages[ADDRESS_SPACE_USER_TABLE_SLOTS]
                                       [ADDRESS_SPACE_USER_REGION_COUNT]
                                       [ARM64_PAGE_SIZE]
     __attribute__((aligned(ARM64_PAGE_SIZE)));
-static unsigned long user_table_slots_used;
+static unsigned char user_table_slots_used[ADDRESS_SPACE_USER_TABLE_SLOTS];
 
 static void address_space_clear_table(unsigned long *table)
 {
@@ -120,12 +111,19 @@ static int address_space_alloc_user_table_slot(void)
 {
     unsigned long slot;
 
-    if (user_table_slots_used >= ADDRESS_SPACE_USER_TABLE_SLOTS)
+    for (slot = 0; slot < ADDRESS_SPACE_USER_TABLE_SLOTS; slot++)
+    {
+        if (!user_table_slots_used[slot])
+        {
+            break;
+        }
+    }
+    if (slot >= ADDRESS_SPACE_USER_TABLE_SLOTS)
     {
         return -1;
     }
 
-    slot = user_table_slots_used++;
+    user_table_slots_used[slot] = 1;
     address_space_clear_table(user_l1_tables[slot]);
     address_space_clear_table(user_l2_tables[slot]);
     for (unsigned long i = 0; i < ADDRESS_SPACE_USER_REGION_COUNT; i++)
@@ -367,6 +365,11 @@ static unsigned long address_space_validate_user(const struct address_space *spa
 
 void address_space_init(unsigned long kernel_root_table)
 {
+    for (unsigned long i = 0; i < ADDRESS_SPACE_USER_TABLE_SLOTS; i++)
+    {
+        user_table_slots_used[i] = 0;
+    }
+
     kernel_address_space.name = "kernel";
     kernel_address_space.kind = ADDRESS_SPACE_KERNEL;
     kernel_address_space.root_table = kernel_root_table;
@@ -406,6 +409,37 @@ void address_space_init(unsigned long kernel_root_table)
     kernel_address_space.switch_stub_status =
         ADDRESS_SPACE_SWITCH_STUB_ACTIVE;
     kernel_address_space.validation_errors = 0;
+}
+
+void address_space_destroy_user(struct address_space *space)
+{
+    unsigned long slot;
+
+    if (!space || space->kind != ADDRESS_SPACE_USER ||
+        space->user_table_slot >= ADDRESS_SPACE_USER_TABLE_SLOTS)
+    {
+        return;
+    }
+
+    slot = space->user_table_slot;
+    address_space_clear_table(user_l1_tables[slot]);
+    address_space_clear_table(user_l2_tables[slot]);
+    for (unsigned long i = 0; i < ADDRESS_SPACE_USER_REGION_COUNT; i++)
+    {
+        address_space_clear_table(user_l3_tables[slot][i]);
+        address_space_clear_page(user_region_pages[slot][i]);
+    }
+    user_table_slots_used[slot] = 0;
+    space->user_table_slot = ADDRESS_SPACE_USER_TABLE_SLOTS;
+    space->user_tables_ready = 0;
+    space->user_descriptors_ready = 0;
+    space->user_mappings_ready = 0;
+    space->user_image_ready = 0;
+    space->user_execute_ready = 0;
+    space->validation_ready = 0;
+    space->switch_ready = 0;
+    space->switch_status = ADDRESS_SPACE_SWITCH_BLOCKED;
+    space->switch_stub_status = ADDRESS_SPACE_SWITCH_STUB_BLOCKED;
 }
 
 void address_space_init_user(struct address_space *space,
@@ -501,44 +535,53 @@ void address_space_init_user(struct address_space *space,
         ADDRESS_SPACE_SWITCH_STUB_BLOCKED;
 }
 
-int address_space_install_user_smoke_image(struct address_space *space)
+int address_space_load_user_image(struct address_space *space,
+                                  const void *code,
+                                  unsigned long code_size,
+                                  const void *data,
+                                  unsigned long data_size,
+                                  unsigned long entry_offset)
 {
-    unsigned int *code;
-    unsigned char *data;
-    static const char message[] = "hello from EL0 syscall\n";
+    const unsigned char *code_bytes = (const unsigned char *)code;
+    const unsigned char *data_bytes = (const unsigned char *)data;
+    unsigned char *code_page;
+    unsigned char *data_page;
     unsigned long slot;
 
     if (!space ||
         space->kind != ADDRESS_SPACE_USER ||
         space->user_table_slot >= ADDRESS_SPACE_USER_TABLE_SLOTS ||
-        !space->user_mappings_ready)
+        !space->user_mappings_ready ||
+        !code ||
+        code_size == 0 ||
+        code_size > ARM64_PAGE_SIZE ||
+        data_size > ARM64_PAGE_SIZE ||
+        (data_size && !data) ||
+        entry_offset >= code_size ||
+        (entry_offset & (sizeof(unsigned int) - 1UL)))
     {
         return 0;
     }
 
     slot = space->user_table_slot;
-    code = (unsigned int *)&user_region_pages[slot][0][0];
-    data = &user_region_pages[slot][1][0];
-    code[0] = ADDRESS_SPACE_USER_SMOKE_MOV_X8_WRITE;
-    code[1] = ADDRESS_SPACE_USER_SMOKE_MOV_X0_STDOUT;
-    code[2] = ADDRESS_SPACE_USER_SMOKE_MOV_X1_DATA;
-    code[3] = ADDRESS_SPACE_USER_SMOKE_MOV_X2_LEN;
-    code[4] = ADDRESS_SPACE_USER_SMOKE_SVC;
-    code[5] = ADDRESS_SPACE_USER_SMOKE_MOV_X8_EXIT;
-    code[6] = ADDRESS_SPACE_USER_SMOKE_MOV_X0_EXIT_CODE;
-    code[7] = ADDRESS_SPACE_USER_SMOKE_SVC;
-    code[8] = ADDRESS_SPACE_USER_SMOKE_BRK;
+    code_page = &user_region_pages[slot][0][0];
+    data_page = &user_region_pages[slot][1][0];
+    address_space_clear_page(code_page);
+    address_space_clear_page(data_page);
 
-    for (unsigned long i = 0; i < ADDRESS_SPACE_USER_SMOKE_MESSAGE_LEN; i++)
+    for (unsigned long i = 0; i < code_size; i++)
     {
-        data[i] = (unsigned char)message[i];
+        code_page[i] = code_bytes[i];
+    }
+    for (unsigned long i = 0; i < data_size; i++)
+    {
+        data_page[i] = data_bytes[i];
     }
 
-    space->user_image_entry = space->user_code_start;
-    space->user_image_size = sizeof(code[0]) * 9;
+    space->user_image_entry = space->user_code_start + entry_offset;
+    space->user_image_size = code_size;
     space->user_image_checksum =
-        address_space_checksum_bytes((const unsigned char *)code,
-                                     space->user_image_size);
+        address_space_checksum_bytes(code_page, code_size);
     space->user_image_ready = 1;
     return 1;
 }

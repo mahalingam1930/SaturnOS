@@ -14,6 +14,10 @@
 #include "heap.h"
 #include "address_space.h"
 #include "vm.h"
+#include "programs.h"
+#include "vfs.h"
+#include "block.h"
+#include "sfs.h"
 
 void kernel_main(void)
 {
@@ -28,9 +32,16 @@ void kernel_main(void)
 
     pmm_init();
     heap_init();
+    block_init();
+    sfs_init();
     exception_init();
     vm_init();
     address_space_init(vm_root_table());
+    vfs_init();
+    if (!user_programs_init())
+    {
+        kprintf("Failed to initialize built-in user programs\n");
+    }
     timer_init();
     irq_init();
     scheduler_init();
@@ -57,6 +68,13 @@ void kernel_main(void)
     kprintf("Memory : %d KB free\n",
             (int)((pmm_free_pages() * PMM_PAGE_SIZE) / 1024));
     kprintf("Heap   : initialized\n");
+    kprintf("Block  : %s, %d sectors\n",
+            block_device_name(),
+            (int)block_sector_count());
+    kprintf("FS     : ramfs, %d dirs, %d files\n",
+            (int)vfs_dir_count(),
+            (int)vfs_file_count());
+    kprintf("DiskFS : %s\n", sfs_ready() ? "mounted" : "unavailable");
     kprintf("Input  : %s\n", keyboard_source());
     kprintf("VM     : %s, tables %s, check %s\n",
             vm_state(),

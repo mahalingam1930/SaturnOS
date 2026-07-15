@@ -81,7 +81,13 @@ void address_space_init(unsigned long kernel_root_table);
 void address_space_init_user(struct address_space *space,
                              const char *name,
                              unsigned long kernel_root_table);
-int address_space_install_user_smoke_image(struct address_space *space);
+void address_space_destroy_user(struct address_space *space);
+int address_space_load_user_image(struct address_space *space,
+                                  const void *code,
+                                  unsigned long code_size,
+                                  const void *data,
+                                  unsigned long data_size,
+                                  unsigned long entry_offset);
 int address_space_user_range_valid(const struct address_space *space,
                                    unsigned long address,
                                    unsigned long size);

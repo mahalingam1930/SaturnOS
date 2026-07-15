@@ -81,7 +81,10 @@ to test dispatching the `yield` syscall stub.
 
 `sc` is a short alias for `syscall`.
 
-## Next Work
+## User Image Loading
 
-The next syscall milestone is to load user programs from an in-memory image
-instead of using the built-in smoke image only.
+User code and optional data are loaded from a Saturn executable in the RAM
+filesystem, then copied into controlled user pages. The loader validates the
+magic, format version, header size, code and data bounds, aligned entry offset,
+exact file size, and payload checksum. The built-in image is stored as
+`/bin/user-demo.sx`.

@@ -5,13 +5,15 @@
 #include "kprintf.h"
 #include "timer.h"
 #include "user.h"
+#include "programs.h"
+#include "executable.h"
+#include "vfs.h"
 
 static void idle_task(void);
 static void scheduler_exit_task(int task_id);
 static void scheduler_user_task_entry(void);
 static void thread_trampoline(void);
 
-static struct address_space user_demo_address_space;
 static const char *scheduler_state_name(enum task_state state)
 {
     switch (state)
@@ -145,6 +147,7 @@ static unsigned long scheduler_ticks;
 
 static void scheduler_clear_task_slot(int pid)
 {
+    address_space_destroy_user(tasks[pid].memory.address_space);
     tasks[pid].pid = pid;
     tasks[pid].name = "unused";
     tasks[pid].state = TASK_UNUSED;
@@ -344,7 +347,28 @@ int scheduler_create_kernel_thread(const char *name, void (*entry)(void))
 
 int scheduler_create_blocked_user_task(const char *name)
 {
+    return scheduler_create_user_task_from_image(name, USER_DEMO_IMAGE_PATH);
+}
+
+int scheduler_create_user_task_from_image(const char *name,
+                                          const char *image_path)
+{
+    const void *file;
+    unsigned long file_size;
+    struct saturn_exec_image image;
     int pid;
+
+    file = vfs_file_data(image_path, &file_size);
+    if (!file)
+    {
+        kprintf("Failed to create user task: image file missing\n");
+        return -1;
+    }
+    if (!saturn_exec_parse(file, file_size, &image))
+    {
+        kprintf("Failed to create user task: invalid executable\n");
+        return -1;
+    }
 
     pid = -1;
 
@@ -375,10 +399,24 @@ int scheduler_create_blocked_user_task(const char *name)
         return -1;
     }
 
-    address_space_init_user(&user_demo_address_space,
+    address_space_init_user(&tasks[pid].user_address_space,
                             name ? name : "user-demo",
                             address_space_kernel()->root_table);
-    address_space_install_user_smoke_image(&user_demo_address_space);
+    if (!address_space_load_user_image(&tasks[pid].user_address_space,
+                                       image.code,
+                                       image.code_size,
+                                       image.data,
+                                       image.data_size,
+                                       image.entry_offset))
+    {
+        kprintf("Failed to create user task: invalid image\n");
+        address_space_destroy_user(&tasks[pid].user_address_space);
+        if (pid == task_count - 1)
+        {
+            task_count--;
+        }
+        return -1;
+    }
 
     tasks[pid].pid = pid;
     tasks[pid].name = name ? name : "user-demo";
@@ -392,7 +430,7 @@ int scheduler_create_blocked_user_task(const char *name)
     scheduler_clear_el0(&tasks[pid].el0);
     scheduler_clear_user_status(&tasks[pid].user_status);
     scheduler_init_task_memory(&tasks[pid], pid);
-    tasks[pid].memory.address_space = &user_demo_address_space;
+    tasks[pid].memory.address_space = &tasks[pid].user_address_space;
     scheduler_init_task_el0(&tasks[pid]);
 
     kprintf("Created blocked user task %d: %s\n", pid, tasks[pid].name);

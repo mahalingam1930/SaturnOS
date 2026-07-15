@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.57` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.65` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -47,6 +47,7 @@ SaturnOS is currently at `0.6.57` and targets ARM64 QEMU `virt`.
 - syscall write validation and console output for user buffers
 - syscall exit completion path with tracked exit code
 - direct scheduler-runnable user task context for the EL0 smoke path
+- bounded in-memory user image loading with validated code, data, and entry
 
 ### Graphics And Input
 
@@ -68,18 +69,31 @@ SaturnOS is currently at `0.6.57` and targets ARM64 QEMU `virt`.
 - per-command help
 - memory, heap, VM, scheduler, framebuffer, user, and syscall diagnostics
 
+### Filesystem And Program Loading
+
+- VFS create, lookup, bounded read, and direct file-data interfaces
+- bounded static RAM filesystem
+- built-in program and data files
+- `ls` and `cat` shell diagnostics
+- file-backed loading of user code and data through VFS paths
+- per-task user address spaces with reclaimable page-table slots
+- repeatable user-program launch and task-slot reuse
+- validated Saturn executable headers and payload checksums
+- parent-validated RAMFS directories and bounded writable files
+- `mkdir` and `write` shell commands
+- bounded sector block API and RAM-disk reference backend
+- non-destructive block-device self-test and I/O counters
+- legacy and modern virtio-MMIO block transport
+- persistent QEMU raw disk image with RAM-disk fallback
+- SaturnFS superblock, fixed directory, checksummed files, and reboot remount
+- persistent filesystem shell diagnostics and file operations
+
 ## Next
-
-### User Space
-
-- load user programs from an in-memory source
 
 ### Storage
 
-- add VFS interfaces
-- add RAM filesystem
-- add file-backed user program loading
-- later add disk and FAT32 or ext2
+- mount SaturnFS through the common VFS namespace
+- later add FAT32 or ext2
 
 ## Future
 

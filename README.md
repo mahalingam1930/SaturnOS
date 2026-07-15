@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.57
+Version: 0.6.65
 
 Codename: Memory
 
@@ -88,6 +88,18 @@ Target: ARM64 QEMU `virt`
 - Bounded syscall `write` validation and console output for user buffers
 - User `exit` syscall completion path with tracked exit code
 - Direct scheduler-runnable user task context for the EL0 smoke path
+- Bounded in-memory user image loader for code, data, and entry-point setup
+- File-backed user image loading through the kernel VFS
+- Per-task user address-space ownership with page-table slot reclamation
+- Repeatable RAMFS user-program launch through the `run` shell command
+- Validated Saturn executable headers with payload checksum verification
+- Writable RAMFS files with truncation and parent-validated directories
+- Sector-based block-device API with a RAM-disk reference backend
+- Non-destructive block read/write self-test and operation diagnostics
+- Legacy and modern virtio-MMIO block driver with RAM-disk fallback
+- Persistent 4 MiB QEMU disk-image launch configuration
+- SaturnFS fixed-layout persistent files with payload checksums
+- Persistent file inspection and writes through `pfs`, `pcat`, and `pwrite`
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -127,7 +139,16 @@ Target: ARM64 QEMU `virt`
 - Per-command usage details through `help <command>`
 - Built-in `help`, `version`, `task`, `tasks`, `mem`, `heap`, `heaptest`,
   `vm`, `vmwalk`, `ticks`, `yield`, `sleep`, `block`, `unblock`, `fb`,
-  `user`, `syscall`, `reap`, `clear`, `panic`, and `fault` commands
+  `user`, `syscall`, `ls`, `cat`, `run`, `mkdir`, `write`, `reap`, `clear`,
+  `disk`, `pfs`, `pcat`, `pwrite`, `panic`, and `fault` commands
+
+### Filesystem
+
+- VFS create, lookup, bounded read/write, truncate, and file-data interfaces
+- Static RAM filesystem with bounded paths, directories, files, and file sizes
+- Built-in `/bin/user-demo.sx` executable and `/share/user-demo.txt` data file
+- Shell file listing and text output through `ls` and `cat`
+- Shell directory creation and file replacement through `mkdir` and `write`
 
 ### Memory Management
 
@@ -264,8 +285,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add in-memory user program loading
-- Add VFS and RAM filesystem foundation
+- Mount SaturnFS through the common VFS namespace
 
 ## Vision
 

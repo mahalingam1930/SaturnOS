@@ -198,8 +198,9 @@ int user_mode_run_task(struct task *task)
     arm64_enter_el0_task(task->el0.pc,
                         task->el0.sp,
                         task->el0.spsr,
-                        task->user_argument_length,
-                        task->user_argument_address);
+                        task->user_argc,
+                        task->user_argv_address,
+                        task->user_arg_lengths_address);
 
     if (user_session.completed)
     {

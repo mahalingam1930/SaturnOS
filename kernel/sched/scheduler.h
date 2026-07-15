@@ -13,6 +13,7 @@
 #define TASK_MAX_FILES 4
 #define TASK_FILE_PATH_SIZE 48
 #define TASK_USER_ARGUMENT_MAX 128UL
+#define TASK_USER_ARG_MAX 8UL
 
 enum task_state
 {
@@ -90,8 +91,9 @@ struct task
     struct task_el0_state el0;
     struct task_user_status user_status;
     struct task_file files[TASK_MAX_FILES];
-    unsigned long user_argument_address;
-    unsigned long user_argument_length;
+    unsigned long user_argc;
+    unsigned long user_argv_address;
+    unsigned long user_arg_lengths_address;
 };
 
 void scheduler_init(void);

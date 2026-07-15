@@ -35,8 +35,9 @@ void arm64_enter_el0(unsigned long pc, unsigned long sp, unsigned long spsr);
 void arm64_enter_el0_task(unsigned long pc,
                           unsigned long sp,
                           unsigned long spsr,
-                          unsigned long argument_length,
-                          unsigned long argument_address);
+                          unsigned long argc,
+                          unsigned long argv_address,
+                          unsigned long lengths_address);
 void arm64_el0_task_return(void);
 
 #endif

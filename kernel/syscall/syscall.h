@@ -11,6 +11,7 @@
 #define SYSCALL_SEEK 8UL
 #define SYSCALL_WAIT 9UL
 #define SYSCALL_SPAWN 10UL
+#define SYSCALL_WAIT_NOHANG 1UL
 
 long syscall_dispatch(unsigned long number,
                       unsigned long arg0,

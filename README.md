@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.80
+Version: 0.6.81
 
 Codename: Memory
 
@@ -119,6 +119,7 @@ Target: ARM64 QEMU `virt`
 - Per-task EL0 recovery sessions with TTBR0-aware scheduler resume
 - Blocking owned-child wait with restored exception-return state
 - Blocking wait-for-any-owned-child selection through PID zero
+- Non-blocking child-status polling through the wait `NOHANG` option
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -304,7 +305,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add non-blocking wait option flags
+- Add user task termination syscall
 
 ## Vision
 

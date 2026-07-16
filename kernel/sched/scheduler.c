@@ -889,6 +889,11 @@ void scheduler_tick(void)
     scheduler_wake_sleeping_tasks();
     tasks[previous_task].accounting.run_ticks++;
 
+    if (user_mode_active_address_space())
+    {
+        return;
+    }
+
     if (tasks[current_task].state == TASK_RUNNING)
     {
         tasks[current_task].state = TASK_READY;

@@ -16,7 +16,21 @@
 #define SYSCALL_MONOTONIC_MS 13UL
 #define SYSCALL_GETPID 14UL
 #define SYSCALL_GETPPID 15UL
+#define SYSCALL_SYSTEM_INFO 16UL
 #define SYSCALL_WAIT_NOHANG 1UL
+
+struct syscall_system_info
+{
+    unsigned long version_major;
+    unsigned long version_minor;
+    unsigned long version_patch;
+    unsigned long page_size;
+    unsigned long total_pages;
+    unsigned long free_pages;
+    unsigned long scheduler_ticks;
+    unsigned long task_count;
+    unsigned long task_capacity;
+};
 
 long syscall_dispatch(unsigned long number,
                       unsigned long arg0,

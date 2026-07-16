@@ -1408,6 +1408,11 @@ unsigned long scheduler_get_ticks(void)
     return scheduler_ticks;
 }
 
+unsigned long scheduler_task_count(void)
+{
+    return (unsigned long)task_count;
+}
+
 unsigned long scheduler_stack_region_start(void)
 {
     return (unsigned long)&task_stack_region[0];

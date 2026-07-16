@@ -23,6 +23,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 13 monotonic_ms args: none
 14 getpid  args: none
 15 getppid args: none
+16 system_info args: writable information buffer
 ```
 
 ## Current Behavior
@@ -66,6 +67,10 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   interval. It requires no user pointer and never moves backward during boot.
 - `getpid` returns the current scheduler task ID. `getppid` returns the recorded
   spawning parent ID, or `0` for shell/kernel-owned user tasks.
+- `system_info` writes a fixed snapshot containing the kernel version, page
+  size, total and free physical pages, scheduler ticks, current task count, and
+  task capacity. The entire output range must be writable; bad pointers return
+  `-2` without partially updating user memory.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

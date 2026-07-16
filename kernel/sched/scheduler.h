@@ -132,6 +132,7 @@ void scheduler_dump_user_stats(void);
 const struct task *scheduler_current_task(void);
 struct task *scheduler_current_task_mutable(void);
 unsigned long scheduler_get_ticks(void);
+unsigned long scheduler_task_count(void);
 unsigned long scheduler_stack_region_start(void);
 unsigned long scheduler_stack_region_end(void);
 unsigned long scheduler_stack_region_bytes(void);

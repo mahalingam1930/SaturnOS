@@ -6,6 +6,8 @@
 #include "vfs.h"
 #include "mmu.h"
 #include "timer.h"
+#include "pmm.h"
+#include "version.h"
 
 #define SYSCALL_STDOUT 1UL
 #define SYSCALL_STDERR 2UL
@@ -35,6 +37,7 @@ struct syscall_stats
     unsigned long monotonic_calls;
     unsigned long getpid_calls;
     unsigned long getppid_calls;
+    unsigned long system_info_calls;
     unsigned long last_monotonic_ms;
     unsigned long faults;
     unsigned long write_bytes;
@@ -48,6 +51,7 @@ struct syscall_stats
 };
 
 static struct syscall_stats stats;
+static const struct address_space *syscall_address_space(void);
 
 static void syscall_scheduler_yield(void)
 {
@@ -92,6 +96,27 @@ static long syscall_sleep(unsigned long milliseconds)
     __asm__ volatile("msr ELR_EL1, %0" : : "r"(elr) : "memory");
     __asm__ volatile("msr SPSR_EL1, %0" : : "r"(spsr) : "memory");
     __asm__ volatile("isb" : : : "memory");
+    return 0;
+}
+
+static long syscall_system_info(unsigned long address)
+{
+    const struct address_space *space = syscall_address_space();
+    struct syscall_system_info *info = (struct syscall_system_info *)address;
+    if (!address_space_user_writable_range_valid(space, address, sizeof(*info)))
+    {
+        stats.faults++;
+        return SYSCALL_ERR_FAULT;
+    }
+    info->version_major = SATURNOS_VERSION_MAJOR;
+    info->version_minor = SATURNOS_VERSION_MINOR;
+    info->version_patch = SATURNOS_VERSION_PATCH;
+    info->page_size = PMM_PAGE_SIZE;
+    info->total_pages = pmm_total_pages();
+    info->free_pages = pmm_free_pages();
+    info->scheduler_ticks = scheduler_get_ticks();
+    info->task_count = scheduler_task_count();
+    info->task_capacity = SCHED_MAX_TASKS;
     return 0;
 }
 
@@ -424,6 +449,8 @@ const char *syscall_name(unsigned long number)
             return "getpid";
         case SYSCALL_GETPPID:
             return "getppid";
+        case SYSCALL_SYSTEM_INFO:
+            return "system_info";
         default:
             return "unknown";
     }
@@ -527,13 +554,17 @@ long syscall_dispatch(unsigned long number,
                 SYSCALL_ERR_INVAL;
             break;
         }
+        case SYSCALL_SYSTEM_INFO:
+            stats.system_info_calls++;
+            result = syscall_system_info(arg0);
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_GETPPID)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_SYSTEM_INFO)
     {
         if (result < 0)
         {
@@ -586,6 +617,8 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_GETPID));
     kprintf("  %d %s args: none\n", (int)SYSCALL_GETPPID,
             syscall_name(SYSCALL_GETPPID));
+    kprintf("  %d %s args: info buffer\n", (int)SYSCALL_SYSTEM_INFO,
+            syscall_name(SYSCALL_SYSTEM_INFO));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -615,6 +648,7 @@ void syscall_dump_stats(void)
     kprintf("  identity getpid=%d getppid=%d\n",
             (int)stats.getpid_calls,
             (int)stats.getppid_calls);
+    kprintf("  system_info=%d\n", (int)stats.system_info_calls);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

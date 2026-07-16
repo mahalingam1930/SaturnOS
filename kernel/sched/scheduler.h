@@ -131,6 +131,7 @@ int scheduler_dump_task_status(int pid);
 void scheduler_dump_user_stats(void);
 const struct task *scheduler_current_task(void);
 struct task *scheduler_current_task_mutable(void);
+const struct task *scheduler_task_by_pid(int pid);
 unsigned long scheduler_get_ticks(void);
 unsigned long scheduler_task_count(void);
 unsigned long scheduler_stack_region_start(void);

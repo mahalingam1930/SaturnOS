@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.87` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.88` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -115,12 +115,13 @@ SaturnOS is currently at `0.6.87` and targets ARM64 QEMU `virt`.
 - current and parent process identity syscalls
 - validated user system-information snapshots with version, memory, and task data
 - nonnegative user pseudo-random values mixed with scheduler and task state
+- authorized process-status snapshots for the caller and its owned children
 
 ## Next
 
 ### User Space
 
-- add user process-status syscall
+- add user directory-listing syscall
 
 ### Storage
 

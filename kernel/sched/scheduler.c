@@ -1413,6 +1413,15 @@ unsigned long scheduler_task_count(void)
     return (unsigned long)task_count;
 }
 
+const struct task *scheduler_task_by_pid(int pid)
+{
+    if (pid < 0 || pid >= task_count || tasks[pid].state == TASK_UNUSED)
+    {
+        return 0;
+    }
+    return &tasks[pid];
+}
+
 unsigned long scheduler_stack_region_start(void)
 {
     return (unsigned long)&task_stack_region[0];

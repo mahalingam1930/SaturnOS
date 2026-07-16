@@ -57,6 +57,8 @@ static const unsigned int user_args_code[] = {
 static const unsigned int user_spawn_code[] = {
     0xd2800208U, 0xd2a00400U, 0x91020000U, 0xd4000001U,
     0xd2800228U, 0xd4000001U,
+    0xd2800248U, 0xd2800000U, 0xd2a00401U, 0x91020021U,
+    0xd4000001U,
     0xd28001c8U, 0xd4000001U, 0xd28001e8U, 0xd4000001U,
     0xd28001a8U, 0xd4000001U, 0xd2800148U, 0xd2a00400U,
     0xd2800221U, 0xd2a00402U,

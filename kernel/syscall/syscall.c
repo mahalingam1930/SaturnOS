@@ -39,6 +39,7 @@ struct syscall_stats
     unsigned long getppid_calls;
     unsigned long system_info_calls;
     unsigned long random_calls;
+    unsigned long process_status_calls;
     unsigned long last_random;
     unsigned long last_monotonic_ms;
     unsigned long faults;
@@ -133,6 +134,46 @@ static long syscall_random(void)
     value ^= value << 5;
     random_state = value;
     return (long)(value & 0x7fffffffUL);
+}
+
+static long syscall_process_status(unsigned long pid, unsigned long address)
+{
+    const struct address_space *space = syscall_address_space();
+    struct syscall_process_status *status =
+        (struct syscall_process_status *)address;
+    const struct task *caller = scheduler_current_task();
+    const struct task *target;
+    if (!address_space_user_writable_range_valid(space, address,
+                                                  sizeof(*status)))
+    {
+        stats.faults++;
+        return SYSCALL_ERR_FAULT;
+    }
+    if (!caller)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    if (pid >= SCHED_MAX_TASKS)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    target = scheduler_task_by_pid(pid ? (int)pid : caller->pid);
+    if (!target || (target->pid != caller->pid &&
+                    target->parent_pid != caller->pid))
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    status->pid = (unsigned long)target->pid;
+    status->parent_pid = target->parent_pid > 0 ?
+        (unsigned long)target->parent_pid : 0UL;
+    status->state = (unsigned long)target->state;
+    status->switches = target->accounting.switches;
+    status->run_ticks = target->accounting.run_ticks;
+    status->yields = target->accounting.yields;
+    status->preemptions = target->accounting.preemptions;
+    status->exit_code = target->user_status.last_exit_code;
+    status->succeeded = target->user_status.program_succeeded ? 1UL : 0UL;
+    return 0;
 }
 
 static const struct address_space *syscall_address_space(void)
@@ -468,6 +509,8 @@ const char *syscall_name(unsigned long number)
             return "system_info";
         case SYSCALL_RANDOM:
             return "random";
+        case SYSCALL_PROCESS_STATUS:
+            return "process_status";
         default:
             return "unknown";
     }
@@ -580,13 +623,17 @@ long syscall_dispatch(unsigned long number,
             result = syscall_random();
             stats.last_random = (unsigned long)result;
             break;
+        case SYSCALL_PROCESS_STATUS:
+            stats.process_status_calls++;
+            result = syscall_process_status(arg0, arg1);
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_RANDOM)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_PROCESS_STATUS)
     {
         if (result < 0)
         {
@@ -643,6 +690,9 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_SYSTEM_INFO));
     kprintf("  %d %s args: none\n", (int)SYSCALL_RANDOM,
             syscall_name(SYSCALL_RANDOM));
+    kprintf("  %d %s args: pid, status buffer\n",
+            (int)SYSCALL_PROCESS_STATUS,
+            syscall_name(SYSCALL_PROCESS_STATUS));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -676,6 +726,7 @@ void syscall_dump_stats(void)
     kprintf("  random=%d last_random=%d\n",
             (int)stats.random_calls,
             (int)stats.last_random);
+    kprintf("  process_status=%d\n", (int)stats.process_status_calls);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

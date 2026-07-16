@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.81
+Version: 0.6.82
 
 Codename: Memory
 
@@ -120,6 +120,7 @@ Target: ARM64 QEMU `virt`
 - Blocking owned-child wait with restored exception-return state
 - Blocking wait-for-any-owned-child selection through PID zero
 - Non-blocking child-status polling through the wait `NOHANG` option
+- Parent-authorized child termination with waitable failure status
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -305,7 +306,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user task termination syscall
+- Add user sleep syscall
 
 ## Vision
 

@@ -27,6 +27,7 @@ struct syscall_stats
     unsigned long seek_calls;
     unsigned long wait_calls;
     unsigned long spawn_calls;
+    unsigned long terminate_calls;
     unsigned long faults;
     unsigned long write_bytes;
     unsigned long file_write_bytes;
@@ -377,6 +378,8 @@ const char *syscall_name(unsigned long number)
             return "wait";
         case SYSCALL_SPAWN:
             return "spawn";
+        case SYSCALL_TERMINATE:
+            return "terminate";
         default:
             return "unknown";
     }
@@ -451,13 +454,18 @@ long syscall_dispatch(unsigned long number,
             stats.spawn_calls++;
             result = syscall_spawn(arg0, arg1, arg2, arg3);
             break;
+        case SYSCALL_TERMINATE:
+            stats.terminate_calls++;
+            result = scheduler_terminate_child((int)arg0, arg1) ? 0 :
+                SYSCALL_ERR_INVAL;
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_SPAWN)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_TERMINATE)
     {
         if (result < 0)
         {
@@ -500,6 +508,8 @@ void syscall_dump_stats(void)
     kprintf("  %d %s args: path, length, arguments, length\n",
             (int)SYSCALL_SPAWN,
             syscall_name(SYSCALL_SPAWN));
+    kprintf("  %d %s args: pid, code\n", (int)SYSCALL_TERMINATE,
+            syscall_name(SYSCALL_TERMINATE));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -509,14 +519,15 @@ void syscall_dump_stats(void)
             (int)stats.write_calls,
             (int)stats.exit_calls,
             (int)stats.yield_calls);
-    kprintf("  open=%d read=%d close=%d create=%d seek=%d wait=%d spawn=%d\n",
+    kprintf("  open=%d read=%d close=%d create=%d seek=%d wait=%d spawn=%d terminate=%d\n",
             (int)stats.open_calls,
             (int)stats.read_calls,
             (int)stats.close_calls,
             (int)stats.create_calls,
             (int)stats.seek_calls,
             (int)stats.wait_calls,
-            (int)stats.spawn_calls);
+            (int)stats.spawn_calls,
+            (int)stats.terminate_calls);
     kprintf("  write_bytes=%d faults=%d last_exit=%d\n",
             (int)stats.write_bytes,
             (int)stats.faults,

@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.85` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.86` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -113,12 +113,13 @@ SaturnOS is currently at `0.6.85` and targets ARM64 QEMU `virt`.
 - user sleep with ELR/SPSR/TTBR restoration and EL0 timer ownership guard
 - monotonic millisecond syscall and shell-visible timing diagnostics
 - current and parent process identity syscalls
+- validated user system-information snapshots with version, memory, and task data
 
 ## Next
 
 ### User Space
 
-- add user system-information syscall
+- add user random-number syscall
 
 ### Storage
 

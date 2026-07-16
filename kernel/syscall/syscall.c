@@ -38,6 +38,8 @@ struct syscall_stats
     unsigned long getpid_calls;
     unsigned long getppid_calls;
     unsigned long system_info_calls;
+    unsigned long random_calls;
+    unsigned long last_random;
     unsigned long last_monotonic_ms;
     unsigned long faults;
     unsigned long write_bytes;
@@ -51,6 +53,7 @@ struct syscall_stats
 };
 
 static struct syscall_stats stats;
+static unsigned long random_state = 0x6d2b79f5UL;
 static const struct address_space *syscall_address_space(void);
 
 static void syscall_scheduler_yield(void)
@@ -118,6 +121,18 @@ static long syscall_system_info(unsigned long address)
     info->task_count = scheduler_task_count();
     info->task_capacity = SCHED_MAX_TASKS;
     return 0;
+}
+
+static long syscall_random(void)
+{
+    const struct task *task = scheduler_current_task();
+    unsigned long value = random_state;
+    value ^= scheduler_get_ticks() + (task ? (unsigned long)task->pid : 0UL);
+    value ^= value << 13;
+    value ^= value >> 17;
+    value ^= value << 5;
+    random_state = value;
+    return (long)(value & 0x7fffffffUL);
 }
 
 static const struct address_space *syscall_address_space(void)
@@ -451,6 +466,8 @@ const char *syscall_name(unsigned long number)
             return "getppid";
         case SYSCALL_SYSTEM_INFO:
             return "system_info";
+        case SYSCALL_RANDOM:
+            return "random";
         default:
             return "unknown";
     }
@@ -558,13 +575,18 @@ long syscall_dispatch(unsigned long number,
             stats.system_info_calls++;
             result = syscall_system_info(arg0);
             break;
+        case SYSCALL_RANDOM:
+            stats.random_calls++;
+            result = syscall_random();
+            stats.last_random = (unsigned long)result;
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_SYSTEM_INFO)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_RANDOM)
     {
         if (result < 0)
         {
@@ -619,6 +641,8 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_GETPPID));
     kprintf("  %d %s args: info buffer\n", (int)SYSCALL_SYSTEM_INFO,
             syscall_name(SYSCALL_SYSTEM_INFO));
+    kprintf("  %d %s args: none\n", (int)SYSCALL_RANDOM,
+            syscall_name(SYSCALL_RANDOM));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -649,6 +673,9 @@ void syscall_dump_stats(void)
             (int)stats.getpid_calls,
             (int)stats.getppid_calls);
     kprintf("  system_info=%d\n", (int)stats.system_info_calls);
+    kprintf("  random=%d last_random=%d\n",
+            (int)stats.random_calls,
+            (int)stats.last_random);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

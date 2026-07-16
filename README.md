@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.86
+Version: 0.6.87
 
 Codename: Memory
 
@@ -125,6 +125,7 @@ Target: ARM64 QEMU `virt`
 - User monotonic-millisecond syscall derived from scheduler ticks
 - User `getpid` and `getppid` process identity syscalls
 - User system-information snapshot syscall with version, memory, and task data
+- Nonnegative user pseudo-random number syscall with per-call state mixing
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -310,7 +311,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user random-number syscall
+- Add user process-status syscall
 
 ## Vision
 

@@ -24,6 +24,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 14 getpid  args: none
 15 getppid args: none
 16 system_info args: writable information buffer
+17 random args: none
 ```
 
 ## Current Behavior
@@ -71,6 +72,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   size, total and free physical pages, scheduler ticks, current task count, and
   task capacity. The entire output range must be writable; bad pointers return
   `-2` without partially updating user memory.
+- `random` returns a nonnegative 31-bit pseudo-random value. Its xorshift state
+  is mixed with scheduler ticks and the caller task ID; it is suitable for
+  ordinary user-program variability, not cryptographic use.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

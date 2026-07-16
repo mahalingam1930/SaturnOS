@@ -17,6 +17,7 @@
 #define SYSCALL_GETPID 14UL
 #define SYSCALL_GETPPID 15UL
 #define SYSCALL_SYSTEM_INFO 16UL
+#define SYSCALL_RANDOM 17UL
 #define SYSCALL_WAIT_NOHANG 1UL
 
 struct syscall_system_info

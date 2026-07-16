@@ -802,6 +802,23 @@ int scheduler_set_task_parent(int pid, int parent_pid)
     return 1;
 }
 
+int scheduler_terminate_child(int pid, unsigned long code)
+{
+    if (pid <= 0 || pid >= task_count || pid == current_task ||
+        tasks[pid].parent_pid != current_task ||
+        tasks[pid].state == TASK_UNUSED || tasks[pid].state == TASK_ZOMBIE)
+    {
+        return 0;
+    }
+    tasks[pid].user_status.program_completed = 1;
+    tasks[pid].user_status.program_succeeded = 0;
+    tasks[pid].user_status.last_exit_code = code;
+    tasks[pid].user_status.failures++;
+    tasks[pid].state = TASK_ZOMBIE;
+    kprintf("Terminated child task %d code=%d\n", pid, (int)code);
+    return 1;
+}
+
 int scheduler_run_user_task(int pid)
 {
     int status;

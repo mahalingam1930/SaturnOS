@@ -747,8 +747,32 @@ int scheduler_reap_zombies(void)
 
 int scheduler_wait_task_status(int pid, struct task_wait_status *status)
 {
-    if (!status || pid <= 0 || pid >= task_count || pid == current_task ||
-        !tasks[pid].memory.address_space ||
+    if (!status || pid < 0 || pid >= task_count || pid == current_task)
+    {
+        return -1;
+    }
+    if (pid == 0)
+    {
+        int owned = 0;
+        for (int i = 1; i < task_count; i++)
+        {
+            if (tasks[i].parent_pid != current_task)
+            {
+                continue;
+            }
+            owned = 1;
+            if (tasks[i].state == TASK_ZOMBIE)
+            {
+                pid = i;
+                break;
+            }
+        }
+        if (pid == 0)
+        {
+            return owned ? 0 : -1;
+        }
+    }
+    if (!tasks[pid].memory.address_space ||
         tasks[pid].memory.address_space->kind != ADDRESS_SPACE_USER ||
         tasks[pid].parent_pid != current_task)
     {

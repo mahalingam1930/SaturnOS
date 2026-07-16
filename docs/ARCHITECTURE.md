@@ -6,7 +6,7 @@ SaturnOS
 
 ## Version
 
-0.6.79
+0.6.80
 
 ## Target Architecture
 

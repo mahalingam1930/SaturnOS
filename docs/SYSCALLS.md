@@ -44,6 +44,8 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   completed PID, exit code, and success flag to validated user memory and reaps
   the zombie. The yield path preserves TTBR0, `ELR_EL1`, and `SPSR_EL1` across
   child execution. Invalid or unrelated PIDs return `-1`; bad pointers `-2`.
+  Passing PID `0` selects any owned child, preferring an already completed
+  zombie; it returns `-1` immediately when the caller owns no children.
 - `spawn` copies a bounded path and optional argument text from user memory,
   loads and validates the executable through VFS, packs the child's argument
   vectors, admits the child task, and returns its PID.

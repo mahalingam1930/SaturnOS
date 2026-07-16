@@ -25,6 +25,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 15 getppid args: none
 16 system_info args: writable information buffer
 17 random args: none
+18 process_status args: PID, writable status buffer
 ```
 
 ## Current Behavior
@@ -75,6 +76,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `random` returns a nonnegative 31-bit pseudo-random value. Its xorshift state
   is mixed with scheduler ticks and the caller task ID; it is suitable for
   ordinary user-program variability, not cryptographic use.
+- `process_status` writes the PID, parent PID, scheduler state and accounting,
+  exit code, and success flag for the caller (`pid = 0`) or one of its owned
+  children. Unrelated or missing tasks return `-1`; bad buffers return `-2`.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

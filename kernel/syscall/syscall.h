@@ -18,6 +18,7 @@
 #define SYSCALL_GETPPID 15UL
 #define SYSCALL_SYSTEM_INFO 16UL
 #define SYSCALL_RANDOM 17UL
+#define SYSCALL_PROCESS_STATUS 18UL
 #define SYSCALL_WAIT_NOHANG 1UL
 
 struct syscall_system_info
@@ -31,6 +32,19 @@ struct syscall_system_info
     unsigned long scheduler_ticks;
     unsigned long task_count;
     unsigned long task_capacity;
+};
+
+struct syscall_process_status
+{
+    unsigned long pid;
+    unsigned long parent_pid;
+    unsigned long state;
+    unsigned long switches;
+    unsigned long run_ticks;
+    unsigned long yields;
+    unsigned long preemptions;
+    unsigned long exit_code;
+    unsigned long succeeded;
 };
 
 long syscall_dispatch(unsigned long number,

@@ -5,6 +5,7 @@
 #include "user.h"
 #include "vfs.h"
 #include "mmu.h"
+#include "timer.h"
 
 #define SYSCALL_STDOUT 1UL
 #define SYSCALL_STDERR 2UL
@@ -31,6 +32,8 @@ struct syscall_stats
     unsigned long spawn_calls;
     unsigned long terminate_calls;
     unsigned long sleep_calls;
+    unsigned long monotonic_calls;
+    unsigned long last_monotonic_ms;
     unsigned long faults;
     unsigned long write_bytes;
     unsigned long file_write_bytes;
@@ -413,6 +416,8 @@ const char *syscall_name(unsigned long number)
             return "terminate";
         case SYSCALL_SLEEP:
             return "sleep";
+        case SYSCALL_MONOTONIC_MS:
+            return "monotonic_ms";
         default:
             return "unknown";
     }
@@ -496,13 +501,18 @@ long syscall_dispatch(unsigned long number,
             stats.sleep_calls++;
             result = syscall_sleep(arg0);
             break;
+        case SYSCALL_MONOTONIC_MS:
+            stats.monotonic_calls++;
+            result = (long)(scheduler_get_ticks() * timer_get_interval_ms());
+            stats.last_monotonic_ms = (unsigned long)result;
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_SLEEP)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_MONOTONIC_MS)
     {
         if (result < 0)
         {
@@ -549,6 +559,8 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_TERMINATE));
     kprintf("  %d %s args: milliseconds\n", (int)SYSCALL_SLEEP,
             syscall_name(SYSCALL_SLEEP));
+    kprintf("  %d %s args: none\n", (int)SYSCALL_MONOTONIC_MS,
+            syscall_name(SYSCALL_MONOTONIC_MS));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -558,7 +570,7 @@ void syscall_dump_stats(void)
             (int)stats.write_calls,
             (int)stats.exit_calls,
             (int)stats.yield_calls);
-    kprintf("  open=%d read=%d close=%d create=%d seek=%d wait=%d spawn=%d terminate=%d sleep=%d\n",
+    kprintf("  open=%d read=%d close=%d create=%d seek=%d wait=%d spawn=%d terminate=%d sleep=%d time=%d\n",
             (int)stats.open_calls,
             (int)stats.read_calls,
             (int)stats.close_calls,
@@ -567,12 +579,14 @@ void syscall_dump_stats(void)
             (int)stats.wait_calls,
             (int)stats.spawn_calls,
             (int)stats.terminate_calls,
-            (int)stats.sleep_calls);
+            (int)stats.sleep_calls,
+            (int)stats.monotonic_calls);
     kprintf("  write_bytes=%d faults=%d last_exit=%d\n",
             (int)stats.write_bytes,
             (int)stats.faults,
             (int)stats.last_exit_code);
     kprintf("  file_write_bytes=%d\n", (int)stats.file_write_bytes);
+    kprintf("  monotonic_ms=%d\n", (int)stats.last_monotonic_ms);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

@@ -4,11 +4,13 @@
 #include "scheduler.h"
 #include "user.h"
 #include "vfs.h"
+#include "mmu.h"
 
 #define SYSCALL_STDOUT 1UL
 #define SYSCALL_STDERR 2UL
 #define SYSCALL_WRITE_MAX 128UL
 #define SYSCALL_READ_MAX 128UL
+#define SYSCALL_SLEEP_MAX_MS 60000UL
 #define SYSCALL_ERR_INVAL -1L
 #define SYSCALL_ERR_FAULT -2L
 
@@ -28,6 +30,7 @@ struct syscall_stats
     unsigned long wait_calls;
     unsigned long spawn_calls;
     unsigned long terminate_calls;
+    unsigned long sleep_calls;
     unsigned long faults;
     unsigned long write_bytes;
     unsigned long file_write_bytes;
@@ -54,9 +57,37 @@ static void syscall_scheduler_yield(void)
     __asm__ volatile("mrs %0, ELR_EL1" : "=r"(elr));
     __asm__ volatile("mrs %0, SPSR_EL1" : "=r"(spsr));
     scheduler_yield();
+    const struct address_space *space = user_mode_active_address_space();
+    if (space)
+    {
+        arm64_mmu_switch_ttbr0(space->target_root_table);
+    }
     __asm__ volatile("msr ELR_EL1, %0" : : "r"(elr) : "memory");
     __asm__ volatile("msr SPSR_EL1, %0" : : "r"(spsr) : "memory");
     __asm__ volatile("isb" : : : "memory");
+}
+
+static long syscall_sleep(unsigned long milliseconds)
+{
+    unsigned long elr;
+    unsigned long spsr;
+
+    if (!milliseconds || milliseconds > SYSCALL_SLEEP_MAX_MS)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    __asm__ volatile("mrs %0, ELR_EL1" : "=r"(elr));
+    __asm__ volatile("mrs %0, SPSR_EL1" : "=r"(spsr));
+    scheduler_sleep_ms(milliseconds);
+    const struct address_space *space = user_mode_active_address_space();
+    if (space)
+    {
+        arm64_mmu_switch_ttbr0(space->target_root_table);
+    }
+    __asm__ volatile("msr ELR_EL1, %0" : : "r"(elr) : "memory");
+    __asm__ volatile("msr SPSR_EL1, %0" : : "r"(spsr) : "memory");
+    __asm__ volatile("isb" : : : "memory");
+    return 0;
 }
 
 static const struct address_space *syscall_address_space(void)
@@ -380,6 +411,8 @@ const char *syscall_name(unsigned long number)
             return "spawn";
         case SYSCALL_TERMINATE:
             return "terminate";
+        case SYSCALL_SLEEP:
+            return "sleep";
         default:
             return "unknown";
     }
@@ -459,13 +492,17 @@ long syscall_dispatch(unsigned long number,
             result = scheduler_terminate_child((int)arg0, arg1) ? 0 :
                 SYSCALL_ERR_INVAL;
             break;
+        case SYSCALL_SLEEP:
+            stats.sleep_calls++;
+            result = syscall_sleep(arg0);
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_TERMINATE)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_SLEEP)
     {
         if (result < 0)
         {
@@ -510,6 +547,8 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_SPAWN));
     kprintf("  %d %s args: pid, code\n", (int)SYSCALL_TERMINATE,
             syscall_name(SYSCALL_TERMINATE));
+    kprintf("  %d %s args: milliseconds\n", (int)SYSCALL_SLEEP,
+            syscall_name(SYSCALL_SLEEP));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -519,7 +558,7 @@ void syscall_dump_stats(void)
             (int)stats.write_calls,
             (int)stats.exit_calls,
             (int)stats.yield_calls);
-    kprintf("  open=%d read=%d close=%d create=%d seek=%d wait=%d spawn=%d terminate=%d\n",
+    kprintf("  open=%d read=%d close=%d create=%d seek=%d wait=%d spawn=%d terminate=%d sleep=%d\n",
             (int)stats.open_calls,
             (int)stats.read_calls,
             (int)stats.close_calls,
@@ -527,7 +566,8 @@ void syscall_dump_stats(void)
             (int)stats.seek_calls,
             (int)stats.wait_calls,
             (int)stats.spawn_calls,
-            (int)stats.terminate_calls);
+            (int)stats.terminate_calls,
+            (int)stats.sleep_calls);
     kprintf("  write_bytes=%d faults=%d last_exit=%d\n",
             (int)stats.write_bytes,
             (int)stats.faults,

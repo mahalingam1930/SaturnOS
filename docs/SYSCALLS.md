@@ -19,6 +19,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 9  wait    args: pid, status buffer, options
 10 spawn   args: path, path length, argument text, argument length
 11 terminate args: child PID, termination code
+12 sleep   args: milliseconds
 ```
 
 ## Current Behavior
@@ -55,6 +56,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `terminate` lets a parent cancel an owned non-zombie child. The child becomes
   a failed zombie with the requested code and remains available to `wait`.
   Self, unrelated, invalid, and already-completed targets return `-1`.
+- `sleep` suspends the caller for 1 through 60,000 milliseconds and restores
+  its user TTBR0 and exception-return registers on wake. Timer IRQs wake and
+  account EL0 tasks without changing logical ownership absent a context switch.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

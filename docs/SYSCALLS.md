@@ -21,6 +21,8 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 11 terminate args: child PID, termination code
 12 sleep   args: milliseconds
 13 monotonic_ms args: none
+14 getpid  args: none
+15 getppid args: none
 ```
 
 ## Current Behavior
@@ -62,6 +64,8 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   account EL0 tasks without changing logical ownership absent a context switch.
 - `monotonic_ms` returns scheduler ticks converted through the configured timer
   interval. It requires no user pointer and never moves backward during boot.
+- `getpid` returns the current scheduler task ID. `getppid` returns the recorded
+  spawning parent ID, or `0` for shell/kernel-owned user tasks.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

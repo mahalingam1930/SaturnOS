@@ -14,6 +14,8 @@
 #define SYSCALL_TERMINATE 11UL
 #define SYSCALL_SLEEP 12UL
 #define SYSCALL_MONOTONIC_MS 13UL
+#define SYSCALL_GETPID 14UL
+#define SYSCALL_GETPPID 15UL
 #define SYSCALL_WAIT_NOHANG 1UL
 
 long syscall_dispatch(unsigned long number,

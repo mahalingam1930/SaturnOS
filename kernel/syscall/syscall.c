@@ -33,6 +33,8 @@ struct syscall_stats
     unsigned long terminate_calls;
     unsigned long sleep_calls;
     unsigned long monotonic_calls;
+    unsigned long getpid_calls;
+    unsigned long getppid_calls;
     unsigned long last_monotonic_ms;
     unsigned long faults;
     unsigned long write_bytes;
@@ -418,6 +420,10 @@ const char *syscall_name(unsigned long number)
             return "sleep";
         case SYSCALL_MONOTONIC_MS:
             return "monotonic_ms";
+        case SYSCALL_GETPID:
+            return "getpid";
+        case SYSCALL_GETPPID:
+            return "getppid";
         default:
             return "unknown";
     }
@@ -506,13 +512,28 @@ long syscall_dispatch(unsigned long number,
             result = (long)(scheduler_get_ticks() * timer_get_interval_ms());
             stats.last_monotonic_ms = (unsigned long)result;
             break;
+        case SYSCALL_GETPID:
+        {
+            const struct task *task = scheduler_current_task();
+            stats.getpid_calls++;
+            result = task ? task->pid : SYSCALL_ERR_INVAL;
+            break;
+        }
+        case SYSCALL_GETPPID:
+        {
+            const struct task *task = scheduler_current_task();
+            stats.getppid_calls++;
+            result = task ? (task->parent_pid > 0 ? task->parent_pid : 0) :
+                SYSCALL_ERR_INVAL;
+            break;
+        }
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_MONOTONIC_MS)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_GETPPID)
     {
         if (result < 0)
         {
@@ -561,6 +582,10 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_SLEEP));
     kprintf("  %d %s args: none\n", (int)SYSCALL_MONOTONIC_MS,
             syscall_name(SYSCALL_MONOTONIC_MS));
+    kprintf("  %d %s args: none\n", (int)SYSCALL_GETPID,
+            syscall_name(SYSCALL_GETPID));
+    kprintf("  %d %s args: none\n", (int)SYSCALL_GETPPID,
+            syscall_name(SYSCALL_GETPPID));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -587,6 +612,9 @@ void syscall_dump_stats(void)
             (int)stats.last_exit_code);
     kprintf("  file_write_bytes=%d\n", (int)stats.file_write_bytes);
     kprintf("  monotonic_ms=%d\n", (int)stats.last_monotonic_ms);
+    kprintf("  identity getpid=%d getppid=%d\n",
+            (int)stats.getpid_calls,
+            (int)stats.getppid_calls);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

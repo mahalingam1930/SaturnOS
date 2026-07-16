@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.84
+Version: 0.6.85
 
 Codename: Memory
 
@@ -123,6 +123,7 @@ Target: ARM64 QEMU `virt`
 - Parent-authorized child termination with waitable failure status
 - Bounded user sleep syscall with safe EL0 timer/resume handling
 - User monotonic-millisecond syscall derived from scheduler ticks
+- User `getpid` and `getppid` process identity syscalls
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -308,7 +309,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user process identity syscall
+- Add user system-information syscall
 
 ## Vision
 

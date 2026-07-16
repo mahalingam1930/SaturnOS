@@ -272,12 +272,18 @@ static long syscall_seek(unsigned long fd, unsigned long offset)
     return (long)offset;
 }
 
-static long syscall_wait(unsigned long pid, unsigned long status_address)
+static long syscall_wait(unsigned long pid,
+                         unsigned long status_address,
+                         unsigned long options)
 {
     const struct address_space *space = syscall_address_space();
     struct task_wait_status *status =
         (struct task_wait_status *)status_address;
 
+    if (options & ~SYSCALL_WAIT_NOHANG)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
     if (!address_space_user_writable_range_valid(space,
                                                   status_address,
                                                   sizeof(*status)))
@@ -289,11 +295,11 @@ static long syscall_wait(unsigned long pid, unsigned long status_address)
     do
     {
         result = scheduler_wait_task_status((int)pid, status);
-        if (result == 0)
+        if (result == 0 && !(options & SYSCALL_WAIT_NOHANG))
         {
             syscall_scheduler_yield();
         }
-    } while (result == 0);
+    } while (result == 0 && !(options & SYSCALL_WAIT_NOHANG));
     return result;
 }
 
@@ -439,7 +445,7 @@ long syscall_dispatch(unsigned long number,
             break;
         case SYSCALL_WAIT:
             stats.wait_calls++;
-            result = syscall_wait(arg0, arg1);
+            result = syscall_wait(arg0, arg1, arg2);
             break;
         case SYSCALL_SPAWN:
             stats.spawn_calls++;
@@ -489,7 +495,7 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_CREATE));
     kprintf("  %d %s args: fd, offset\n", (int)SYSCALL_SEEK,
             syscall_name(SYSCALL_SEEK));
-    kprintf("  %d %s args: pid, status\n", (int)SYSCALL_WAIT,
+    kprintf("  %d %s args: pid, status, options\n", (int)SYSCALL_WAIT,
             syscall_name(SYSCALL_WAIT));
     kprintf("  %d %s args: path, length, arguments, length\n",
             (int)SYSCALL_SPAWN,

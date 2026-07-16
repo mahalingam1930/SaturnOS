@@ -16,7 +16,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 6  close   args: fd
 7  create  args: path, length
 8  seek    args: fd, absolute offset
-9  wait    args: pid, status buffer
+9  wait    args: pid, status buffer, options
 10 spawn   args: path, path length, argument text, argument length
 ```
 
@@ -46,6 +46,8 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
   child execution. Invalid or unrelated PIDs return `-1`; bad pointers `-2`.
   Passing PID `0` selects any owned child, preferring an already completed
   zombie; it returns `-1` immediately when the caller owns no children.
+  Option bit `1` (`NOHANG`) returns `0` immediately for active children;
+  unknown option bits return `-1`.
 - `spawn` copies a bounded path and optional argument text from user memory,
   loads and validates the executable through VFS, packs the child's argument
   vectors, admits the child task, and returns its PID.

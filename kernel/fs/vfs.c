@@ -211,6 +211,96 @@ int vfs_remove(const char *path)
     return 1;
 }
 
+int vfs_rename(const char *old_path, const char *new_path)
+{
+    struct ramfs_node *node = vfs_find(old_path);
+    unsigned long old_length = 0;
+    unsigned long new_length = 0;
+
+    if (!node || !vfs_path_valid(new_path) || vfs_find(new_path) ||
+        !vfs_parent_exists(new_path))
+    {
+        return 0;
+    }
+    while (old_path[old_length])
+    {
+        old_length++;
+    }
+    while (new_path[new_length])
+    {
+        new_length++;
+    }
+    if (node->kind == RAMFS_DIRECTORY && new_length > old_length &&
+        new_path[old_length] == '/')
+    {
+        unsigned long matched = 0;
+        while (matched < old_length && old_path[matched] == new_path[matched])
+        {
+            matched++;
+        }
+        if (matched == old_length)
+        {
+            return 0;
+        }
+    }
+    for (unsigned long i = 0; i < VFS_MAX_NODES; i++)
+    {
+        unsigned long matched = 0;
+        if (!nodes[i].used || &nodes[i] == node)
+        {
+            continue;
+        }
+        while (matched < old_length &&
+               nodes[i].path[matched] == old_path[matched])
+        {
+            matched++;
+        }
+        if (matched == old_length && nodes[i].path[old_length] == '/')
+        {
+            unsigned long suffix_length = 0;
+            while (nodes[i].path[old_length + suffix_length])
+            {
+                suffix_length++;
+            }
+            if (new_length + suffix_length >= VFS_MAX_PATH)
+            {
+                return 0;
+            }
+        }
+    }
+    for (unsigned long i = 0; i < VFS_MAX_NODES; i++)
+    {
+        unsigned long matched = 0;
+        char renamed[VFS_MAX_PATH];
+        if (!nodes[i].used || &nodes[i] == node)
+        {
+            continue;
+        }
+        while (matched < old_length &&
+               nodes[i].path[matched] == old_path[matched])
+        {
+            matched++;
+        }
+        if (matched != old_length || nodes[i].path[old_length] != '/')
+        {
+            continue;
+        }
+        unsigned long j = 0;
+        for (; j < new_length; j++)
+        {
+            renamed[j] = new_path[j];
+        }
+        for (unsigned long k = old_length; nodes[i].path[k]; k++)
+        {
+            renamed[j++] = nodes[i].path[k];
+        }
+        renamed[j] = '\0';
+        vfs_set_path(&nodes[i], renamed);
+    }
+    vfs_set_path(node, new_path);
+    return 1;
+}
+
 int vfs_create(const char *path, const void *data, unsigned long size)
 {
     struct ramfs_node *file;

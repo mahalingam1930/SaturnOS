@@ -43,6 +43,7 @@ struct syscall_stats
     unsigned long directory_list_calls;
     unsigned long mkdir_calls;
     unsigned long remove_calls;
+    unsigned long rename_calls;
     unsigned long last_random;
     unsigned long last_monotonic_ms;
     unsigned long faults;
@@ -258,6 +259,48 @@ static long syscall_remove(unsigned long path_address,
     }
     path[path_length] = '\0';
     return vfs_remove(path) ? 0 : SYSCALL_ERR_INVAL;
+}
+
+static long syscall_rename(unsigned long old_address,
+                           unsigned long old_length,
+                           unsigned long new_address,
+                           unsigned long new_length)
+{
+    const struct address_space *space = syscall_address_space();
+    const char *old_source = (const char *)old_address;
+    const char *new_source = (const char *)new_address;
+    char old_path[VFS_MAX_PATH];
+    char new_path[VFS_MAX_PATH];
+    if (!old_length || old_length >= sizeof(old_path) ||
+        !new_length || new_length >= sizeof(new_path))
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    if (!address_space_user_range_valid(space, old_address, old_length) ||
+        !address_space_user_range_valid(space, new_address, new_length))
+    {
+        stats.faults++;
+        return SYSCALL_ERR_FAULT;
+    }
+    for (unsigned long i = 0; i < old_length; i++)
+    {
+        if (!old_source[i])
+        {
+            return SYSCALL_ERR_INVAL;
+        }
+        old_path[i] = old_source[i];
+    }
+    for (unsigned long i = 0; i < new_length; i++)
+    {
+        if (!new_source[i])
+        {
+            return SYSCALL_ERR_INVAL;
+        }
+        new_path[i] = new_source[i];
+    }
+    old_path[old_length] = '\0';
+    new_path[new_length] = '\0';
+    return vfs_rename(old_path, new_path) ? 0 : SYSCALL_ERR_INVAL;
 }
 
 static const struct address_space *syscall_address_space(void)
@@ -601,6 +644,8 @@ const char *syscall_name(unsigned long number)
             return "mkdir";
         case SYSCALL_REMOVE:
             return "remove";
+        case SYSCALL_RENAME:
+            return "rename";
         default:
             return "unknown";
     }
@@ -729,13 +774,17 @@ long syscall_dispatch(unsigned long number,
             stats.remove_calls++;
             result = syscall_remove(arg0, arg1);
             break;
+        case SYSCALL_RENAME:
+            stats.rename_calls++;
+            result = syscall_rename(arg0, arg1, arg2, arg3);
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_REMOVE)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_RENAME)
     {
         if (result < 0)
         {
@@ -802,6 +851,8 @@ void syscall_dump_stats(void)
             syscall_name(SYSCALL_MKDIR));
     kprintf("  %d %s args: path, length\n", (int)SYSCALL_REMOVE,
             syscall_name(SYSCALL_REMOVE));
+    kprintf("  %d %s args: old path, length, new path, length\n",
+            (int)SYSCALL_RENAME, syscall_name(SYSCALL_RENAME));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -839,6 +890,7 @@ void syscall_dump_stats(void)
     kprintf("  directory_list=%d\n", (int)stats.directory_list_calls);
     kprintf("  mkdir=%d\n", (int)stats.mkdir_calls);
     kprintf("  remove=%d\n", (int)stats.remove_calls);
+    kprintf("  rename=%d\n", (int)stats.rename_calls);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

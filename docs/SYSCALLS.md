@@ -28,6 +28,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 18 process_status args: PID, writable status buffer
 19 directory_list args: entry index, writable entry buffer
 20 mkdir args: path, path length
+21 remove args: path, path length
 ```
 
 ## Current Behavior
@@ -87,6 +88,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `mkdir` copies a bounded, non-NUL-containing path from user memory and creates
   a RAM filesystem directory. Invalid, duplicate, or orphaned paths return
   `-1`; bad user ranges return `-2`.
+- `remove` deletes a RAM filesystem file or empty directory and updates the
+  namespace counts. Missing paths and non-empty directories return `-1`; bad
+  user ranges return `-2`.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

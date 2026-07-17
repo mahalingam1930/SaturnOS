@@ -171,6 +171,46 @@ int vfs_mkdir(const char *path)
     return 1;
 }
 
+int vfs_remove(const char *path)
+{
+    struct ramfs_node *node = vfs_find(path);
+    unsigned long length = 0;
+
+    if (!node)
+    {
+        return 0;
+    }
+    while (path[length])
+    {
+        length++;
+    }
+    if (node->kind == RAMFS_DIRECTORY)
+    {
+        for (unsigned long i = 0; i < VFS_MAX_NODES; i++)
+        {
+            unsigned long matched = 0;
+            while (matched < length && nodes[i].path[matched] == path[matched])
+            {
+                matched++;
+            }
+            if (nodes[i].used && &nodes[i] != node && matched == length &&
+                nodes[i].path[length] == '/')
+            {
+                return 0;
+            }
+        }
+        dir_count--;
+    }
+    else
+    {
+        file_count--;
+    }
+    node->used = 0;
+    node->size = 0;
+    node->path[0] = '\0';
+    return 1;
+}
+
 int vfs_create(const char *path, const void *data, unsigned long size)
 {
     struct ramfs_node *file;

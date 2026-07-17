@@ -407,3 +407,39 @@ unsigned long vfs_file_count(void)
 {
     return file_count;
 }
+
+int vfs_list(unsigned long index, struct vfs_entry *entry)
+{
+    unsigned long current = 0;
+
+    if (!entry)
+    {
+        return -1;
+    }
+    for (unsigned long i = 0; i < VFS_MAX_NODES; i++)
+    {
+        if (!nodes[i].used)
+        {
+            continue;
+        }
+        if (current++ != index)
+        {
+            continue;
+        }
+        unsigned long j = 0;
+        for (; nodes[i].path[j] && j + 1UL < sizeof(entry->path); j++)
+        {
+            entry->path[j] = nodes[i].path[j];
+        }
+        entry->path[j] = '\0';
+        for (j++; j < sizeof(entry->path); j++)
+        {
+            entry->path[j] = '\0';
+        }
+        entry->size = nodes[i].size;
+        entry->kind = nodes[i].kind == RAMFS_DIRECTORY ?
+            VFS_ENTRY_DIRECTORY : VFS_ENTRY_FILE;
+        return 1;
+    }
+    return 0;
+}

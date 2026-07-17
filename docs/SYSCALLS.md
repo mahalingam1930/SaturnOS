@@ -26,6 +26,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 16 system_info args: writable information buffer
 17 random args: none
 18 process_status args: PID, writable status buffer
+19 directory_list args: entry index, writable entry buffer
 ```
 
 ## Current Behavior
@@ -79,6 +80,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `process_status` writes the PID, parent PID, scheduler state and accounting,
   exit code, and success flag for the caller (`pid = 0`) or one of its owned
   children. Unrelated or missing tasks return `-1`; bad buffers return `-2`.
+- `directory_list` enumerates the RAM filesystem namespace by zero-based index.
+  It returns `1` with a fixed entry containing path, size, and node kind; `0`
+  marks the end. Bad output buffers return `-2`.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

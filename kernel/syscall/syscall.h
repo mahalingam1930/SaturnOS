@@ -19,6 +19,9 @@
 #define SYSCALL_SYSTEM_INFO 16UL
 #define SYSCALL_RANDOM 17UL
 #define SYSCALL_PROCESS_STATUS 18UL
+#define SYSCALL_DIRECTORY_LIST 19UL
+
+#define SYSCALL_DIRECTORY_PATH_MAX 48UL
 #define SYSCALL_WAIT_NOHANG 1UL
 
 struct syscall_system_info
@@ -45,6 +48,13 @@ struct syscall_process_status
     unsigned long preemptions;
     unsigned long exit_code;
     unsigned long succeeded;
+};
+
+struct syscall_directory_entry
+{
+    char path[SYSCALL_DIRECTORY_PATH_MAX];
+    unsigned long size;
+    unsigned long kind;
 };
 
 long syscall_dispatch(unsigned long number,

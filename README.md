@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.94
+Version: 0.6.95
 
 Codename: Memory
 
@@ -133,6 +133,7 @@ Target: ARM64 QEMU `virt`
 - Atomic user path rename with recursive directory descendant updates
 - Validated user path metadata snapshots for RAMFS and SaturnFS files
 - Explicit bounded user file truncation across RAMFS and SaturnFS
+- Task-local user descriptor duplication with cloned offsets
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -318,7 +319,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user descriptor-duplication syscall
+- Add user descriptor-status syscall
 
 ## Vision
 

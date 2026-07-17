@@ -32,6 +32,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 22 rename args: old path, old length, new path, new length
 23 path_stat args: path, path length, writable status buffer
 24 truncate args: path, path length, new size
+25 dup args: file descriptor
 ```
 
 ## Current Behavior
@@ -103,6 +104,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `truncate` resizes an existing RAMFS or SaturnFS file to a bounded size,
   zero-filling growth through the filesystem backend. Missing paths,
   directories, and oversized requests return `-1`; bad ranges return `-2`.
+- `dup` clones a valid task-owned file descriptor into the lowest free slot,
+  including its path and current offset. The two offsets evolve independently;
+  invalid descriptors or a full descriptor table return `-1`.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

@@ -2,7 +2,7 @@
 
 ## Current Version
 
-SaturnOS is currently at `0.6.94` and targets ARM64 QEMU `virt`.
+SaturnOS is currently at `0.6.95` and targets ARM64 QEMU `virt`.
 
 ## Completed
 
@@ -122,12 +122,13 @@ SaturnOS is currently at `0.6.94` and targets ARM64 QEMU `virt`.
 - atomic path rename with collision and self-descendant protections
 - validated path metadata snapshots across RAMFS and mounted SaturnFS files
 - explicit bounded user file truncation across RAMFS and SaturnFS
+- task-local descriptor duplication into the lowest available slot
 
 ## Next
 
 ### User Space
 
-- add user descriptor-duplication syscall
+- add user descriptor-status syscall
 
 ### Storage
 

@@ -30,6 +30,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 20 mkdir args: path, path length
 21 remove args: path, path length
 22 rename args: old path, old length, new path, new length
+23 path_stat args: path, path length, writable status buffer
 ```
 
 ## Current Behavior
@@ -95,6 +96,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `rename` atomically moves a RAM filesystem path after validating both user
   ranges, the destination parent, and collisions. Directory moves update all
   descendant paths and reject moves beneath the directory itself.
+- `path_stat` returns a fixed path, size, and node-kind snapshot for RAMFS nodes
+  and mounted SaturnFS files. Missing paths return `-1`; bad input or output
+  ranges return `-2`.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

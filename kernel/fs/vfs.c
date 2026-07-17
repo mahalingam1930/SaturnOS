@@ -301,6 +301,48 @@ int vfs_rename(const char *old_path, const char *new_path)
     return 1;
 }
 
+int vfs_stat(const char *path, struct vfs_entry *entry)
+{
+    struct ramfs_node *node = vfs_find(path);
+    const char *disk_path = vfs_disk_path(path);
+    unsigned long size = 0;
+    unsigned long i = 0;
+
+    if (!entry)
+    {
+        return 0;
+    }
+    if (disk_path)
+    {
+        if (!vfs_file_data(path, &size))
+        {
+            return 0;
+        }
+        entry->kind = VFS_ENTRY_FILE;
+    }
+    else if (node)
+    {
+        size = node->size;
+        entry->kind = node->kind == RAMFS_DIRECTORY ?
+            VFS_ENTRY_DIRECTORY : VFS_ENTRY_FILE;
+    }
+    else
+    {
+        return 0;
+    }
+    for (; path[i] && i + 1UL < sizeof(entry->path); i++)
+    {
+        entry->path[i] = path[i];
+    }
+    entry->path[i] = '\0';
+    for (i++; i < sizeof(entry->path); i++)
+    {
+        entry->path[i] = '\0';
+    }
+    entry->size = size;
+    return 1;
+}
+
 int vfs_create(const char *path, const void *data, unsigned long size)
 {
     struct ramfs_node *file;

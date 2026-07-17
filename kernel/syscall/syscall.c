@@ -40,6 +40,7 @@ struct syscall_stats
     unsigned long system_info_calls;
     unsigned long random_calls;
     unsigned long process_status_calls;
+    unsigned long directory_list_calls;
     unsigned long last_random;
     unsigned long last_monotonic_ms;
     unsigned long faults;
@@ -174,6 +175,33 @@ static long syscall_process_status(unsigned long pid, unsigned long address)
     status->exit_code = target->user_status.last_exit_code;
     status->succeeded = target->user_status.program_succeeded ? 1UL : 0UL;
     return 0;
+}
+
+static long syscall_directory_list(unsigned long index, unsigned long address)
+{
+    const struct address_space *space = syscall_address_space();
+    struct syscall_directory_entry *output =
+        (struct syscall_directory_entry *)address;
+    struct vfs_entry entry;
+    int result;
+    if (!address_space_user_writable_range_valid(space, address,
+                                                  sizeof(*output)))
+    {
+        stats.faults++;
+        return SYSCALL_ERR_FAULT;
+    }
+    result = vfs_list(index, &entry);
+    if (result <= 0)
+    {
+        return result;
+    }
+    for (unsigned long i = 0; i < sizeof(output->path); i++)
+    {
+        output->path[i] = entry.path[i];
+    }
+    output->size = entry.size;
+    output->kind = entry.kind;
+    return 1;
 }
 
 static const struct address_space *syscall_address_space(void)
@@ -511,6 +539,8 @@ const char *syscall_name(unsigned long number)
             return "random";
         case SYSCALL_PROCESS_STATUS:
             return "process_status";
+        case SYSCALL_DIRECTORY_LIST:
+            return "directory_list";
         default:
             return "unknown";
     }
@@ -627,13 +657,17 @@ long syscall_dispatch(unsigned long number,
             stats.process_status_calls++;
             result = syscall_process_status(arg0, arg1);
             break;
+        case SYSCALL_DIRECTORY_LIST:
+            stats.directory_list_calls++;
+            result = syscall_directory_list(arg0, arg1);
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_PROCESS_STATUS)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_DIRECTORY_LIST)
     {
         if (result < 0)
         {
@@ -693,6 +727,9 @@ void syscall_dump_stats(void)
     kprintf("  %d %s args: pid, status buffer\n",
             (int)SYSCALL_PROCESS_STATUS,
             syscall_name(SYSCALL_PROCESS_STATUS));
+    kprintf("  %d %s args: index, entry buffer\n",
+            (int)SYSCALL_DIRECTORY_LIST,
+            syscall_name(SYSCALL_DIRECTORY_LIST));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -727,6 +764,7 @@ void syscall_dump_stats(void)
             (int)stats.random_calls,
             (int)stats.last_random);
     kprintf("  process_status=%d\n", (int)stats.process_status_calls);
+    kprintf("  directory_list=%d\n", (int)stats.directory_list_calls);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),

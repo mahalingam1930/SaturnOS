@@ -61,9 +61,11 @@ static const unsigned int user_spawn_code[] = {
     0xd4000001U,
     0xd2800288U, 0xd2a00400U, 0x91018000U, 0xd2800121U,
     0xd4000001U,
+    0xd28002c8U, 0xd2a00400U, 0x91018000U, 0xd2800121U,
+    0xd2a00402U, 0x9101b042U, 0xd2800103U, 0xd4000001U,
     0xd2800268U, 0xd2800000U, 0xd2a00401U, 0x91020021U,
     0xd4000001U,
-    0xd28002a8U, 0xd2a00400U, 0x91018000U, 0xd2800121U,
+    0xd28002a8U, 0xd2a00400U, 0x9101b000U, 0xd2800101U,
     0xd4000001U,
     0xd28001c8U, 0xd4000001U, 0xd28001e8U, 0xd4000001U,
     0xd28001a8U, 0xd4000001U, 0xd2800148U, 0xd2a00400U,
@@ -81,6 +83,7 @@ static const char user_spawn_path[] = "/bin/user-args.sx";
 static const char user_spawn_arguments[] = "child args";
 static const char user_spawn_wait_message[] = "wait ok\n";
 static const char user_spawn_directory[] = "/user-dir";
+static const char user_spawn_renamed_directory[] = "/renamed";
 
 int user_programs_init(void)
 {
@@ -292,6 +295,13 @@ int user_programs_init(void)
     {
         wait_payload[sizeof(user_spawn_code) + 96UL + i] =
             user_spawn_directory[i];
+    }
+    for (unsigned long i = 0;
+         i < sizeof(user_spawn_renamed_directory) - 1UL;
+         i++)
+    {
+        wait_payload[sizeof(user_spawn_code) + 108UL + i] =
+            user_spawn_renamed_directory[i];
     }
     wait_header->payload_checksum = saturn_exec_checksum(
         wait_payload, sizeof(user_spawn_code) + 128UL);

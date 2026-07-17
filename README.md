@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.91
+Version: 0.6.92
 
 Codename: Memory
 
@@ -130,6 +130,7 @@ Target: ARM64 QEMU `virt`
 - Bounded user enumeration of RAM filesystem directory entries
 - Validated user directory creation in the RAM filesystem namespace
 - Validated user removal of RAM filesystem files and empty directories
+- Atomic user path rename with recursive directory descendant updates
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -315,7 +316,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user path-rename syscall
+- Add user path-stat syscall
 
 ## Vision
 

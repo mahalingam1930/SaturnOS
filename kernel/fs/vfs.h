@@ -20,6 +20,7 @@ void vfs_init(void);
 int vfs_mkdir(const char *path);
 int vfs_remove(const char *path);
 int vfs_rename(const char *old_path, const char *new_path);
+int vfs_stat(const char *path, struct vfs_entry *entry);
 int vfs_create(const char *path, const void *data, unsigned long size);
 long vfs_write(const char *path,
                unsigned long offset,

@@ -10,7 +10,7 @@ ARM64 identity-mapped virtual memory.
 
 ## Current Status
 
-Version: 0.6.93
+Version: 0.6.94
 
 Codename: Memory
 
@@ -132,6 +132,7 @@ Target: ARM64 QEMU `virt`
 - Validated user removal of RAM filesystem files and empty directories
 - Atomic user path rename with recursive directory descendant updates
 - Validated user path metadata snapshots for RAMFS and SaturnFS files
+- Explicit bounded user file truncation across RAMFS and SaturnFS
 - Shell syscall diagnostics and dispatcher test command
 - Thread demo module
 - Optional demo kernel threads for scheduler testing
@@ -317,7 +318,7 @@ Additional docs:
 
 ## Next Milestones
 
-- Add user file-truncate syscall
+- Add user descriptor-duplication syscall
 
 ## Vision
 

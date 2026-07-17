@@ -31,6 +31,7 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 21 remove args: path, path length
 22 rename args: old path, old length, new path, new length
 23 path_stat args: path, path length, writable status buffer
+24 truncate args: path, path length, new size
 ```
 
 ## Current Behavior
@@ -99,6 +100,9 @@ lower-EL AArch64 `svc` exceptions into the dispatcher.
 - `path_stat` returns a fixed path, size, and node-kind snapshot for RAMFS nodes
   and mounted SaturnFS files. Missing paths return `-1`; bad input or output
   ranges return `-2`.
+- `truncate` resizes an existing RAMFS or SaturnFS file to a bounded size,
+  zero-filling growth through the filesystem backend. Missing paths,
+  directories, and oversized requests return `-1`; bad ranges return `-2`.
 - unknown syscall numbers are rejected with `-1`.
 
 Program completion is independent of the diagnostic BRK fallback. Synchronous

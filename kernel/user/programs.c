@@ -55,6 +55,10 @@ static const unsigned int user_args_code[] = {
     0xd2800048U, 0xd2800000U, 0xd4000001U, 0xd4200000U,
 };
 static const unsigned int user_spawn_code[] = {
+    0xd2800308U, 0xd2a00400U, 0x91020000U, 0xd2800281U,
+    0xd28000a2U, 0xd4000001U,
+    0xd28002e8U, 0xd2a00400U, 0x91020000U, 0xd2800281U,
+    0xd2a00402U, 0x91020042U, 0xd4000001U,
     0xd2800208U, 0xd2a00400U, 0x91020000U, 0xd4000001U,
     0xd2800228U, 0xd4000001U,
     0xd2800248U, 0xd2800000U, 0xd2a00401U, 0x91020021U,
@@ -86,6 +90,7 @@ static const char user_spawn_arguments[] = "child args";
 static const char user_spawn_wait_message[] = "wait ok\n";
 static const char user_spawn_directory[] = "/user-dir";
 static const char user_spawn_renamed_directory[] = "/renamed";
+static const char user_spawn_truncate_path[] = "/share/user-demo.txt";
 
 int user_programs_init(void)
 {
@@ -111,7 +116,7 @@ int user_programs_init(void)
                                     sizeof(user_args_code) + 128UL]
         __attribute__((aligned(4)));
     static unsigned char wait_image[sizeof(struct saturn_exec_header) +
-                                    sizeof(user_spawn_code) + 128UL]
+                                    sizeof(user_spawn_code) + 160UL]
         __attribute__((aligned(4)));
     struct saturn_exec_header *header =
         (struct saturn_exec_header *)image;
@@ -267,13 +272,13 @@ int user_programs_init(void)
     wait_header->version = SATURN_EXEC_VERSION;
     wait_header->header_size = sizeof(*wait_header);
     wait_header->code_size = sizeof(user_spawn_code);
-    wait_header->data_size = 128;
+    wait_header->data_size = 160;
     wait_header->entry_offset = 0;
     for (unsigned long i = 0; i < sizeof(user_spawn_code); i++)
     {
         wait_payload[i] = ((const unsigned char *)user_spawn_code)[i];
     }
-    for (unsigned long i = 0; i < 128; i++)
+    for (unsigned long i = 0; i < 160; i++)
     {
         wait_payload[sizeof(user_spawn_code) + i] = 0;
     }
@@ -305,8 +310,13 @@ int user_programs_init(void)
         wait_payload[sizeof(user_spawn_code) + 108UL + i] =
             user_spawn_renamed_directory[i];
     }
+    for (unsigned long i = 0; i < sizeof(user_spawn_truncate_path) - 1UL; i++)
+    {
+        wait_payload[sizeof(user_spawn_code) + 128UL + i] =
+            user_spawn_truncate_path[i];
+    }
     wait_header->payload_checksum = saturn_exec_checksum(
-        wait_payload, sizeof(user_spawn_code) + 128UL);
+        wait_payload, sizeof(user_spawn_code) + 160UL);
 
     if (!vfs_mkdir("/bin") ||
         !vfs_mkdir("/share") ||

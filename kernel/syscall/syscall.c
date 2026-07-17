@@ -45,6 +45,7 @@ struct syscall_stats
     unsigned long remove_calls;
     unsigned long rename_calls;
     unsigned long path_stat_calls;
+    unsigned long truncate_calls;
     unsigned long last_random;
     unsigned long last_monotonic_ms;
     unsigned long faults;
@@ -345,6 +346,35 @@ static long syscall_path_stat(unsigned long path_address,
     output->size = entry.size;
     output->kind = entry.kind;
     return 0;
+}
+
+static long syscall_truncate(unsigned long path_address,
+                             unsigned long path_length,
+                             unsigned long size)
+{
+    const struct address_space *space = syscall_address_space();
+    const char *source = (const char *)path_address;
+    char path[VFS_MAX_PATH];
+    if (!path_length || path_length >= sizeof(path) ||
+        size > VFS_MAX_FILE_SIZE)
+    {
+        return SYSCALL_ERR_INVAL;
+    }
+    if (!address_space_user_range_valid(space, path_address, path_length))
+    {
+        stats.faults++;
+        return SYSCALL_ERR_FAULT;
+    }
+    for (unsigned long i = 0; i < path_length; i++)
+    {
+        if (!source[i])
+        {
+            return SYSCALL_ERR_INVAL;
+        }
+        path[i] = source[i];
+    }
+    path[path_length] = '\0';
+    return vfs_truncate(path, size) ? 0 : SYSCALL_ERR_INVAL;
 }
 
 static const struct address_space *syscall_address_space(void)
@@ -692,6 +722,8 @@ const char *syscall_name(unsigned long number)
             return "rename";
         case SYSCALL_PATH_STAT:
             return "path_stat";
+        case SYSCALL_TRUNCATE:
+            return "truncate";
         default:
             return "unknown";
     }
@@ -828,13 +860,17 @@ long syscall_dispatch(unsigned long number,
             stats.path_stat_calls++;
             result = syscall_path_stat(arg0, arg1, arg2);
             break;
+        case SYSCALL_TRUNCATE:
+            stats.truncate_calls++;
+            result = syscall_truncate(arg0, arg1, arg2);
+            break;
         default:
             stats.rejected++;
             result = -1;
             break;
     }
 
-    if (number >= SYSCALL_OPEN && number <= SYSCALL_PATH_STAT)
+    if (number >= SYSCALL_OPEN && number <= SYSCALL_TRUNCATE)
     {
         if (result < 0)
         {
@@ -905,6 +941,8 @@ void syscall_dump_stats(void)
             (int)SYSCALL_RENAME, syscall_name(SYSCALL_RENAME));
     kprintf("  %d %s args: path, length, status buffer\n",
             (int)SYSCALL_PATH_STAT, syscall_name(SYSCALL_PATH_STAT));
+    kprintf("  %d %s args: path, length, size\n",
+            (int)SYSCALL_TRUNCATE, syscall_name(SYSCALL_TRUNCATE));
     kprintf("Stats:\n");
     kprintf("  total=%d handled=%d rejected=%d\n",
             (int)stats.total,
@@ -944,6 +982,7 @@ void syscall_dump_stats(void)
     kprintf("  remove=%d\n", (int)stats.remove_calls);
     kprintf("  rename=%d\n", (int)stats.rename_calls);
     kprintf("  path_stat=%d\n", (int)stats.path_stat_calls);
+    kprintf("  truncate=%d\n", (int)stats.truncate_calls);
     kprintf("  last=%d (%s) arg0=0x%x arg1=0x%x arg2=0x%x result=%d\n",
             (int)stats.last_number,
             syscall_name(stats.last_number),
